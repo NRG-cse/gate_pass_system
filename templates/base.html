@@ -464,10 +464,11 @@
                     </a>
                 </li>
                 
-                {% if session.role == 'department_head' %}
+                {% if session.role in ['system_admin', 'department_head'] %}
                 <li class="nav-item">
-                    <a class="nav-link {% if request.endpoint == 'approval_pending' %}active{% endif %}" href="{{ url_for('approval_pending') }}" onclick="handleNavClick()">
-                        <i class="fas fa-check-circle"></i>
+                    <a class="nav-link {% if request.endpoint == 'approval_pending' %}active{% endif %}" 
+                    href="{{ url_for('approval_pending') }}" onclick="handleNavClick()">
+                        <i class="fas fa-user-check"></i>
                         <span>Pending Approvals</span>
                         {% if pending_approvals and pending_approvals > 0 %}
                         <span class="badge bg-danger ms-auto">{{ pending_approvals }}</span>

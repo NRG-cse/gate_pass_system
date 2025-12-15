@@ -1,4 +1,4 @@
-# app.py - UPDATED FOR NEW SYSTEM
+# app.py - UPDATED WITH NEW APPROVAL SYSTEM
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from models import get_db_connection, init_db, dict_fetchall, dict_fetchone
 from notifications import start_notification_scheduler, create_notification
@@ -84,8 +84,10 @@ def dashboard():
                            AND status = 'approved' ''')
             overdue_passes = cursor.fetchone()[0]
             
-            # Pending approvals for System Admin
-            cursor.execute('SELECT COUNT(*) FROM gate_passes WHERE status = "pending_security"')
+            # Pending user approvals for System Admin
+            cursor.execute('''SELECT COUNT(*) FROM users 
+                           WHERE status IN ('dual_pending', 'pending_admin') 
+                           AND (approved_by_admin = FALSE OR approved_by_admin IS NULL)''')
             pending_approvals = cursor.fetchone()[0]
             
         elif session['role'] == 'store_manager':
@@ -136,8 +138,15 @@ def dashboard():
                          (session['department'],))
             overdue_passes = cursor.fetchone()[0]
             
-            # Pending approvals for Department Head
-            pending_approvals = pending_passes
+            # Pending user approvals for Department Head
+            cursor.execute('''SELECT COUNT(DISTINCT u.id) 
+                           FROM users u 
+                           JOIN departments d ON u.department_id = d.id 
+                           WHERE d.name = %s 
+                           AND u.status IN ('dual_pending', 'pending_dept') 
+                           AND (u.approved_by_dept_head = FALSE OR u.approved_by_dept_head IS NULL)''', 
+                         (session['department'],))
+            pending_approvals = cursor.fetchone()[0]
             
         elif session['role'] == 'security':
             # Security - Statistics for security approvals
@@ -200,6 +209,82 @@ def dashboard():
                          overdue_passes=overdue_passes,
                          pending_approvals=pending_approvals,
                          notifications=notifications)
+
+@app.route('/approval_pending')
+def approval_pending():
+    """Show pending approvals for both Admin and Department Head"""
+    if 'user_id' not in session or session['role'] not in ['system_admin', 'department_head']:
+        flash('Access denied!', 'error')
+        return redirect(url_for('dashboard'))
+    
+    conn = get_db_connection()
+    if conn is None:
+        flash('Database connection failed!', 'error')
+        return render_template('approval_pending.html', pending_users=[], pending_passes=[])
+    
+    cursor = conn.cursor()
+    
+    try:
+        # Get pending users based on role
+        if session['role'] == 'system_admin':
+            # Admin can see all pending users who need admin approval
+            cursor.execute('''
+                SELECT u.*, d.name as department, dv.name as division
+                FROM users u 
+                LEFT JOIN departments d ON u.department_id = d.id 
+                LEFT JOIN divisions dv ON u.division_id = dv.id 
+                WHERE u.status IN ('dual_pending', 'pending_admin') 
+                AND (u.approved_by_admin = FALSE OR u.approved_by_admin IS NULL)
+                ORDER BY u.created_at DESC
+            ''')
+            pending_users = dict_fetchall(cursor)
+            
+            # Admin can see all pending gate passes
+            cursor.execute('''
+                SELECT gp.*, u.name as creator_name 
+                FROM gate_passes gp 
+                JOIN users u ON gp.created_by = u.id 
+                WHERE gp.status = 'pending_security'
+                ORDER BY gp.created_at DESC
+            ''')
+            pending_passes = dict_fetchall(cursor)
+            
+        elif session['role'] == 'department_head':
+            # Department Head can only see users from their department
+            cursor.execute('''
+                SELECT u.*, d.name as department, dv.name as division
+                FROM users u 
+                JOIN departments d ON u.department_id = d.id 
+                LEFT JOIN divisions dv ON u.division_id = dv.id 
+                WHERE d.name = %s 
+                AND u.status IN ('dual_pending', 'pending_dept') 
+                AND (u.approved_by_dept_head = FALSE OR u.approved_by_dept_head IS NULL)
+                ORDER BY u.created_at DESC
+            ''', (session['department'],))
+            pending_users = dict_fetchall(cursor)
+            
+            # Department Head can see gate passes from their department
+            cursor.execute('''
+                SELECT gp.*, u.name as creator_name 
+                FROM gate_passes gp 
+                JOIN users u ON gp.created_by = u.id 
+                JOIN departments d ON gp.department_id = d.id 
+                WHERE d.name = %s AND gp.status = 'pending_dept'
+                ORDER BY gp.created_at DESC
+            ''', (session['department'],))
+            pending_passes = dict_fetchall(cursor)
+        
+    except Exception as e:
+        print(f"Approval pending error: {e}")
+        pending_users = []
+        pending_passes = []
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return render_template('approval_pending.html', 
+                         pending_users=pending_users, 
+                         pending_passes=pending_passes)
 
 @app.route('/mark_returned/<int:gate_pass_id>', methods=['POST'])
 def mark_returned(gate_pass_id):

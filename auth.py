@@ -1,6 +1,6 @@
-# auth.py - FIXED FOR REGISTRATION
+# auth.py - UPDATED WITH DUAL APPROVAL SYSTEM
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
-from models import get_db_connection, hash_password, check_password, dict_fetchone, dict_fetchall  # Added dict_fetchall
+from models import get_db_connection, hash_password, check_password, dict_fetchone, dict_fetchall
 from notifications import create_notification
 
 auth_bp = Blueprint('auth', __name__)
@@ -29,9 +29,20 @@ def login():
             user = dict_fetchone(cursor)
             
             if user and check_password(user['password'], password):
+                # Check if user is approved (either by admin OR dept head)
                 if user['status'] != 'approved':
-                    flash('Your account is pending approval! Please wait for admin approval.', 'error')
-                    return render_template('login.html')
+                    if user['approved_by_admin'] or user['approved_by_dept_head']:
+                        # Update status to approved if either approved
+                        cursor.execute('''
+                            UPDATE users 
+                            SET status = 'approved' 
+                            WHERE id = %s
+                        ''', (user['id'],))
+                        conn.commit()
+                        user['status'] = 'approved'
+                    else:
+                        flash('Your account is pending approval from either Admin or Department Head!', 'error')
+                        return render_template('login.html')
                 
                 session['user_id'] = user['id']
                 session['username'] = user['username']
@@ -63,13 +74,11 @@ def register():
     
     cursor = conn.cursor()
     
-    # Get divisions and departments for dropdown - FIXED QUERY
+    # Get divisions and departments for dropdown
     try:
-        # Get all active divisions
         cursor.execute('SELECT * FROM divisions WHERE status = "active" ORDER BY name')
         divisions = dict_fetchall(cursor)
         
-        # Get all active departments with division info
         cursor.execute('''
             SELECT d.*, dv.name as division_name 
             FROM departments d 
@@ -123,16 +132,20 @@ def register():
                 flash('Invalid department for selected division!', 'error')
                 return render_template('register.html', divisions=divisions, departments=departments)
             
-            # Insert new user with MD5 hashed password
+            # Insert new user with DUAL PENDING status
             hashed_password = hash_password(password)
             cursor.execute('''
                 INSERT INTO users (username, password, name, designation, division_id, department_id, phone, email, role, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'dual_pending')
             ''', (username, hashed_password, name, designation, division_id, department_id, phone, email, role))
             
             user_id = cursor.lastrowid
             
-            # Get department head for notification
+            # Get ALL System Administrators for notification
+            cursor.execute('SELECT id, name FROM users WHERE role = "system_admin" AND status = "approved"')
+            admins = dict_fetchall(cursor)
+            
+            # Get Department Head for the selected department
             cursor.execute('''
                 SELECT u.id, u.name 
                 FROM users u 
@@ -140,28 +153,36 @@ def register():
             ''', (department_id,))
             
             dept_heads = dict_fetchall(cursor)
+            
+            # Notify ALL System Administrators
+            for admin in admins:
+                create_notification(
+                    admin['id'],
+                    f"📋 NEW USER REGISTRATION (Admin Approval): {name} ({username}) wants to join as {designation}. Please review in User Management.",
+                    'approval',
+                    user_id
+                )
+            
+            # Notify Department Head (if exists)
             if dept_heads:
                 for dept_head in dept_heads:
                     create_notification(
                         dept_head['id'],
-                        f"📋 NEW USER REGISTRATION: {name} ({username}) wants to join as {designation} in your department. Please review in User Management.",
+                        f"📋 NEW USER REGISTRATION (Dept Head Approval): {name} ({username}) wants to join as {designation} in your department. Please review in Pending Approvals.",
                         'approval',
-                        None
+                        user_id
                     )
-            
-            # Also notify System Administrator
-            cursor.execute('SELECT id FROM users WHERE role = "system_admin" AND status = "approved"')
-            admins = dict_fetchall(cursor)
-            for admin in admins:
+            else:
+                # If no department head, user will be approved by admin only
                 create_notification(
-                    admin['id'],
-                    f"📋 NEW USER REGISTRATION: {name} ({username}) wants to join as {designation}",
-                    'approval',
+                    user_id,
+                    f"📝 Your registration is pending Admin approval (No Department Head found in your department).",
+                    'status',
                     None
                 )
             
             conn.commit()
-            flash('Registration successful! Please wait for department head approval. You will be notified once approved.', 'success')
+            flash('Registration successful! Your account is pending approval from either Admin or Department Head. You will be notified once approved.', 'success')
             return redirect(url_for('auth.login'))
             
         except Exception as e:

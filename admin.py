@@ -1,4 +1,4 @@
-# admin.py - System Administrator Module
+# admin.py - UPDATED WITH NEW USER MANAGEMENT SYSTEM
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from models import get_db_connection, dict_fetchall, dict_fetchone, hash_password
 from notifications import create_notification
@@ -63,7 +63,6 @@ def manage_divisions():
             division_id = request.form['id']
             
             try:
-                # Check if division has departments
                 cursor.execute('SELECT COUNT(*) FROM departments WHERE division_id = %s', (division_id,))
                 if cursor.fetchone()[0] > 0:
                     flash('Cannot delete division with existing departments!', 'error')
@@ -149,7 +148,6 @@ def manage_departments():
             dept_id = request.form['id']
             
             try:
-                # Check if department has users
                 cursor.execute('SELECT COUNT(*) FROM users WHERE department_id = %s', (dept_id,))
                 if cursor.fetchone()[0] > 0:
                     flash('Cannot delete department with existing users!', 'error')
@@ -198,7 +196,15 @@ def all_users():
             FROM users u 
             LEFT JOIN departments d ON u.department_id = d.id 
             LEFT JOIN divisions dv ON u.division_id = dv.id 
-            ORDER BY u.role, u.name
+            ORDER BY 
+                CASE 
+                    WHEN u.status = 'dual_pending' THEN 1
+                    WHEN u.status = 'pending_admin' THEN 2
+                    WHEN u.status = 'pending_dept' THEN 3
+                    WHEN u.status = 'approved' THEN 4
+                    ELSE 5
+                END,
+                u.name
         ''')
         users = dict_fetchall(cursor)
         
@@ -254,18 +260,22 @@ def create_user():
         
         hashed_password = hash_password(password)
         
+        # Auto-approve admin created users
+        status = 'approved'
+        approved_by_admin = True
+        approved_by_dept_head = True
+        
         cursor.execute('''
             INSERT INTO users (username, password, name, designation, division_id, department_id, 
-                             phone, email, role, status, created_by)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'approved', %s)
+                             phone, email, role, status, approved_by_admin, approved_by_dept_head, created_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (username, hashed_password, name, designation, division_id, department_id, 
-              phone, email, role, session['user_id']))
+              phone, email, role, status, approved_by_admin, approved_by_dept_head, session['user_id']))
         
-        conn.commit()
+        user_id = cursor.lastrowid
         
         # If user is department head, notify them
         if role == 'department_head':
-            user_id = cursor.lastrowid
             create_notification(
                 user_id,
                 f"🎉 You have been assigned as Department Head by System Administrator",
@@ -273,6 +283,7 @@ def create_user():
                 None
             )
         
+        conn.commit()
         return jsonify({'success': True, 'message': 'User created successfully!'})
         
     except Exception as e:
@@ -310,6 +321,10 @@ def update_user(user_id):
         
         division_id = division[0]
         
+        # Get current user data
+        cursor.execute('SELECT role, status FROM users WHERE id = %s', (user_id,))
+        current_user = cursor.fetchone()
+        
         cursor.execute('''
             UPDATE users 
             SET name = %s, designation = %s, division_id = %s, department_id = %s, 
@@ -319,11 +334,20 @@ def update_user(user_id):
         
         conn.commit()
         
-        # Notify user if status changed
-        if status == 'approved':
+        # Notify user if status changed to approved
+        if status == 'approved' and current_user and current_user[1] != 'approved':
             create_notification(
                 user_id,
                 f"🎉 Your account has been approved by System Administrator!",
+                'status',
+                None
+            )
+        
+        # If role changed to department head
+        if role == 'department_head' and current_user and current_user[0] != 'department_head':
+            create_notification(
+                user_id,
+                f"📢 You have been promoted to Department Head by System Administrator!",
                 'status',
                 None
             )
@@ -362,6 +386,141 @@ def delete_user(user_id):
     except Exception as e:
         conn.rollback()
         return jsonify({'success': False, 'message': f'Error deleting user: {str(e)}'})
+    finally:
+        cursor.close()
+        conn.close()
+
+@admin_bp.route('/approve_user/<int:user_id>/<action>', methods=['GET', 'POST'])
+def approve_user(user_id, action):
+    """Approve or reject user (can be called by Admin OR Department Head)"""
+    if 'user_id' not in session or session['role'] not in ['system_admin', 'department_head']:
+        return jsonify({'success': False, 'message': 'Access denied!'})
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'success': False, 'message': 'Database connection failed!'})
+    
+    cursor = conn.cursor()
+    
+    try:
+        # Get user details
+        cursor.execute('''
+            SELECT u.*, d.name as department_name 
+            FROM users u 
+            LEFT JOIN departments d ON u.department_id = d.id 
+            WHERE u.id = %s
+        ''', (user_id,))
+        user = dict_fetchone(cursor)
+        
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found!'})
+        
+        # Check permissions
+        if session['role'] == 'department_head':
+            # Department head can only approve users from their department
+            if user['department_name'] != session['department']:
+                return jsonify({'success': False, 'message': 'You can only approve users from your department!'})
+        
+        if action == 'approve':
+            # Update approval based on who is approving
+            if session['role'] == 'system_admin':
+                cursor.execute('''
+                    UPDATE users 
+                    SET approved_by_admin = TRUE,
+                        status = CASE 
+                            WHEN approved_by_dept_head = TRUE THEN 'approved'
+                            ELSE 'pending_dept'
+                        END
+                    WHERE id = %s
+                ''', (user_id,))
+                
+                # Notify user
+                create_notification(
+                    user_id,
+                    f"✅ Your account has been approved by System Administrator!" + 
+                    (" Waiting for Department Head approval." if not user['approved_by_dept_head'] else ""),
+                    'status',
+                    None
+                )
+                
+                message = 'User approved by Admin!' + (" Waiting for Department Head approval." if not user['approved_by_dept_head'] else "")
+                
+            elif session['role'] == 'department_head':
+                cursor.execute('''
+                    UPDATE users 
+                    SET approved_by_dept_head = TRUE,
+                        status = CASE 
+                            WHEN approved_by_admin = TRUE THEN 'approved'
+                            ELSE 'pending_admin'
+                        END
+                    WHERE id = %s
+                ''', (user_id,))
+                
+                # Notify user
+                create_notification(
+                    user_id,
+                    f"✅ Your account has been approved by Department Head!" + 
+                    (" Waiting for Admin approval." if not user['approved_by_admin'] else ""),
+                    'status',
+                    None
+                )
+                
+                message = 'User approved by Department Head!' + (" Waiting for Admin approval." if not user['approved_by_admin'] else "")
+            
+            # Check if both approvals are done
+            cursor.execute('SELECT approved_by_admin, approved_by_dept_head FROM users WHERE id = %s', (user_id,))
+            approvals = cursor.fetchone()
+            
+            if approvals[0] and approvals[1]:
+                cursor.execute('''
+                    UPDATE users 
+                    SET status = 'approved' 
+                    WHERE id = %s
+                ''', (user_id,))
+                
+                create_notification(
+                    user_id,
+                    f"🎉 Congratulations! Your account has been fully approved. You can now login!",
+                    'status',
+                    None
+                )
+                
+                message = 'User fully approved and can now login!'
+        
+        elif action == 'reject':
+            if session['role'] == 'system_admin':
+                cursor.execute('''
+                    UPDATE users 
+                    SET status = 'rejected', 
+                        approved_by_admin = FALSE 
+                    WHERE id = %s
+                ''', (user_id,))
+            elif session['role'] == 'department_head':
+                cursor.execute('''
+                    UPDATE users 
+                    SET status = 'rejected', 
+                        approved_by_dept_head = FALSE 
+                    WHERE id = %s
+                ''', (user_id,))
+            
+            create_notification(
+                user_id,
+                f"❌ Your account registration has been rejected by {session['role'].replace('_', ' ').title()}.",
+                'status',
+                None
+            )
+            
+            message = f'User rejected by {session["role"].replace("_", " ").title()}!'
+        
+        else:
+            return jsonify({'success': False, 'message': 'Invalid action!'})
+        
+        conn.commit()
+        return jsonify({'success': True, 'message': message})
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': f'Error processing user: {str(e)}'})
     finally:
         cursor.close()
         conn.close()
@@ -421,7 +580,6 @@ def approve_gate_pass_admin(gate_pass_id):
                 WHERE id = %s
             ''', (datetime.now(), store_location, gate_pass_id))
             
-            # Notify creator
             cursor.execute('SELECT created_by, pass_number FROM gate_passes WHERE id = %s', (gate_pass_id,))
             result = cursor.fetchone()
             if result:
@@ -441,7 +599,6 @@ def approve_gate_pass_admin(gate_pass_id):
                 WHERE id = %s
             ''', (gate_pass_id,))
             
-            # Notify creator
             cursor.execute('SELECT created_by, pass_number FROM gate_passes WHERE id = %s', (gate_pass_id,))
             result = cursor.fetchone()
             if result:
@@ -552,7 +709,6 @@ def process_store_request(request_id):
     
     try:
         if action == 'approve':
-            # Get request details
             cursor.execute('''
                 SELECT material_description, destination, purpose, receiver_name, receiver_contact, security_user_id 
                 FROM store_requests WHERE id = %s
@@ -562,7 +718,6 @@ def process_store_request(request_id):
             if not request_data:
                 return jsonify({'success': False, 'message': 'Request not found!'})
             
-            # Create gate pass for security
             pass_number = f"GP{datetime.now().strftime('%Y%m%d%H%M%S')}"
             
             cursor.execute('''
@@ -573,21 +728,19 @@ def process_store_request(request_id):
                     receiver_contact, send_date, images, status
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'non_returnable', 'new', %s, %s, %s, '[]', 'approved')
             ''', (
-                pass_number, session['user_id'], 1, 1,  # Using default division/department
+                pass_number, session['user_id'], 1, 1,
                 request_data[0], request_data[1], request_data[2],
                 request_data[3], request_data[4], datetime.now()
             ))
             
             gate_pass_id = cursor.lastrowid
             
-            # Update request status
             cursor.execute('''
                 UPDATE store_requests 
                 SET status = 'approved', admin_id = %s, gate_pass_id = %s
                 WHERE id = %s
             ''', (session['user_id'], gate_pass_id, request_id))
             
-            # Notify security user
             create_notification(
                 request_data[5],
                 f"✅ Your store request has been approved! Gate Pass #{pass_number} created.",
@@ -604,7 +757,6 @@ def process_store_request(request_id):
                 WHERE id = %s
             ''', (session['user_id'], request_id))
             
-            # Notify security user
             cursor.execute('SELECT security_user_id FROM store_requests WHERE id = %s', (request_id,))
             security_id = cursor.fetchone()[0]
             
