@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Welcome Banner -->
+    <div class="card border-0 shadow-lg mb-4 overflow-hidden" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div class="card-body text-white p-4">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="display-6 fw-bold mb-2">Welcome back, {{ session.name }}! 👋</h1>
+                    <p class="mb-0 opacity-75">
+                        <i class="fas fa-building me-2"></i>{{ session.department }} | 
+                        <i class="fas fa-user-tie me-2 ms-3"></i>{{ session.designation }}
+                    </p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="bg-white bg-opacity-10 p-3 rounded-pill d-inline-block">
+                        <span class="badge bg-white text-primary px-3 py-2 fs-6">
+                            <i class="fas fa-shield-alt me-2"></i>{{ session.role|upper }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card slide-in" style="animation-delay: 0.1s;">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-3">
+                            <i class="fas fa-passport fa-2x text-primary"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h3 class="display-6 fw-bold mb-0">{{ total_passes }}</h3>
+                        <p class="text-muted mb-0">Total Gate Passes</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card slide-in" style="animation-delay: 0.2s;">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="rounded-circle bg-warning bg-opacity-10 p-3">
+                            <i class="fas fa-clock fa-2x text-warning"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h3 class="display-6 fw-bold mb-0">{{ pending_passes }}</h3>
+                        <p class="text-muted mb-0">Pending Passes</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card slide-in" style="animation-delay: 0.3s;">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="rounded-circle bg-danger bg-opacity-10 p-3">
+                            <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h3 class="display-6 fw-bold mb-0">{{ overdue_passes }}</h3>
+                        <p class="text-muted mb-0">Overdue Returns</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% if session.role in ['department_head', 'hr_admin'] %}
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card slide-in" style="animation-delay: 0.4s;">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="rounded-circle bg-success bg-opacity-10 p-3">
+                            <i class="fas fa-check-circle fa-2x text-success"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h3 class="display-6 fw-bold mb-0">{{ pending_approvals }}</h3>
+                        <p class="text-muted mb-0">Pending Approvals</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Quick Actions & Recent Activity -->
+    <div class="row g-4">
+        <!-- Quick Actions -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow h-100">
+                <div class="card-header bg-white border-0 pb-0">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-bolt text-warning me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        {% if session.role != 'security' %}
+                        <div class="col-6">
+                            <a href="{{ url_for('gate_pass.create_gate_pass') }}" 
+                               class="btn btn-primary w-100 h-100 py-4 d-flex flex-column align-items-center justify-content-center">
+                                <i class="fas fa-plus-circle fa-3x mb-3"></i>
+                                <span class="fs-5 fw-bold">Create Gate Pass</span>
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="col-6">
+                            <a href="{{ url_for('gate_pass.gate_pass_list') }}" 
+                               class="btn btn-info w-100 h-100 py-4 d-flex flex-column align-items-center justify-content-center">
+                                <i class="fas fa-list fa-3x mb-3"></i>
+                                <span class="fs-5 fw-bold">View All</span>
+                            </a>
+                        </div>
+                        
+                        {% if session.role in ['department_head', 'hr_admin'] %}
+                        <div class="col-6">
+                            <a href="{{ url_for('approval_pending') }}" 
+                               class="btn btn-warning w-100 h-100 py-4 d-flex flex-column align-items-center justify-content-center">
+                                <i class="fas fa-check-circle fa-3x mb-3"></i>
+                                <span class="fs-5 fw-bold">Pending Approvals</span>
+                            </a>
+                        </div>
+                        
+                        <div class="col-6">
+                            <a href="{{ url_for('user_management') }}" 
+                               class="btn btn-success w-100 h-100 py-4 d-flex flex-column align-items-center justify-content-center">
+                                <i class="fas fa-users fa-3x mb-3"></i>
+                                <span class="fs-5 fw-bold">User Management</span>
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Notifications -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow h-100">
+                <div class="card-header bg-white border-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-bell text-primary me-2"></i>Recent Notifications
+                        </h5>
+                        <span class="badge bg-primary">{{ notifications|length }}</span>
+                    </div>
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    {% if notifications %}
+                        <div class="list-group list-group-flush">
+                            {% for notification in notifications %}
+                            <div class="list-group-item border-0 px-0 py-3">
+                                <div class="d-flex align-items-start">
+                                    <div class="flex-shrink-0">
+                                        {% if notification.type == 'approval' %}
+                                        <div class="rounded-circle bg-warning bg-opacity-10 p-2">
+                                            <i class="fas fa-check-circle text-warning"></i>
+                                        </div>
+                                        {% elif notification.type == 'status' %}
+                                        <div class="rounded-circle bg-success bg-opacity-10 p-2">
+                                            <i class="fas fa-info-circle text-success"></i>
+                                        </div>
+                                        {% elif notification.type == 'alert' %}
+                                        <div class="rounded-circle bg-danger bg-opacity-10 p-2">
+                                            <i class="fas fa-exclamation-triangle text-danger"></i>
+                                        </div>
+                                        {% else %}
+                                        <div class="rounded-circle bg-info bg-opacity-10 p-2">
+                                            <i class="fas fa-bell text-info"></i>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <p class="mb-1">{{ notification.message }}</p>
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock me-1"></i>
+                                            {{ notification.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                        </small>
+                                        {% if not notification.is_read %}
+                                        <span class="badge bg-success ms-2">NEW</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-bell-slash fa-4x text-muted mb-3"></i>
+                            <h5 class="text-muted">No notifications yet</h5>
+                            <p class="text-muted">You're all caught up!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Info -->
+    <div class="row g-4 mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow">
+                <div class="card-header bg-white border-0">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle text-success me-2"></i>System Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">Features</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i> Create and manage gate passes</li>
+                                <li><i class="fas fa-check text-success me-2"></i> Automatic camera photo capture</li>
+                                <li><i class="fas fa-check text-success me-2"></i> QR code generation and verification</li>
+                                <li><i class="fas fa-check text-success me-2"></i> Multi-level approval workflow</li>
+                                <li><i class="fas fa-check text-success me-2"></i> Real-time notifications</li>
+                                <li><i class="fas fa-check text-success me-2"></i> Return tracking system</li>
+                                <li><i class="fas fa-check text-success me-2"></i> User approval system</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">Security Features</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-shield-alt text-primary me-2"></i> Mobile QR scanning blocked</li>
+                                <li><i class="fas fa-shield-alt text-primary me-2"></i> Gate scanner verification only</li>
+                                <li><i class="fas fa-shield-alt text-primary me-2"></i> Real-time return notifications</li>
+                                <li><i class="fas fa-shield-alt text-primary me-2"></i> Material photo verification</li>
+                                <li><i class="fas fa-shield-alt text-primary me-2"></i> User role-based access control</li>
+                            </ul>
+                            
+                            {% if session.role in ['hr_admin', 'department_head'] %}
+                            <div class="alert alert-info mt-3">
+                                <i class="fas fa-user-check me-2"></i>
+                                <strong>Approval System Active:</strong> You can approve pending users and gate passes.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSS for Dashboard -->
+<style>
+.stat-card {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    height: 100%;
+    border: none;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+.slide-in {
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+</style>
+{% endblock %}

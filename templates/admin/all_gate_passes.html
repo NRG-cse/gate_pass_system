@@ -1,0 +1,499 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4><i class="fas fa-passport"></i> All Gate Passes</h4>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+            <p class="text-muted">System Administrator: View, edit, approve, and delete all gate passes</p>
+        </div>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">Search</label>
+                        <input type="text" class="form-control" id="searchInput" placeholder="Search by pass number, material, or creator...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="pending_dept">Pending Department</option>
+                            <option value="pending_store">Pending Store</option>
+                            <option value="pending_security">Pending Security</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="inquiry">Inquiry</option>
+                            <option value="returned">Returned</option>
+                            <option value="overdue">Overdue</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label">Material Type</label>
+                        <select class="form-select" id="typeFilter">
+                            <option value="">All Types</option>
+                            <option value="returnable">Returnable</option>
+                            <option value="non_returnable">Non-Returnable</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="mb-3">
+                        <label class="form-label">&nbsp;</label>
+                        <button class="btn btn-primary w-100" onclick="filterTable()">
+                            <i class="fas fa-filter"></i> Filter
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gate Passes List -->
+    <div class="card">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="fas fa-list"></i> All Gate Passes ({{ gate_passes|length }})</h5>
+        </div>
+        <div class="card-body">
+            {% if gate_passes %}
+            <div class="table-responsive">
+                <table class="table table-hover" id="gatePassTable">
+                    <thead>
+                        <tr>
+                            <th>Pass No.</th>
+                            <th>Division</th>
+                            <th>Department</th>
+                            <th>Material</th>
+                            <th>Creator</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Store</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pass in gate_passes %}
+                        <tr data-status="{{ pass.status }}" data-type="{{ pass.material_type }}">
+                            <td>
+                                <strong>{{ pass.pass_number }}</strong>
+                                <br>
+                                <small class="text-muted">ID: {{ pass.id }}</small>
+                            </td>
+                            <td>{{ pass.division_name }}</td>
+                            <td>{{ pass.department_name }}</td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ pass.material_description[:50] }}{% if pass.material_description|length > 50 %}...{% endif %}
+                                </small>
+                            </td>
+                            <td>{{ pass.creator_name }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'info' if pass.material_type == 'returnable' else 'secondary' }}">
+                                    {{ pass.material_type|title }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if pass.status == 'approved' %}
+                                    <span class="badge bg-success">Approved</span>
+                                {% elif pass.status == 'pending_dept' %}
+                                    <span class="badge bg-warning">Pending Dept</span>
+                                {% elif pass.status == 'pending_store' %}
+                                    <span class="badge bg-warning">Pending Store</span>
+                                {% elif pass.status == 'pending_security' %}
+                                    <span class="badge bg-warning">Pending Security</span>
+                                {% elif pass.status == 'rejected' %}
+                                    <span class="badge bg-danger">Rejected</span>
+                                {% elif pass.status == 'inquiry' %}
+                                    <span class="badge bg-info">Inquiry</span>
+                                {% elif pass.status == 'returned' %}
+                                    <span class="badge bg-info">Returned</span>
+                                {% elif pass.status == 'overdue' %}
+                                    <span class="badge bg-danger">Overdue</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ pass.status|title }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if pass.store_location %}
+                                    <span class="badge bg-{{ 'primary' if pass.store_location == 'store_1' else 'warning' }}">
+                                        {{ pass.store_location|replace('_', ' ')|title }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ pass.created_at.strftime('%m/%d %H:%M') }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('gate_pass.gate_pass_detail', gate_pass_id=pass.id) }}" 
+                                       class="btn btn-outline-primary" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if pass.status in ['pending_security', 'pending_store', 'pending_dept'] %}
+                                    <button type="button" class="btn btn-outline-success" 
+                                            data-bs-toggle="modal" data-bs-target="#approveModal{{ pass.id }}">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger"
+                                            data-bs-toggle="modal" data-bs-target="#rejectModal{{ pass.id }}">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                    {% endif %}
+                                    <button type="button" class="btn btn-outline-warning" 
+                                            data-bs-toggle="modal" data-bs-target="#editModal{{ pass.id }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger"
+                                            data-bs-toggle="modal" data-bs-target="#deleteModal{{ pass.id }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Approve Modal -->
+                        <div class="modal fade" id="approveModal{{ pass.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-success text-white">
+                                        <h5 class="modal-title">Approve Gate Pass</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form class="approve-form" data-pass-id="{{ pass.id }}">
+                                        <div class="modal-body">
+                                            <p>Approve Gate Pass <strong>{{ pass.pass_number }}</strong>?</p>
+                                            <div class="mb-3">
+                                                <label class="form-label">Assign to Store</label>
+                                                <select class="form-select" name="store_location" required>
+                                                    <option value="store_1">Store 1</option>
+                                                    <option value="store_2">Store 2</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-success">Approve</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Reject Modal -->
+                        <div class="modal fade" id="rejectModal{{ pass.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-danger text-white">
+                                        <h5 class="modal-title">Reject Gate Pass</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form class="reject-form" data-pass-id="{{ pass.id }}">
+                                        <div class="modal-body">
+                                            <p>Reject Gate Pass <strong>{{ pass.pass_number }}</strong>?</p>
+                                            <p class="text-danger"><i class="fas fa-exclamation-triangle"></i> This action cannot be undone!</p>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-danger">Reject</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Edit Modal -->
+                        <div class="modal fade" id="editModal{{ pass.id }}" tabindex="-1">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Edit Gate Pass: {{ pass.pass_number }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form class="edit-form" data-pass-id="{{ pass.id }}">
+                                        <div class="modal-body">
+                                            <div class="row">
+                                                <div class="col-md-12">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Material Description *</label>
+                                                        <textarea class="form-control" name="material_description" rows="2" required>{{ pass.material_description }}</textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Destination *</label>
+                                                        <input type="text" class="form-control" name="destination" 
+                                                               value="{{ pass.destination }}" required>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Purpose *</label>
+                                                        <input type="text" class="form-control" name="purpose" 
+                                                               value="{{ pass.purpose }}" required>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Receiver Name *</label>
+                                                        <input type="text" class="form-control" name="receiver_name" 
+                                                               value="{{ pass.receiver_name }}" required>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Receiver Contact</label>
+                                                        <input type="text" class="form-control" name="receiver_contact" 
+                                                               value="{{ pass.receiver_contact or '' }}">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Delete Modal -->
+                        <div class="modal fade" id="deleteModal{{ pass.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-danger text-white">
+                                        <h5 class="modal-title">Delete Gate Pass</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form class="delete-form" data-pass-id="{{ pass.id }}">
+                                        <div class="modal-body">
+                                            <p>Delete Gate Pass <strong>{{ pass.pass_number }}</strong>?</p>
+                                            <p class="text-danger"><i class="fas fa-exclamation-triangle"></i> Warning: This action cannot be undone!</p>
+                                            <p class="text-warning">Material: {{ pass.material_description[:100] }}...</p>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-danger">Delete Gate Pass</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h5>No Gate Passes Found</h5>
+                <p class="text-muted">No gate passes have been created yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Success Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert">
+        <div class="d-flex">
+            <div class="toast-body" id="toastMessage">
+                Operation completed successfully!
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Table filtering
+function filterTable() {
+    const searchText = document.getElementById('searchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const typeFilter = document.getElementById('typeFilter').value;
+    
+    const rows = document.querySelectorAll('#gatePassTable tbody tr');
+    
+    rows.forEach(row => {
+        const rowText = row.textContent.toLowerCase();
+        const rowStatus = row.dataset.status;
+        const rowType = row.dataset.type;
+        
+        let showRow = true;
+        
+        // Search filter
+        if (searchText && !rowText.includes(searchText)) {
+            showRow = false;
+        }
+        
+        // Status filter
+        if (statusFilter && rowStatus !== statusFilter) {
+            showRow = false;
+        }
+        
+        // Type filter
+        if (typeFilter && rowType !== typeFilter) {
+            showRow = false;
+        }
+        
+        row.style.display = showRow ? '' : 'none';
+    });
+}
+
+// Approve Gate Pass
+document.querySelectorAll('.approve-form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const passId = this.dataset.passId;
+        const formData = new FormData(this);
+        formData.append('action', 'approve');
+        
+        fetch(`/admin/approve_gate_pass/${passId}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message);
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error approving gate pass!', 'error');
+        });
+    });
+});
+
+// Reject Gate Pass
+document.querySelectorAll('.reject-form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const passId = this.dataset.passId;
+        const formData = new FormData();
+        formData.append('action', 'reject');
+        
+        fetch(`/admin/approve_gate_pass/${passId}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message);
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error rejecting gate pass!', 'error');
+        });
+    });
+});
+
+// Edit Gate Pass
+document.querySelectorAll('.edit-form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const passId = this.dataset.passId;
+        const formData = new FormData(this);
+        formData.append('action', 'edit');
+        
+        fetch(`/admin/approve_gate_pass/${passId}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message);
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error updating gate pass!', 'error');
+        });
+    });
+});
+
+// Delete Gate Pass
+document.querySelectorAll('.delete-form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const passId = this.dataset.passId;
+        
+        fetch(`/admin/delete_gate_pass/${passId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message);
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error deleting gate pass!', 'error');
+        });
+    });
+});
+
+// Toast notification
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('successToast');
+    const toastMessage = document.getElementById('toastMessage');
+    
+    toastMessage.textContent = message;
+    
+    if (type === 'error') {
+        toast.classList.remove('bg-success');
+        toast.classList.add('bg-danger');
+    } else {
+        toast.classList.remove('bg-danger');
+        toast.classList.add('bg-success');
+    }
+    
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+}
+
+// Initialize search on keyup
+document.getElementById('searchInput').addEventListener('keyup', filterTable);
+</script>
+{% endblock %}

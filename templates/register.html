@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block auth_content %}
+<style>
+/* ===== Register Page Enhancements ===== */
+.auth-header h3 {
+    font-weight: 700;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #333;
+}
+
+.form-control,
+.form-select {
+    height: 45px;
+    border-radius: 8px;
+    font-size: 15px;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.25);
+}
+
+.input-group-text {
+    background: #f8f9fa;
+    border-radius: 8px 0 0 8px;
+}
+
+.form-select {
+    background-image:
+        linear-gradient(45deg, transparent 50%, #555 50%),
+        linear-gradient(135deg, #555 50%, transparent 50%);
+    background-position:
+        calc(100% - 20px) calc(50% - 3px),
+        calc(100% - 15px) calc(50% - 3px);
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+    padding-right: 40px;
+}
+
+.alert-info {
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.btn-primary {
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+}
+</style>
+
+<div class="auth-header text-center mb-4">
+    <h3><i class="fas fa-user-plus"></i> Register</h3>
+    <p class="text-muted">
+        Create a new account (Approval required from Department Head)
+    </p>
+</div>
+
+<form method="POST">
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label class="form-label">Username *</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                <input type="text" class="form-control" name="username" required>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Full Name *</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-id-card"></i></span>
+                <input type="text" class="form-control" name="name" required>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Password *</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                <input type="password" class="form-control" name="password" required>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Confirm Password *</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                <input type="password" class="form-control" name="confirm_password" required>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Designation *</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-briefcase"></i></span>
+                <input type="text" class="form-control" name="designation" required>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Division *</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-sitemap"></i></span>
+                <select class="form-select" name="division_id" id="divisionSelect" required>
+                    <option value="">Select Division</option>
+                    {% for division in divisions %}
+                    <option value="{{ division.id }}">{{ division.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Department *</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-building"></i></span>
+                <select class="form-select" name="department_id" id="departmentSelect" required>
+                    <option value="">Select Division First</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Phone</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                <input type="tel" class="form-control" name="phone">
+            </div>
+        </div>
+
+        <div class="col-md-12">
+            <label class="form-label">Email</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                <input type="email" class="form-control" name="email">
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-info mt-4">
+        <i class="fas fa-info-circle"></i>
+        Your registration will be sent to the Department Head for approval.
+        You will be notified once approved.
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100 py-2 mt-2">
+        <i class="fas fa-user-plus"></i> Register
+    </button>
+</form>
+
+<div class="text-center mt-4">
+    <p class="mb-0">
+        Already have an account?
+        <a href="{{ url_for('auth.login') }}" class="fw-bold text-decoration-none">
+            Login here
+        </a>
+    </p>
+</div>
+
+<script>
+document.getElementById('divisionSelect').addEventListener('change', function () {
+    const divisionId = this.value;
+    const deptSelect = document.getElementById('departmentSelect');
+    deptSelect.innerHTML = '<option value="">Select Department</option>';
+
+    if (divisionId) {
+        const departments = {{ departments|tojson }};
+        const filtered = departments.filter(d => d.division_id == divisionId);
+
+        if (filtered.length === 0) {
+            deptSelect.innerHTML += '<option value="">No department found</option>';
+        } else {
+            filtered.forEach(d => {
+                deptSelect.innerHTML +=
+                    `<option value="${d.id}">${d.name}</option>`;
+            });
+        }
+    }
+});
+
+window.addEventListener('load', function () {
+    const divisions = {{ divisions|tojson }};
+    if (divisions.length === 1) {
+        const divSelect = document.getElementById('divisionSelect');
+        divSelect.value = divisions[0].id;
+        divSelect.dispatchEvent(new Event('change'));
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="single-page">
+    <div class="hmi-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="fas fa-list"></i> Gate Pass List</h4>
+            <div>
+                <a href="{{ url_for('dashboard') }}" class="hmi-btn hmi-btn-primary btn-sm me-1">
+                    <i class="fas fa-arrow-left"></i> Dashboard
+                </a>
+                {% if session.role != 'security' %}
+                <a href="{{ url_for('gate_pass.create_gate_pass') }}" class="hmi-btn hmi-btn-success btn-sm">
+                    <i class="fas fa-plus"></i> New Pass
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body">
+            {% if gate_passes %}
+            <div class="table-responsive" style="max-height: calc(100vh - 150px);">
+                <table class="table hmi-table">
+                    <thead>
+                        <tr>
+                            <th>Pass No.</th>
+                            <th>Department</th>
+                            <th>Material</th>
+                            <th>Destination</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pass in gate_passes %}
+                        <tr>
+                            <td><strong>{{ pass.pass_number }}</strong></td>
+                            <td>{{ pass.division_department }}</td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ pass.material_description[:30] }}{% if pass.material_description|length > 30 %}...{% endif %}
+                                </small>
+                            </td>
+                            <td>{{ pass.destination }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'info' if pass.material_type == 'returnable' else 'secondary' }}">
+                                    {{ pass.material_type|title }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if pass.status == 'approved' %}
+                                    <span class="badge bg-success">Approved</span>
+                                {% elif pass.status == 'pending_dept' %}
+                                    <span class="badge bg-warning">Pending Dept</span>
+                                {% elif pass.status == 'pending_hr' %}
+                                    <span class="badge bg-warning">Pending HR</span>
+                                {% elif pass.status == 'rejected' %}
+                                    <span class="badge bg-danger">Rejected</span>
+                                {% elif pass.status == 'returned' %}
+                                    <span class="badge bg-info">Returned</span>
+                                {% elif pass.status == 'overdue' %}
+                                    <span class="badge bg-danger">Overdue</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ pass.status|title }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ pass.created_at.strftime('%m/%d %H:%M') }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('gate_pass.gate_pass_detail', gate_pass_id=pass.id) }}" 
+                                       class="btn btn-outline-primary" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if session.role in ['hr_admin', 'department_head'] and pass.status in ['pending_dept', 'pending_hr'] %}
+                                    <a href="{{ url_for('approval_pending') }}" 
+                                       class="btn btn-outline-warning" title="Approve/Reject">
+                                        <i class="fas fa-check-circle"></i>
+                                    </a>
+                                    {% endif %}
+                                    {% if pass.material_type == 'returnable' and pass.status == 'approved' and pass.actual_return_date is none %}
+                                    <button onclick="markAsReturned({{ pass.id }})" 
+                                            class="btn btn-outline-success" title="Mark Returned">
+                                        <i class="fas fa-undo"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h5>No Gate Passes Found</h5>
+                <p class="text-muted">No gate passes have been created yet.</p>
+                {% if session.role != 'security' %}
+                <a href="{{ url_for('gate_pass.create_gate_pass') }}" class="hmi-btn hmi-btn-primary">
+                    <i class="fas fa-plus"></i> Create First Gate Pass
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function markAsReturned(gatePassId) {
+    if (confirm('Mark this material as returned?')) {
+        fetch('/mark_returned/' + gatePassId, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Material marked as returned!');
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error marking material as returned!');
+        });
+    }
+}
+</script>
+{% endblock %}

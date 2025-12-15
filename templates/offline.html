@@ -1,0 +1,39 @@
+<!-- templates/offline.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gate Pass - Offline</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Poppins', sans-serif;
+        }
+        .offline-container {
+            text-align: center;
+            color: white;
+            padding: 40px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+        .offline-container i {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <i class="fas fa-wifi-slash"></i>
+        <h1>You're Offline</h1>
+        <p>Please check your internet connection</p>
+        <button onclick="location.reload()" class="btn btn-light mt-3">
+            <i class="fas fa-redo"></i> Retry
+        </button>
+    </div>
+</body>
+</html>

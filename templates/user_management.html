@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="single-page">
+    <div class="hmi-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="fas fa-users"></i> User Management</h4>
+            <a href="{{ url_for('dashboard') }}" class="hmi-btn hmi-btn-primary btn-sm">
+                <i class="fas fa-arrow-left"></i> Dashboard
+            </a>
+        </div>
+        <div class="card-body">
+            {% if users %}
+            <!-- Role-based filtering info message -->
+            <div class="alert alert-info mb-4">
+                <i class="fas fa-info-circle"></i>
+                {% if session.role == 'hr_admin' %}
+                Showing <strong>all users</strong> from all departments.
+                {% else %}
+                Showing users from your department: <strong>{{ session.department }}</strong>
+                {% endif %}
+            </div>
+            
+            <div class="table-responsive" style="max-height: calc(100vh - 150px);">
+                <table class="table hmi-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Name</th>
+                            <th>Designation</th>
+                            <th>Department</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Registered</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.name }}</td>
+                            <td>{{ user.designation }}</td>
+                            <td>{{ user.department }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'primary' if user.role == 'hr_admin' else 'info' if user.role == 'department_head' else 'secondary' if user.role == 'security' else 'dark' }}">
+                                    {{ user.role|title }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if user.status == 'approved' %}
+                                    <span class="badge bg-success">Approved</span>
+                                {% elif user.status == 'pending' %}
+                                    <span class="badge bg-warning">Pending</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Rejected</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                {% if user.status == 'pending' %}
+                                <div class="btn-group btn-group-sm">
+                                    <button onclick="approveUser({{ user.id }}, 'approve')" 
+                                       class="btn btn-outline-success" title="Approve User">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <button onclick="approveUser({{ user.id }}, 'reject')" 
+                                       class="btn btn-outline-danger" title="Reject User">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                {% else %}
+                                <span class="text-muted small">No actions</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                <h5>No Users Found</h5>
+                <p class="text-muted">
+                    {% if session.role == 'hr_admin' %}
+                    No users have been registered in the system yet.
+                    {% else %}
+                    No users found in your department: <strong>{{ session.department }}</strong>
+                    {% endif %}
+                </p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Success Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert">
+        <div class="d-flex">
+            <div class="toast-body" id="toastMessage">
+                Operation completed successfully!
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// User Approval Function
+function approveUser(userId, action) {
+    if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} this user?`)) return;
+
+    fetch(`/approve_user/${userId}/${action}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || 'User processed successfully!');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(data.message || 'Error processing request', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error processing request', 'error');
+    });
+}
+
+// Toast notification function
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('successToast');
+    const toastMessage = document.getElementById('toastMessage');
+    
+    toastMessage.textContent = message;
+    
+    if (type === 'error') {
+        toast.classList.remove('bg-success');
+        toast.classList.add('bg-danger');
+    } else {
+        toast.classList.remove('bg-danger');
+        toast.classList.add('bg-success');
+    }
+    
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+}
+</script>
+
+<style>
+/* Additional styling for user management */
+.hmi-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+}
+
+.hmi-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+}
+
+.badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.35rem 0.65rem;
+}
+
+.alert-info {
+    background-color: #e7f3ff;
+    border-color: #b3d7ff;
+    color: #0c5460;
+}
+</style>
+{% endblock %}
