@@ -1,4 +1,4 @@
-# models.py - UPDATED WITH DUAL APPROVAL SYSTEM
+# models.py - COMPLETELY FIXED WITH PROPER INITIALIZATION
 import MySQLdb
 from config import config
 import hashlib
@@ -50,7 +50,7 @@ def init_db():
     cursor = conn.cursor()
     
     try:
-        # Divisions table
+        # Divisions table (NEW)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS divisions (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -63,7 +63,7 @@ def init_db():
             )
         ''')
         
-        # Departments table
+        # Departments table (NEW - Now linked to divisions)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS departments (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -79,7 +79,7 @@ def init_db():
             )
         ''')
         
-        # Users table - UPDATED with new approval system
+        # Users table - UPDATED with division_id
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -92,9 +92,7 @@ def init_db():
                 phone VARCHAR(15),
                 email VARCHAR(120),
                 role ENUM('system_admin', 'security', 'department_head', 'store_manager', 'user') DEFAULT 'user',
-                status ENUM('pending_admin', 'pending_dept', 'dual_pending', 'approved', 'rejected', 'inactive') DEFAULT 'dual_pending',
-                approved_by_admin BOOLEAN DEFAULT FALSE,
-                approved_by_dept_head BOOLEAN DEFAULT FALSE,
+                status ENUM('pending', 'approved', 'rejected', 'inactive') DEFAULT 'pending',
                 created_by INT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -103,7 +101,7 @@ def init_db():
             )
         ''')
         
-        # Gate passes table
+        # Gate passes table - UPDATED with store information
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS gate_passes (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -120,7 +118,7 @@ def init_db():
                 receiver_name VARCHAR(100) NOT NULL,
                 receiver_contact VARCHAR(15),
                 send_date DATETIME NOT NULL,
-                images TEXT NOT NULL,
+                images TEXT NOT NULL,  -- REQUIRED: No gate pass without images
                 qr_code_form VARCHAR(500),
                 qr_code_sticker VARCHAR(500),
                 status ENUM('draft', 'pending_dept', 'pending_store', 'pending_security', 'approved', 'rejected', 'inquiry', 'in_transit', 'returned', 'overdue') DEFAULT 'draft',
@@ -170,7 +168,7 @@ def init_db():
             )
         ''')
         
-        # Store requests table
+        # Store requests table (NEW) - Security to Admin requests
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS store_requests (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -194,16 +192,16 @@ def init_db():
         
         # Add missing columns if they don't exist
         try:
-            cursor.execute("SHOW COLUMNS FROM users LIKE 'approved_by_admin'")
+            cursor.execute("SHOW COLUMNS FROM gate_passes LIKE 'store_location'")
             if not cursor.fetchone():
-                cursor.execute('ALTER TABLE users ADD COLUMN approved_by_admin BOOLEAN DEFAULT FALSE')
-                cursor.execute('ALTER TABLE users ADD COLUMN approved_by_dept_head BOOLEAN DEFAULT FALSE')
+                cursor.execute('ALTER TABLE gate_passes ADD COLUMN store_location ENUM("store_1", "store_2") NULL')
         except:
             pass
         
-        # Create default divisions and departments
+        # Create default divisions FIRST (Important!)
         cursor.execute("SELECT COUNT(*) FROM divisions")
         if cursor.fetchone()[0] == 0:
+            print("Creating default divisions...")
             divisions = [
                 ('Administration', 'Administration Division'),
                 ('Yarn Dyeing', 'Yarn Dyeing Division'),
@@ -213,80 +211,157 @@ def init_db():
             ]
             
             for div_name, div_desc in divisions:
-                cursor.execute('''
-                    INSERT INTO divisions (name, description, created_by) 
-                    VALUES (%s, %s, 0)
-                ''', (div_name, div_desc))
+                try:
+                    cursor.execute('INSERT INTO divisions (name, description, created_by) VALUES (%s, %s, 0)', (div_name, div_desc))
+                except:
+                    pass
             
             print("✅ Created default divisions")
         
         # Create default departments
         cursor.execute("SELECT COUNT(*) FROM departments")
         if cursor.fetchone()[0] == 0:
+            print("Creating default departments...")
+            # Get division IDs
             cursor.execute("SELECT id, name FROM divisions")
-            divisions_data = dict_fetchall(cursor)
+            divisions_data = []
+            for row in cursor.fetchall():
+                divisions_data.append({'id': row[0], 'name': row[1]})
+            
             division_map = {div['name']: div['id'] for div in divisions_data}
             
+            # Create departments with proper division mapping
             departments = [
-                ('Admin', division_map.get('Administration'), 'Administration Office'),
-                ('Accounts', division_map.get('Administration'), 'Accounts Department'),
-                ('Production', division_map.get('Yarn Dyeing'), 'Production Department'),
-                ('Maintenance', division_map.get('Yarn Dyeing'), 'Maintenance Department'),
-                ('Production', division_map.get('Fabric Dyeing'), 'Production Department'),
-                ('Maintenance', division_map.get('Fabric Dyeing'), 'Maintenace Development'),
-                ('Production', division_map.get('Spinning'), 'Production Department'),
-                ('Maintenance', division_map.get('Spinning'), 'Maintenance Department'),
-                ('Store 1', division_map.get('Store'), 'Main Store'),
-                ('Store 2', division_map.get('Store'), 'Secondary Store')
+                ('Admin', 'Administration', 'Administration Office'),
+                ('Accounts', 'Administration', 'Accounts Department'),
+                ('Production', 'Yarn Dyeing', 'Production Department'),
+                ('Maintenance', 'Yarn Dyeing', 'Maintenance Department'),
+                ('Production', 'Fabric Dyeing', 'Production Department'),
+                ('Maintenance', 'Fabric Dyeing', 'Maintenance Department'),
+                ('Production', 'Spinning', 'Production Department'),
+                ('Maintenance', 'Spinning', 'Maintenance Department'),
+                ('Store 1', 'Store', 'Main Store'),
+                ('Store 2', 'Store', 'Secondary Store')
             ]
             
-            for dept_name, div_id, dept_desc in departments:
-                if div_id:
-                    cursor.execute('''
-                        INSERT INTO departments (name, division_id, description, created_by) 
-                        VALUES (%s, %s, %s, 0)
-                    ''', (dept_name, div_id, dept_desc))
+            for dept_name, div_name, dept_desc in departments:
+                if div_name in division_map:
+                    try:
+                        cursor.execute('''
+                            INSERT INTO departments (name, division_id, description, created_by) 
+                            VALUES (%s, %s, %s, 0)
+                        ''', (dept_name, division_map[div_name], dept_desc))
+                    except:
+                        pass
             
             print("✅ Created default departments")
         
-        # Create default System Administrator
+        # FIX: Create default System Administrator with proper department mapping
         cursor.execute("SELECT COUNT(*) FROM users WHERE username = 'sysadmin'")
         if cursor.fetchone()[0] == 0:
-            cursor.execute("SELECT id FROM departments LIMIT 1")
-            dept_result = cursor.fetchone()
-            if dept_result:
-                admin_password = hash_password('admin123')
-                cursor.execute('''
-                    INSERT INTO users (username, password, name, designation, department_id, role, status, approved_by_admin, approved_by_dept_head) 
-                    VALUES ('sysadmin', %s, 'System Administrator', 'Super Admin', %s, 'system_admin', 'approved', TRUE, TRUE)
-                ''', (admin_password, dept_result[0]))
-                print("✅ Created System Administrator: sysadmin / admin123")
+            print("Creating System Administrator...")
+            # Get first department ID for Admin division
+            cursor.execute('''
+                SELECT d.id FROM departments d 
+                JOIN divisions dv ON d.division_id = dv.id 
+                WHERE dv.name = 'Administration' 
+                LIMIT 1
+            ''')
+            admin_dept = cursor.fetchone()
+            
+            if admin_dept:
+                admin_dept_id = admin_dept[0]
+                # Get division ID for the department
+                cursor.execute('SELECT division_id FROM departments WHERE id = %s', (admin_dept_id,))
+                division_result = cursor.fetchone()
+                
+                if division_result:
+                    admin_password = hash_password('admin123')
+                    cursor.execute('''
+                        INSERT INTO users (username, password, name, designation, division_id, department_id, role, status) 
+                        VALUES ('sysadmin', %s, 'System Administrator', 'Super Admin', %s, %s, 'system_admin', 'approved')
+                    ''', (admin_password, division_result[0], admin_dept_id))
+                    print("✅ Created System Administrator: sysadmin / admin123")
         
         # Create default Store Managers
         cursor.execute("SELECT COUNT(*) FROM users WHERE username IN ('store1', 'store2')")
         if cursor.fetchone()[0] == 0:
-            cursor.execute("SELECT id FROM departments WHERE name LIKE '%Store%' LIMIT 2")
+            print("Creating Store Managers...")
+            # Get store departments
+            cursor.execute("SELECT id FROM departments WHERE name LIKE '%Store%' ORDER BY name")
             store_depts = cursor.fetchall()
             
             if len(store_depts) >= 2:
                 store_password = hash_password('store123')
-                cursor.execute('''
-                    INSERT INTO users (username, password, name, designation, department_id, role, status, approved_by_admin, approved_by_dept_head) 
-                    VALUES ('store1', %s, 'Store Manager 1', 'Store Manager', %s, 'store_manager', 'approved', TRUE, TRUE)
-                ''', (store_password, store_depts[0][0]))
+                # Store Manager 1
+                cursor.execute('SELECT division_id FROM departments WHERE id = %s', (store_depts[0][0],))
+                div1 = cursor.fetchone()
+                if div1:
+                    cursor.execute('''
+                        INSERT INTO users (username, password, name, designation, division_id, department_id, role, status) 
+                        VALUES ('store1', %s, 'Store Manager 1', 'Store Manager', %s, %s, 'store_manager', 'approved')
+                    ''', (store_password, div1[0], store_depts[0][0]))
                 
-                cursor.execute('''
-                    INSERT INTO users (username, password, name, designation, department_id, role, status, approved_by_admin, approved_by_dept_head) 
-                    VALUES ('store2', %s, 'Store Manager 2', 'Store Manager', %s, 'store_manager', 'approved', TRUE, TRUE)
-                ''', (store_password, store_depts[1][0]))
+                # Store Manager 2
+                cursor.execute('SELECT division_id FROM departments WHERE id = %s', (store_depts[1][0],))
+                div2 = cursor.fetchone()
+                if div2:
+                    cursor.execute('''
+                        INSERT INTO users (username, password, name, designation, division_id, department_id, role, status) 
+                        VALUES ('store2', %s, 'Store Manager 2', 'Store Manager', %s, %s, 'store_manager', 'approved')
+                    ''', (store_password, div2[0], store_depts[1][0]))
+                
                 print("✅ Created Store Managers: store1/store2 / store123")
         
+        # Create default Department Head
+        cursor.execute("SELECT COUNT(*) FROM users WHERE username = 'depthead'")
+        if cursor.fetchone()[0] == 0:
+            print("Creating Department Head...")
+            # Get first non-store department
+            cursor.execute("SELECT id FROM departments WHERE name NOT LIKE '%Store%' LIMIT 1")
+            dept = cursor.fetchone()
+            
+            if dept:
+                dept_id = dept[0]
+                cursor.execute('SELECT division_id FROM departments WHERE id = %s', (dept_id,))
+                div = cursor.fetchone()
+                
+                if div:
+                    dept_password = hash_password('dept123')
+                    cursor.execute('''
+                        INSERT INTO users (username, password, name, designation, division_id, department_id, role, status) 
+                        VALUES ('depthead', %s, 'Department Head', 'Department Manager', %s, %s, 'department_head', 'approved')
+                    ''', (dept_password, div[0], dept_id))
+                    print("✅ Created Department Head: depthead / dept123")
+        
+        # Create test regular user
+        cursor.execute("SELECT COUNT(*) FROM users WHERE username = 'akib'")
+        if cursor.fetchone()[0] == 0:
+            print("Creating test user...")
+            # Get any department for test user
+            cursor.execute("SELECT id FROM departments LIMIT 1")
+            test_dept = cursor.fetchone()
+            
+            if test_dept:
+                cursor.execute('SELECT division_id FROM departments WHERE id = %s', (test_dept[0],))
+                test_div = cursor.fetchone()
+                
+                if test_div:
+                    test_password = hash_password('akib123')
+                    cursor.execute('''
+                        INSERT INTO users (username, password, name, designation, division_id, department_id, role, status) 
+                        VALUES ('akib', %s, 'Akib Rahman', 'Executive', %s, %s, 'user', 'approved')
+                    ''', (test_password, test_div[0], test_dept[0]))
+                    print("✅ Created test user: akib / akib123")
+        
         conn.commit()
-        print("✅ Database initialized successfully with new dual approval system!")
+        print("✅ Database initialized successfully with ALL default users!")
         return True
         
     except Exception as e:
         print(f"❌ Database initialization error: {e}")
+        import traceback
+        traceback.print_exc()
         conn.rollback()
         return False
     finally:

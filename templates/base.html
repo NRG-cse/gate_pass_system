@@ -364,7 +364,7 @@
         .auth-container {
             min-height: 100vh;
             display: flex;
-            align-items: center;
+            align-items-center;
             justify-content: center;
             padding: 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -464,11 +464,11 @@
                     </a>
                 </li>
                 
+                <!-- In the sidebar section, update the Pending Approvals link to show correct badge -->
                 {% if session.role in ['system_admin', 'department_head'] %}
                 <li class="nav-item">
-                    <a class="nav-link {% if request.endpoint == 'approval_pending' %}active{% endif %}" 
-                    href="{{ url_for('approval_pending') }}" onclick="handleNavClick()">
-                        <i class="fas fa-user-check"></i>
+                    <a class="nav-link {% if request.endpoint == 'approval_pending' %}active{% endif %}" href="{{ url_for('approval_pending') }}" onclick="handleNavClick()">
+                        <i class="fas fa-check-circle"></i>
                         <span>Pending Approvals</span>
                         {% if pending_approvals and pending_approvals > 0 %}
                         <span class="badge bg-danger ms-auto">{{ pending_approvals }}</span>

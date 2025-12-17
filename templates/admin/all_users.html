@@ -10,12 +10,6 @@
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
                         <i class="fas fa-user-plus"></i> Create User
                     </button>
-                    <a href="{{ url_for('approval_pending') }}" class="btn btn-warning">
-                        <i class="fas fa-user-check"></i> Pending Approvals
-                        {% if pending_approvals and pending_approvals > 0 %}
-                        <span class="badge bg-danger">{{ pending_approvals }}</span>
-                        {% endif %}
-                    </a>
                     <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
                         <i class="fas fa-arrow-left"></i> Dashboard
                     </a>
@@ -82,11 +76,13 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label class="form-label">Role *</label>
+                                    <!-- UPDATED: Added system_admin role -->
                                     <select class="form-select" name="role" required>
-                                        <option value="user">Normal User</option>
+                                        <option value="user">User</option>
                                         <option value="department_head">Department Head</option>
                                         <option value="store_manager">Store Manager</option>
                                         <option value="security">Security</option>
+                                        <option value="system_admin">System Administrator</option>
                                     </select>
                                 </div>
                             </div>
@@ -132,7 +128,6 @@
                             <th>Department</th>
                             <th>Role</th>
                             <th>Status</th>
-                            <th>Approvals</th>
                             <th>Created</th>
                             <th>Actions</th>
                         </tr>
@@ -165,24 +160,12 @@
                             <td>
                                 <span class="badge bg-{{ 
                                     'success' if user.status == 'approved' else
-                                    'warning' if user.status in ['dual_pending', 'pending_admin', 'pending_dept'] else
+                                    'warning' if user.status == 'pending' else
                                     'danger' if user.status == 'rejected' else
                                     'secondary'
                                 }}">
                                     {{ user.status|title }}
                                 </span>
-                            </td>
-                            <td>
-                                {% if user.status in ['dual_pending', 'pending_admin', 'pending_dept'] %}
-                                <div class="small">
-                                    <span class="badge bg-{{ 'success' if user.approved_by_admin else 'secondary' }}">
-                                        Admin: {{ '✓' if user.approved_by_admin else '✗' }}
-                                    </span>
-                                    <span class="badge bg-{{ 'success' if user.approved_by_dept_head else 'secondary' }}">
-                                        Dept: {{ '✓' if user.approved_by_dept_head else '✗' }}
-                                    </span>
-                                </div>
-                                {% endif %}
                             </td>
                             <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
                             <td>
@@ -191,8 +174,7 @@
                                             data-bs-toggle="modal" data-bs-target="#editUserModal{{ user.id }}">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    {% if user.status in ['dual_pending', 'pending_admin', 'pending_dept'] %}
-                                    {% if not user.approved_by_admin or not user.approved_by_dept_head %}
+                                    {% if user.status == 'pending' %}
                                     <button onclick="approveUser({{ user.id }}, 'approve')" 
                                             class="btn btn-outline-success" title="Approve">
                                         <i class="fas fa-check"></i>
@@ -201,7 +183,6 @@
                                             class="btn btn-outline-danger" title="Reject">
                                         <i class="fas fa-times"></i>
                                     </button>
-                                    {% endif %}
                                     {% endif %}
                                     <button type="button" class="btn btn-outline-danger"
                                             data-bs-toggle="modal" data-bs-target="#deleteUserModal{{ user.id }}">
@@ -269,11 +250,13 @@
                                                 <div class="col-md-6">
                                                     <div class="mb-3">
                                                         <label class="form-label">Role *</label>
+                                                        <!-- UPDATED: Added system_admin role -->
                                                         <select class="form-select" name="role" required>
-                                                            <option value="user" {% if user.role == 'user' %}selected{% endif %}>Normal User</option>
+                                                            <option value="user" {% if user.role == 'user' %}selected{% endif %}>User</option>
                                                             <option value="department_head" {% if user.role == 'department_head' %}selected{% endif %}>Department Head</option>
                                                             <option value="store_manager" {% if user.role == 'store_manager' %}selected{% endif %}>Store Manager</option>
                                                             <option value="security" {% if user.role == 'security' %}selected{% endif %}>Security</option>
+                                                            <option value="system_admin" {% if user.role == 'system_admin' %}selected{% endif %}>System Administrator</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -281,9 +264,7 @@
                                                     <div class="mb-3">
                                                         <label class="form-label">Status *</label>
                                                         <select class="form-select" name="status" required>
-                                                            <option value="dual_pending" {% if user.status == 'dual_pending' %}selected{% endif %}>Dual Pending</option>
-                                                            <option value="pending_admin" {% if user.status == 'pending_admin' %}selected{% endif %}>Pending Admin</option>
-                                                            <option value="pending_dept" {% if user.status == 'pending_dept' %}selected{% endif %}>Pending Dept</option>
+                                                            <option value="pending" {% if user.status == 'pending' %}selected{% endif %}>Pending</option>
                                                             <option value="approved" {% if user.status == 'approved' %}selected{% endif %}>Approved</option>
                                                             <option value="rejected" {% if user.status == 'rejected' %}selected{% endif %}>Rejected</option>
                                                             <option value="inactive" {% if user.status == 'inactive' %}selected{% endif %}>Inactive</option>
@@ -452,20 +433,20 @@ document.querySelectorAll('.edit-user-form').forEach(form => {
             body: formData
         })
     .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast(data.message);
-            setTimeout(() => {
-                location.reload();
-            }, 1000);
-        } else {
-            showToast(data.message, 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showToast('Error updating user!', 'error');
-    });
+        .then(data => {
+            if (data.success) {
+                showToast(data.message);
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error updating user!', 'error');
+        });
     });
 });
 
@@ -478,29 +459,29 @@ document.querySelectorAll('.delete-user-form').forEach(form => {
         fetch(`/admin/delete_user/${userId}`, {
             method: 'POST'
         })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast(data.message);
-            setTimeout(() => {
-                location.reload();
-            }, 1000);
-        } else {
-            showToast(data.message, 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showToast('Error deleting user!', 'error');
-    });
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message);
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error deleting user!', 'error');
+        });
     });
 });
 
-// User approval function - UPDATED FOR DUAL APPROVAL
+// User approval function (for pending users in list)
 function approveUser(userId, action) {
     if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} this user?`)) return;
 
-    fetch(`/admin/approve_user/${userId}/${action}`, {
+    fetch(`/approve_user/${userId}/${action}`, {
         method: 'GET'
     })
     .then(response => response.json())

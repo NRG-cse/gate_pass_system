@@ -1,146 +1,180 @@
 {% extends "base.html" %}
 
-{% block content %}
-<div class="single-page">
-    <div class="hmi-card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h4 class="mb-0">
-                <i class="fas fa-check-circle"></i> Pending Approvals - {{ session.role|title }}
-            </h4>
-            <a href="{{ url_for('dashboard') }}" class="hmi-btn hmi-btn-primary btn-sm">
-                <i class="fas fa-arrow-left"></i> Dashboard
-            </a>
-        </div>
-        <div class="card-body">
-            <div class="hmi-grid hmi-grid-2" style="gap: 15px; height: 100%;">
-                <!-- User Approvals -->
-                {% if session.role in ['hr_admin', 'department_head'] %}
-                <div class="hmi-card">
-                    <div class="card-header bg-warning text-dark">
-                        <h6 class="mb-0">
-                            <i class="fas fa-users"></i> Pending Users
-                            {% if pending_users and pending_users|length > 0 %}
-                            <span class="badge bg-danger ms-2">{{ pending_users|length }}</span>
-                            {% endif %}
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        {% if pending_users and pending_users|length > 0 %}
-                        <div style="max-height: 300px; overflow-y: auto;">
-                            {% for user in pending_users %}
-                            <div class="p-2 mb-2 bg-light rounded">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <strong>{{ user.name }}</strong>
-                                        <br>
-                                        <small class="text-muted">
-                                            {{ user.username }} | {{ user.department }}
-                                            <br>
-                                            {{ user.designation }} | {{ user.role|title }}
-                                        </small>
-                                    </div>
-                                    <div class="btn-group btn-group-sm">
-                                        <button onclick="approveUser({{ user.id }}, 'approve')" 
-                                           class="btn btn-outline-success" title="Approve">
-                                            <i class="fas fa-check"></i>
-                                        </button>
-                                        <button onclick="approveUser({{ user.id }}, 'reject')" 
-                                           class="btn btn-outline-danger" title="Reject">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <small class="text-muted">Registered: {{ user.created_at.strftime('%Y-%m-%d') }}</small>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <div class="text-center py-4">
-                            <i class="fas fa-user-check fa-2x text-success mb-2"></i>
-                            <p class="text-muted mb-0">No pending user approvals</p>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endif %}
+{% block page_title %}Pending Approvals{% endblock %}
 
-                <!-- Gate Pass Approvals -->
-                <div class="hmi-card">
-                    <div class="card-header bg-info text-white">
-                        <h6 class="mb-0">
-                            <i class="fas fa-passport"></i> Pending Gate Passes
-                            {% if pending_passes and pending_passes|length > 0 %}
-                            <span class="badge bg-warning ms-2">{{ pending_passes|length }}</span>
-                            {% endif %}
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        {% if pending_passes %}
-                        <div style="max-height: 300px; overflow-y: auto;">
-                            {% for pass in pending_passes %}
-                            <div class="p-2 mb-2 bg-light rounded">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <strong>{{ pass.pass_number }}</strong>
-                                        <br>
-                                        <small class="text-muted">
-                                            {{ pass.division_department }}
-                                            <br>
-                                            {{ pass.material_description[:50] }}{% if pass.material_description|length > 50 %}...{% endif %}
-                                        </small>
-                                    </div>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="{{ url_for('gate_pass.gate_pass_detail', gate_pass_id=pass.id) }}" 
-                                           class="btn btn-outline-primary" title="View Details">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        {% if session.role == 'department_head' and pass.status == 'pending_dept' %}
-                                        <button onclick="approveGatePass({{ pass.id }}, 'approve')" 
-                                           class="btn btn-outline-success" title="Approve">
-                                            <i class="fas fa-check"></i>
-                                        </button>
-                                        <button onclick="approveGatePass({{ pass.id }}, 'reject')" 
-                                           class="btn btn-outline-danger" title="Reject">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                        <button onclick="approveGatePass({{ pass.id }}, 'inquiry')" 
-                                           class="btn btn-outline-warning" title="Mark for Inquiry">
-                                            <i class="fas fa-question-circle"></i>
-                                        </button>
-                                        {% elif session.role == 'hr_admin' and pass.status == 'pending_hr' %}
-                                        <button onclick="approveGatePass({{ pass.id }}, 'approve')" 
-                                           class="btn btn-outline-success" title="Approve">
-                                            <i class="fas fa-check"></i>
-                                        </button>
-                                        <button onclick="approveGatePass({{ pass.id }}, 'reject')" 
-                                           class="btn btn-outline-danger" title="Reject">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                        {% elif session.role == 'hr_admin' and pass.status == 'inquiry' %}
-                                        <button onclick="approveGatePass({{ pass.id }}, 'approve')" 
-                                           class="btn btn-outline-success" title="Approve after Inquiry">
-                                            <i class="fas fa-check-circle"></i>
-                                        </button>
-                                        <button onclick="approveGatePass({{ pass.id }}, 'reject')" 
-                                           class="btn btn-outline-danger" title="Reject after Inquiry">
-                                            <i class="fas fa-times-circle"></i>
-                                        </button>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <small class="text-muted">
-                                    Created: {{ pass.created_at.strftime('%Y-%m-%d %H:%M') }} by {{ pass.creator_name }}
-                                </small>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <div class="text-center py-4">
-                            <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
-                            <p class="text-muted mb-0">No pending gate pass approvals</p>
-                        </div>
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4><i class="fas fa-check-circle"></i> Pending Approvals</h4>
+                <div>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+            <p class="text-muted">
+                {% if session.role == 'system_admin' %}
+                <i class="fas fa-user-shield text-primary"></i> System Administrator: You can approve users from ANY department
+                {% else %}
+                <i class="fas fa-user-tie text-info"></i> Department Head: You can only approve users from YOUR department
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Pending Users -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users"></i> Pending User Approvals
+                        {% if pending_users and pending_users|length > 0 %}
+                        <span class="badge bg-danger ms-2">{{ pending_users|length }}</span>
                         {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if pending_users and pending_users|length > 0 %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Department</th>
+                                    <th>Registered</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in pending_users %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ user.name }}</strong><br>
+                                        <small class="text-muted">{{ user.username }}</small><br>
+                                        <small><i class="fas fa-briefcase"></i> {{ user.designation }}</small>
+                                    </td>
+                                    <td>
+                                        {{ user.department_name or 'No department' }}<br>
+                                        <small class="text-muted">{{ user.division_name or '' }}</small>
+                                    </td>
+                                    <td>
+                                        {{ user.created_at.strftime('%Y-%m-%d') }}<br>
+                                        <small>{{ user.created_at.strftime('%H:%M') }}</small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button onclick="approveUser({{ user.id }}, 'approve')" 
+                                                   class="btn btn-success" title="Approve">
+                                                <i class="fas fa-check"></i> Approve
+                                            </button>
+                                            <button onclick="approveUser({{ user.id }}, 'reject')" 
+                                                   class="btn btn-danger" title="Reject">
+                                                <i class="fas fa-times"></i> Reject
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-user-check fa-3x text-success mb-3"></i>
+                        <h5>No Pending Users</h5>
+                        <p class="text-muted">All users are approved or rejected.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Gate Passes -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-passport"></i> Pending Gate Pass Approvals
+                        {% if pending_passes and pending_passes|length > 0 %}
+                        <span class="badge bg-warning ms-2">{{ pending_passes|length }}</span>
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if pending_passes and pending_passes|length > 0 %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Pass No.</th>
+                                    <th>Material</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pass in pending_passes %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ pass.pass_number }}</strong><br>
+                                        <small class="text-muted">by {{ pass.creator_name }}</small>
+                                    </td>
+                                    <td>
+                                        <small>{{ pass.material_description[:50] }}{% if pass.material_description|length > 50 %}...{% endif %}</small><br>
+                                        <small class="text-muted">{{ pass.department_name }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 
+                                            'warning' if pass.status == 'pending_dept' else
+                                            'info' if pass.status == 'pending_store' else
+                                            'primary' if pass.status == 'pending_security' else
+                                            'secondary'
+                                        }}">
+                                            {{ pass.status|replace('_', ' ')|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('gate_pass.gate_pass_detail', gate_pass_id=pass.id) }}" 
+                                               class="btn btn-outline-primary" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% if session.role == 'department_head' and pass.status == 'pending_dept' %}
+                                            <button onclick="approveGatePass({{ pass.id }}, 'approve')" 
+                                                    class="btn btn-outline-success" title="Approve">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button onclick="approveGatePass({{ pass.id }}, 'reject')" 
+                                                    class="btn btn-outline-danger" title="Reject">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                            <button onclick="approveGatePass({{ pass.id }}, 'inquiry')" 
+                                                    class="btn btn-outline-warning" title="Mark for Inquiry">
+                                                <i class="fas fa-question-circle"></i>
+                                            </button>
+                                            {% elif session.role == 'system_admin' and pass.status == 'pending_security' %}
+                                            <button onclick="approveGatePassAdmin({{ pass.id }})" 
+                                                    class="btn btn-outline-success" title="Approve as Admin">
+                                                <i class="fas fa-shield-alt"></i> Admin Approve
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <h5>No Pending Gate Passes</h5>
+                        <p class="text-muted">All gate passes are processed.</p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -158,13 +192,28 @@
         </div>
     </div>
 </div>
+
+<!-- Error Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert">
+        <div class="d-flex">
+            <div class="toast-body" id="errorMessage">
+                Error occurred!
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 // User Approval Function
 function approveUser(userId, action) {
-    if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} this user?`)) return;
+    const actionText = action === 'approve' ? 'Approve' : 'Reject';
+    const userText = 'this user';
+    
+    if (!confirm(`${actionText} ${userText}?`)) return;
 
     fetch(`/approve_user/${userId}/${action}`, {
         method: 'GET',
@@ -176,18 +225,18 @@ function approveUser(userId, action) {
     .then(data => {
         if (data.success) {
             showToast(data.message || 'User processed successfully!');
-            setTimeout(() => location.reload(), 1000);
+            setTimeout(() => location.reload(), 1500);
         } else {
-            showToast(data.message || 'Error processing request', 'error');
+            showError(data.message || 'Error processing request');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showToast('Error processing request', 'error');
+        showError('Error processing request');
     });
 }
 
-// Gate Pass Approval Function - Updated for Inquiry
+// Gate Pass Approval Function for Department Head
 function approveGatePass(passId, action) {
     let actionText = action === 'approve' ? 'Approve' : 
                     action === 'reject' ? 'Reject' : 
@@ -205,31 +254,60 @@ function approveGatePass(passId, action) {
     .then(data => {
         if (data.success) {
             showToast(data.message || 'Gate pass processed successfully!');
-            setTimeout(() => location.reload(), 1000);
+            setTimeout(() => location.reload(), 1500);
         } else {
-            showToast(data.message || 'Error processing request', 'error');
+            showError(data.message || 'Error processing request');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showToast('Error processing request', 'error');
+        showError('Error processing request');
     });
 }
 
-// Toast notification function
-function showToast(message, type = 'success') {
+// Gate Pass Approval Function for System Admin (direct approval)
+function approveGatePassAdmin(passId) {
+    if (!confirm('Approve this gate pass as System Administrator?')) return;
+
+    fetch(`/admin/approve_gate_pass/${passId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'action=approve&store_location=store_1'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || 'Gate pass approved successfully!');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showError(data.message || 'Error processing request');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError('Error processing request');
+    });
+}
+
+// Success Toast notification
+function showToast(message) {
     const toast = document.getElementById('successToast');
     const toastMessage = document.getElementById('toastMessage');
     
     toastMessage.textContent = message;
     
-    if (type === 'error') {
-        toast.classList.remove('bg-success');
-        toast.classList.add('bg-danger');
-    } else {
-        toast.classList.remove('bg-danger');
-        toast.classList.add('bg-success');
-    }
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+}
+
+// Error Toast notification
+function showError(message) {
+    const toast = document.getElementById('errorToast');
+    const errorMessage = document.getElementById('errorMessage');
+    
+    errorMessage.textContent = message;
     
     const bsToast = new bootstrap.Toast(toast);
     bsToast.show();
