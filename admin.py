@@ -16,7 +16,7 @@ def manage_divisions():
     conn = get_db_connection()
     if conn is None:
         flash('Database connection failed!', 'error')
-        return render_template('admin/divisions.html', divisions=[])
+        return render_template('admin/divisions.html', divisions=[], total_departments=0, total_users=0)
     
     cursor = conn.cursor()
     
@@ -43,13 +43,14 @@ def manage_divisions():
             division_id = request.form['id']
             division_name = request.form['name']
             description = request.form.get('description', '')
+            status = request.form.get('status', 'active')
             
             try:
                 cursor.execute('''
                     UPDATE divisions 
-                    SET name = %s, description = %s 
+                    SET name = %s, description = %s, status = %s 
                     WHERE id = %s
-                ''', (division_name, description, division_id))
+                ''', (division_name, description, status, division_id))
                 conn.commit()
                 flash('Division updated successfully!', 'success')
             except MySQLdb.IntegrityError:
@@ -78,16 +79,36 @@ def manage_divisions():
         return redirect(url_for('admin.manage_divisions'))
     
     try:
-        cursor.execute('SELECT * FROM divisions ORDER BY name')
+        # Get divisions with department count
+        cursor.execute('''
+            SELECT d.*, 
+                   (SELECT COUNT(*) FROM departments WHERE division_id = d.id) as department_count
+            FROM divisions d 
+            ORDER BY d.name
+        ''')
         divisions = dict_fetchall(cursor)
+        
+        # Get total departments count
+        cursor.execute('SELECT COUNT(*) FROM departments')
+        total_departments = cursor.fetchone()[0]
+        
+        # Get total users count
+        cursor.execute('SELECT COUNT(*) FROM users')
+        total_users = cursor.fetchone()[0]
+        
     except Exception as e:
         print(f"Error fetching divisions: {e}")
         divisions = []
+        total_departments = 0
+        total_users = 0
     finally:
         cursor.close()
         conn.close()
     
-    return render_template('admin/divisions.html', divisions=divisions)
+    return render_template('admin/divisions.html', 
+                         divisions=divisions, 
+                         total_departments=total_departments,
+                         total_users=total_users)
 
 @admin_bp.route('/departments', methods=['GET', 'POST'])
 def manage_departments():
@@ -177,7 +198,10 @@ def manage_departments():
         cursor.close()
         conn.close()
     
-    return render_template('admin/departments.html', departments=departments, divisions=divisions)
+    return render_template('admin/departments.html', 
+                         departments=departments, 
+                         divisions=divisions,
+                         now=datetime.now())
 
 @admin_bp.route('/all_users')
 def all_users():
@@ -217,6 +241,39 @@ def all_users():
         conn.close()
     
     return render_template('admin/all_users.html', users=users, divisions=divisions, departments=departments)
+
+# Add this route to your admin.py file
+
+@admin_bp.route('/get_user/<int:user_id>')
+def get_user(user_id):
+    """Get user details for editing (AJAX endpoint)"""
+    if 'user_id' not in session or session['role'] != 'system_admin':
+        return jsonify({'success': False, 'message': 'Access denied!'})
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'success': False, 'message': 'Database connection failed!'})
+    
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('''
+            SELECT u.*, d.name as department_name, dv.name as division_name
+            FROM users u 
+            LEFT JOIN departments d ON u.department_id = d.id 
+            LEFT JOIN divisions dv ON u.division_id = dv.id 
+            WHERE u.id = %s
+        ''', (user_id,))
+        user = dict_fetchone(cursor)
+        
+        if user:
+            return jsonify({'success': True, 'user': user})
+        else:
+            return jsonify({'success': False, 'message': 'User not found!'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error fetching user: {str(e)}'})
+
 
 @admin_bp.route('/create_user', methods=['POST'])
 def create_user():
@@ -679,6 +736,64 @@ def process_store_request(request_id):
     except Exception as e:
         conn.rollback()
         return jsonify({'success': False, 'message': f'Error processing request: {str(e)}'})
+    finally:
+        cursor.close()
+        conn.close()
+
+@admin_bp.route('/toggle_division_status/<int:division_id>', methods=['POST'])
+def toggle_division_status(division_id):
+    if 'user_id' not in session or session['role'] != 'system_admin':
+        return jsonify({'success': False, 'message': 'Access denied!'})
+    
+    data = request.get_json()
+    new_status = data.get('status')
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'success': False, 'message': 'Database connection failed!'})
+    
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('''
+            UPDATE divisions SET status = %s WHERE id = %s
+        ''', (new_status, division_id))
+        
+        conn.commit()
+        return jsonify({'success': True, 'message': f'Division status updated to {new_status}!'})
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': f'Error updating status: {str(e)}'})
+    finally:
+        cursor.close()
+        conn.close()
+
+@admin_bp.route('/delete_division/<int:division_id>', methods=['POST'])
+def delete_division_ajax(division_id):
+    if 'user_id' not in session or session['role'] != 'system_admin':
+        return jsonify({'success': False, 'message': 'Access denied!'})
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'success': False, 'message': 'Database connection failed!'})
+    
+    cursor = conn.cursor()
+    
+    try:
+        # Check if division has departments
+        cursor.execute('SELECT COUNT(*) FROM departments WHERE division_id = %s', (division_id,))
+        if cursor.fetchone()[0] > 0:
+            return jsonify({'success': False, 'message': 'Cannot delete division with existing departments!'})
+        
+        cursor.execute('DELETE FROM divisions WHERE id = %s', (division_id,))
+        conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Division deleted successfully!'})
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': f'Error deleting division: {str(e)}'})
     finally:
         cursor.close()
         conn.close()

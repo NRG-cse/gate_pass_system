@@ -3,76 +3,175 @@
 {% block page_title %}Pending Approvals{% endblock %}
 
 {% block content %}
-<div class="container-fluid p-4">
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <h4><i class="fas fa-check-circle"></i> Pending Approvals</h4>
-                <div>
-                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary">
-                        <i class="fas fa-arrow-left"></i> Back to Dashboard
-                    </a>
-                </div>
-            </div>
-            <p class="text-muted">
+<div class="container-fluid px-4 py-3">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-primary mb-1">
+                <i class="fas fa-clipboard-check me-2"></i>Pending Approvals
+            </h3>
+            <p class="text-muted mb-0">
                 {% if session.role == 'system_admin' %}
-                <i class="fas fa-user-shield text-primary"></i> System Administrator: You can approve users from ANY department
+                <span class="badge bg-primary-gradient fs-6 px-3 py-2">
+                    <i class="fas fa-user-shield me-1"></i>System Administrator
+                </span>
+                <span class="ms-2">You can approve users from any department</span>
                 {% else %}
-                <i class="fas fa-user-tie text-info"></i> Department Head: You can only approve users from YOUR department
+                <span class="badge bg-info-gradient fs-6 px-3 py-2">
+                    <i class="fas fa-user-tie me-1"></i>Department Head
+                </span>
+                <span class="ms-2">You can only approve users from your department</span>
                 {% endif %}
             </p>
         </div>
+        <div>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-light btn-lg border">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+        </div>
     </div>
 
-    <div class="row">
-        <!-- Pending Users -->
-        <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0">
-                        <i class="fas fa-users"></i> Pending User Approvals
-                        {% if pending_users and pending_users|length > 0 %}
-                        <span class="badge bg-danger ms-2">{{ pending_users|length }}</span>
-                        {% endif %}
-                    </h5>
-                </div>
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-5">
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-gradient-primary border-0 shadow-sm">
                 <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-users fa-2x text-white"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Pending Users</h6>
+                            <h2 class="text-white mb-0">{{ pending_users|length if pending_users else 0 }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-gradient-warning border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-passport fa-2x text-white"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Pending Gate Passes</h6>
+                            <h2 class="text-white mb-0">{{ pending_passes|length if pending_passes else 0 }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-gradient-success border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-check-circle fa-2x text-white"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Ready to Approve</h6>
+                            <h2 class="text-white mb-0">{{ (pending_users|length if pending_users else 0) + (pending_passes|length if pending_passes else 0) }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-gradient-info border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-clock fa-2x text-white"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Today</h6>
+                            <h2 class="text-white mb-0">{{ now.strftime('%d %b') if now else '' }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row g-4">
+        <!-- Pending Users Section -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0 text-dark">
+                            <i class="fas fa-user-clock text-warning me-2"></i>
+                            User Registration Requests
+                        </h5>
+                        {% if pending_users and pending_users|length > 0 %}
+                        <span class="badge bg-warning rounded-pill px-3 py-2">
+                            {{ pending_users|length }} pending
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body p-0">
                     {% if pending_users and pending_users|length > 0 %}
                     <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>User</th>
+                                    <th class="ps-4">User Details</th>
                                     <th>Department</th>
-                                    <th>Registered</th>
-                                    <th>Actions</th>
+                                    <th class="text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for user in pending_users %}
-                                <tr>
-                                    <td>
-                                        <strong>{{ user.name }}</strong><br>
-                                        <small class="text-muted">{{ user.username }}</small><br>
-                                        <small><i class="fas fa-briefcase"></i> {{ user.designation }}</small>
+                                <tr class="user-row hover-lift">
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-circle bg-primary-gradient me-3">
+                                                <span class="avatar-text">{{ user.name[0]|upper }}</span>
+                                            </div>
+                                            <div>
+                                                <h6 class="fw-bold mb-0">{{ user.name }}</h6>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-user me-1"></i>{{ user.username }}
+                                                </small>
+                                                <br>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-briefcase me-1"></i>{{ user.designation }}
+                                                </small>
+                                                <br>
+                                                <small class="text-success">
+                                                    <i class="fas fa-calendar me-1"></i>{{ user.created_at.strftime('%d %b, %H:%M') }}
+                                                </small>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td>
-                                        {{ user.department_name or 'No department' }}<br>
-                                        <small class="text-muted">{{ user.division_name or '' }}</small>
+                                        <div class="department-badge">
+                                            <span class="badge bg-light text-dark border">
+                                                <i class="fas fa-building me-1"></i>{{ user.department_name or 'No Department' }}
+                                            </span>
+                                            {% if user.division_name %}
+                                            <br>
+                                            <small class="text-muted mt-1 d-block">
+                                                <i class="fas fa-sitemap me-1"></i>{{ user.division_name }}
+                                            </small>
+                                            {% endif %}
+                                        </div>
                                     </td>
-                                    <td>
-                                        {{ user.created_at.strftime('%Y-%m-%d') }}<br>
-                                        <small>{{ user.created_at.strftime('%H:%M') }}</small>
-                                    </td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm">
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
                                             <button onclick="approveUser({{ user.id }}, 'approve')" 
-                                                   class="btn btn-success" title="Approve">
-                                                <i class="fas fa-check"></i> Approve
+                                                    class="btn btn-success btn-sm rounded-start px-3 action-btn"
+                                                    title="Approve User">
+                                                <i class="fas fa-check me-1"></i>Approve
                                             </button>
                                             <button onclick="approveUser({{ user.id }}, 'reject')" 
-                                                   class="btn btn-danger" title="Reject">
-                                                <i class="fas fa-times"></i> Reject
+                                                    class="btn btn-danger btn-sm rounded-end px-3 action-btn"
+                                                    title="Reject User">
+                                                <i class="fas fa-times me-1"></i>Reject
                                             </button>
                                         </div>
                                     </td>
@@ -83,82 +182,109 @@
                     </div>
                     {% else %}
                     <div class="text-center py-5">
-                        <i class="fas fa-user-check fa-3x text-success mb-3"></i>
-                        <h5>No Pending Users</h5>
-                        <p class="text-muted">All users are approved or rejected.</p>
+                        <div class="empty-state-icon mb-3">
+                            <i class="fas fa-user-check fa-4x text-success opacity-25"></i>
+                        </div>
+                        <h5 class="fw-bold text-muted mb-2">No Pending Users</h5>
+                        <p class="text-muted mb-0">All user registrations have been processed</p>
                     </div>
                     {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- Pending Gate Passes -->
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">
-                        <i class="fas fa-passport"></i> Pending Gate Pass Approvals
+        <!-- Pending Gate Passes Section -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0 text-dark">
+                            <i class="fas fa-clipboard-list text-info me-2"></i>
+                            Gate Pass Approvals
+                        </h5>
                         {% if pending_passes and pending_passes|length > 0 %}
-                        <span class="badge bg-warning ms-2">{{ pending_passes|length }}</span>
+                        <span class="badge bg-info rounded-pill px-3 py-2">
+                            {{ pending_passes|length }} pending
+                        </span>
                         {% endif %}
-                    </h5>
+                    </div>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     {% if pending_passes and pending_passes|length > 0 %}
                     <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Pass No.</th>
-                                    <th>Material</th>
+                                    <th class="ps-4">Gate Pass Details</th>
                                     <th>Status</th>
-                                    <th>Actions</th>
+                                    <th class="text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for pass in pending_passes %}
-                                <tr>
-                                    <td>
-                                        <strong>{{ pass.pass_number }}</strong><br>
-                                        <small class="text-muted">by {{ pass.creator_name }}</small>
+                                <tr class="gatepass-row hover-lift">
+                                    <td class="ps-4">
+                                        <div>
+                                            <h6 class="fw-bold mb-1 text-primary">
+                                                <i class="fas fa-passport me-2"></i>{{ pass.pass_number }}
+                                            </h6>
+                                            <p class="mb-1 text-muted small">
+                                                <i class="fas fa-user me-1"></i>Created by {{ pass.creator_name }}
+                                            </p>
+                                            <p class="mb-1 text-muted small">
+                                                <i class="fas fa-box me-1"></i>{{ pass.material_description[:60] }}{% if pass.material_description|length > 60 %}...{% endif %}
+                                            </p>
+                                            <p class="mb-0 text-muted small">
+                                                <i class="fas fa-building me-1"></i>{{ pass.department_name }}
+                                            </p>
+                                        </div>
                                     </td>
                                     <td>
-                                        <small>{{ pass.material_description[:50] }}{% if pass.material_description|length > 50 %}...{% endif %}</small><br>
-                                        <small class="text-muted">{{ pass.department_name }}</small>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-{{ 
-                                            'warning' if pass.status == 'pending_dept' else
-                                            'info' if pass.status == 'pending_store' else
-                                            'primary' if pass.status == 'pending_security' else
-                                            'secondary'
-                                        }}">
+                                        {% set status_colors = {
+                                            'pending_dept': 'warning',
+                                            'pending_store': 'info', 
+                                            'pending_security': 'primary',
+                                            'inquiry': 'secondary'
+                                        } %}
+                                        <span class="badge bg-{{ status_colors.get(pass.status, 'secondary') }}-gradient py-2 px-3">
+                                            <i class="fas fa-{{ 'clock' if 'pending' in pass.status else 'question-circle' if pass.status == 'inquiry' else 'check' }} me-1"></i>
                                             {{ pass.status|replace('_', ' ')|title }}
                                         </span>
+                                        <br>
+                                        <small class="text-muted mt-1 d-block">
+                                            <i class="fas fa-calendar me-1"></i>{{ pass.created_at.strftime('%d %b, %H:%M') }}
+                                        </small>
                                     </td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm">
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm" role="group">
                                             <a href="{{ url_for('gate_pass.gate_pass_detail', gate_pass_id=pass.id) }}" 
-                                               class="btn btn-outline-primary" title="View Details">
+                                               class="btn btn-outline-primary px-3"
+                                               title="View Details">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+                                            
                                             {% if session.role == 'department_head' and pass.status == 'pending_dept' %}
                                             <button onclick="approveGatePass({{ pass.id }}, 'approve')" 
-                                                    class="btn btn-outline-success" title="Approve">
+                                                    class="btn btn-outline-success px-3"
+                                                    title="Approve">
                                                 <i class="fas fa-check"></i>
                                             </button>
                                             <button onclick="approveGatePass({{ pass.id }}, 'reject')" 
-                                                    class="btn btn-outline-danger" title="Reject">
+                                                    class="btn btn-outline-danger px-3"
+                                                    title="Reject">
                                                 <i class="fas fa-times"></i>
                                             </button>
                                             <button onclick="approveGatePass({{ pass.id }}, 'inquiry')" 
-                                                    class="btn btn-outline-warning" title="Mark for Inquiry">
+                                                    class="btn btn-outline-warning px-3"
+                                                    title="Mark for Inquiry">
                                                 <i class="fas fa-question-circle"></i>
                                             </button>
+                                            
                                             {% elif session.role == 'system_admin' and pass.status == 'pending_security' %}
                                             <button onclick="approveGatePassAdmin({{ pass.id }})" 
-                                                    class="btn btn-outline-success" title="Approve as Admin">
-                                                <i class="fas fa-shield-alt"></i> Admin Approve
+                                                    class="btn btn-success px-3"
+                                                    title="Approve as Admin">
+                                                <i class="fas fa-shield-alt me-1"></i>Approve
                                             </button>
                                             {% endif %}
                                         </div>
@@ -170,40 +296,240 @@
                     </div>
                     {% else %}
                     <div class="text-center py-5">
-                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                        <h5>No Pending Gate Passes</h5>
-                        <p class="text-muted">All gate passes are processed.</p>
+                        <div class="empty-state-icon mb-3">
+                            <i class="fas fa-check-circle fa-4x text-success opacity-25"></i>
+                        </div>
+                        <h5 class="fw-bold text-muted mb-2">No Pending Gate Passes</h5>
+                        <p class="text-muted mb-0">All gate pass requests have been processed</p>
                     </div>
                     {% endif %}
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Success Toast -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert">
-        <div class="d-flex">
-            <div class="toast-body" id="toastMessage">
-                Operation completed successfully!
+    <!-- Legend Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body py-3">
+                    <div class="row g-3">
+                        <div class="col-auto">
+                            <span class="badge bg-success-gradient me-2 px-3 py-2">
+                                <i class="fas fa-check me-1"></i>Approve
+                            </span>
+                            <small class="text-muted">Approve the request</small>
+                        </div>
+                        <div class="col-auto">
+                            <span class="badge bg-danger-gradient me-2 px-3 py-2">
+                                <i class="fas fa-times me-1"></i>Reject
+                            </span>
+                            <small class="text-muted">Reject the request</small>
+                        </div>
+                        {% if session.role == 'department_head' %}
+                        <div class="col-auto">
+                            <span class="badge bg-warning-gradient me-2 px-3 py-2">
+                                <i class="fas fa-question-circle me-1"></i>Inquiry
+                            </span>
+                            <small class="text-muted">Mark for investigation</small>
+                        </div>
+                        {% endif %}
+                        <div class="col-auto">
+                            <span class="badge bg-primary-gradient me-2 px-3 py-2">
+                                <i class="fas fa-eye me-1"></i>View
+                            </span>
+                            <small class="text-muted">View details</small>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
         </div>
     </div>
 </div>
 
-<!-- Error Toast -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-    <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert">
-        <div class="d-flex">
-            <div class="toast-body" id="errorMessage">
-                Error occurred!
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+<!-- Toast Notifications -->
+<div class="toast-container position-fixed top-0 end-0 p-3">
+    <!-- Success Toast -->
+    <div id="successToast" class="toast border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-success text-white">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong class="me-auto">Success</strong>
+            <small>Just now</small>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            <div id="toastMessage">Operation completed successfully!</div>
+        </div>
+    </div>
+
+    <!-- Error Toast -->
+    <div id="errorToast" class="toast border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-danger text-white">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <strong class="me-auto">Error</strong>
+            <small>Just now</small>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            <div id="errorMessage">An error occurred!</div>
         </div>
     </div>
 </div>
+
+<style>
+/* Custom Styles */
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    --warning-gradient: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+    --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    --danger-gradient: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+}
+
+.stat-card {
+    border-radius: 15px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+}
+
+.bg-gradient-primary { background: var(--primary-gradient) !important; }
+.bg-gradient-success { background: var(--success-gradient) !important; }
+.bg-gradient-warning { background: var(--warning-gradient) !important; }
+.bg-gradient-info { background: var(--info-gradient) !important; }
+.bg-gradient-danger { background: var(--danger-gradient) !important; }
+
+.stat-icon-container {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.avatar-circle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    font-size: 18px;
+}
+
+.avatar-text {
+    line-height: 1;
+}
+
+.hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.user-row, .gatepass-row {
+    border-left: 4px solid transparent;
+}
+
+.user-row:hover {
+    border-left-color: #f7971e;
+    background-color: rgba(247, 151, 30, 0.05);
+}
+
+.gatepass-row:hover {
+    border-left-color: #4facfe;
+    background-color: rgba(79, 172, 254, 0.05);
+}
+
+.action-btn {
+    transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+    transform: scale(1.05);
+}
+
+.empty-state-icon {
+    opacity: 0.5;
+}
+
+.table th {
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table td {
+    vertical-align: middle;
+    padding: 1rem;
+}
+
+.badge {
+    font-weight: 500;
+    letter-spacing: 0.3px;
+}
+
+.btn-group .btn {
+    border-radius: 8px !important;
+    margin: 2px;
+}
+
+.btn-group .btn:first-child {
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+}
+
+.btn-group .btn:last-child {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+}
+
+.card {
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.08);
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    border-radius: 12px 12px 0 0 !important;
+}
+
+.toast {
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 768px) {
+    .stat-card .stat-icon-container {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .stat-card h2 {
+        font-size: 1.5rem;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+    }
+    
+    .btn-group .btn {
+        border-radius: 8px !important;
+        margin: 2px 0;
+    }
+}
+</style>
 {% endblock %}
 
 {% block scripts %}
@@ -211,10 +537,12 @@
 // User Approval Function
 function approveUser(userId, action) {
     const actionText = action === 'approve' ? 'Approve' : 'Reject';
-    const userText = 'this user';
+    const icon = action === 'approve' ? '✅' : '❌';
     
-    if (!confirm(`${actionText} ${userText}?`)) return;
+    if (!confirm(`${icon} ${actionText} this user?`)) return;
 
+    showLoading('Processing request...');
+    
     fetch(`/approve_user/${userId}/${action}`, {
         method: 'GET',
         headers: {
@@ -224,26 +552,36 @@ function approveUser(userId, action) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showToast(data.message || 'User processed successfully!');
+            showToast(data.message || 'User processed successfully!', 'success');
             setTimeout(() => location.reload(), 1500);
         } else {
-            showError(data.message || 'Error processing request');
+            showToast(data.message || 'Error processing request', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showError('Error processing request');
+        showToast('Error processing request', 'error');
     });
 }
 
 // Gate Pass Approval Function for Department Head
 function approveGatePass(passId, action) {
-    let actionText = action === 'approve' ? 'Approve' : 
-                    action === 'reject' ? 'Reject' : 
-                    'Mark for Inquiry';
+    let actionText, icon;
+    if (action === 'approve') {
+        actionText = 'Approve';
+        icon = '✅';
+    } else if (action === 'reject') {
+        actionText = 'Reject';
+        icon = '❌';
+    } else {
+        actionText = 'Mark for Inquiry';
+        icon = '❓';
+    }
     
-    if (!confirm(`${actionText} this gate pass?`)) return;
+    if (!confirm(`${icon} ${actionText} this gate pass?`)) return;
 
+    showLoading('Processing request...');
+    
     fetch(`/gate_pass/approve_gate_pass/${passId}/${action}`, {
         method: 'GET',
         headers: {
@@ -253,22 +591,24 @@ function approveGatePass(passId, action) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showToast(data.message || 'Gate pass processed successfully!');
+            showToast(data.message || 'Gate pass processed successfully!', 'success');
             setTimeout(() => location.reload(), 1500);
         } else {
-            showError(data.message || 'Error processing request');
+            showToast(data.message || 'Error processing request', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showError('Error processing request');
+        showToast('Error processing request', 'error');
     });
 }
 
 // Gate Pass Approval Function for System Admin (direct approval)
 function approveGatePassAdmin(passId) {
-    if (!confirm('Approve this gate pass as System Administrator?')) return;
+    if (!confirm('✅ Approve this gate pass as System Administrator?')) return;
 
+    showLoading('Processing approval...');
+    
     fetch(`/admin/approve_gate_pass/${passId}`, {
         method: 'POST',
         headers: {
@@ -279,38 +619,80 @@ function approveGatePassAdmin(passId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showToast(data.message || 'Gate pass approved successfully!');
+            showToast(data.message || 'Gate pass approved successfully!', 'success');
             setTimeout(() => location.reload(), 1500);
         } else {
-            showError(data.message || 'Error processing request');
+            showToast(data.message || 'Error processing request', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showError('Error processing request');
+        showToast('Error processing request', 'error');
     });
 }
 
-// Success Toast notification
-function showToast(message) {
-    const toast = document.getElementById('successToast');
-    const toastMessage = document.getElementById('toastMessage');
+// Show loading indicator
+function showLoading(message) {
+    // You can add a loading spinner here if needed
+    console.log('Loading:', message);
+}
+
+// Toast notification function
+function showToast(message, type = 'success') {
+    let toastElement, toastMessage;
     
+    if (type === 'error') {
+        toastElement = document.getElementById('errorToast');
+        toastMessage = document.getElementById('errorMessage');
+        
+        // Update header
+        toastElement.querySelector('.toast-header').className = 'toast-header bg-danger text-white';
+        toastElement.querySelector('.fa-check-circle')?.classList.replace('fa-check-circle', 'fa-exclamation-circle');
+    } else {
+        toastElement = document.getElementById('successToast');
+        toastMessage = document.getElementById('toastMessage');
+        
+        // Update header
+        toastElement.querySelector('.toast-header').className = 'toast-header bg-success text-white';
+        toastElement.querySelector('.fa-exclamation-circle')?.classList.replace('fa-exclamation-circle', 'fa-check-circle');
+    }
+    
+    // Update message and timestamp
     toastMessage.textContent = message;
+    const timeElement = toastElement.querySelector('small');
+    if (timeElement) {
+        const now = new Date();
+        timeElement.textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }
     
-    const bsToast = new bootstrap.Toast(toast);
+    // Show toast
+    const bsToast = new bootstrap.Toast(toastElement);
     bsToast.show();
 }
 
-// Error Toast notification
-function showError(message) {
-    const toast = document.getElementById('errorToast');
-    const errorMessage = document.getElementById('errorMessage');
-    
-    errorMessage.textContent = message;
-    
-    const bsToast = new bootstrap.Toast(toast);
-    bsToast.show();
-}
+// Auto-hide toasts after 5 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    const toasts = document.querySelectorAll('.toast');
+    toasts.forEach(toast => {
+        const bsToast = new bootstrap.Toast(toast, { delay: 5000 });
+        // Show on page load for demonstration (remove in production)
+        // bsToast.show();
+    });
+});
+
+// Add animation to table rows
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('.user-row, .gatepass-row');
+    rows.forEach((row, index) => {
+        row.style.opacity = '0';
+        row.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            row.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            row.style.opacity = '1';
+            row.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
 </script>
 {% endblock %}

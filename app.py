@@ -323,7 +323,8 @@ def approval_pending():
     
     return render_template('approval_pending.html', 
                          pending_users=pending_users, 
-                         pending_passes=pending_passes)
+                         pending_passes=pending_passes,
+                         now=datetime.now())
 
 @app.route('/approve_user/<int:user_id>/<action>')
 def approve_user(user_id, action):

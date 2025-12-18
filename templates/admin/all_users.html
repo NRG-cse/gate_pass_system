@@ -1,151 +1,259 @@
 {% extends "base.html" %}
 
+{% block page_title %}Manage Users{% endblock %}
+
 {% block content %}
-<div class="container-fluid p-4">
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <h4><i class="fas fa-users-cog"></i> Manage All Users</h4>
-                <div>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
-                        <i class="fas fa-user-plus"></i> Create User
-                    </button>
-                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left"></i> Dashboard
-                    </a>
-                </div>
-            </div>
-            <p class="text-muted">System Administrator: Manage all users including creation, approval, and deletion</p>
+<div class="container-fluid px-4 py-3">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-primary mb-1">
+                <i class="fas fa-users-cog me-2"></i>User Management
+            </h3>
+            <p class="text-muted mb-0">
+                <i class="fas fa-user-shield text-primary me-1"></i>System Administrator: Create, edit, approve, and manage all users
+            </p>
+        </div>
+        <div>
+            <button class="btn btn-primary btn-lg shadow-sm" data-bs-toggle="modal" data-bs-target="#createUserModal">
+                <i class="fas fa-user-plus me-2"></i>Create User
+            </button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-light btn-lg border ms-2">
+                <i class="fas fa-arrow-left me-2"></i>Dashboard
+            </a>
         </div>
     </div>
 
-    <!-- Create User Modal -->
-    <div class="modal fade" id="createUserModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title"><i class="fas fa-user-plus"></i> Create New User</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-5">
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-gradient-primary border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-users fa-2x text-white"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Total Users</h6>
+                            <h2 class="text-white mb-0">{{ users|length if users else 0 }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-gradient-warning border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-user-clock fa-2x text-white"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Pending</h6>
+                            <h2 class="text-white mb-0">{{ users|selectattr('status', 'equalto', 'pending')|list|length if users else 0 }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-gradient-success border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-user-check fa-2x text-white"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Active</h6>
+                            <h2 class="text-white mb-0">{{ users|selectattr('status', 'equalto', 'approved')|list|length if users else 0 }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-gradient-info border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-user-tie fa-2x text-white"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Department Heads</h6>
+                            <h2 class="text-white mb-0">{{ users|selectattr('role', 'equalto', 'department_head')|list|length if users else 0 }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create User Modal (Fixed - No page flicker) -->
+    <div class="modal fade" id="createUserModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-gradient-primary text-white">
+                    <h5 class="modal-title fw-bold">
+                        <i class="fas fa-user-plus me-2"></i>Create New User
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form id="createUserForm" method="POST" action="{{ url_for('admin.create_user') }}">
                     <div class="modal-body">
-                        <div class="row">
+                        <div class="row g-3">
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Username *</label>
-                                    <input type="text" class="form-control" name="username" required>
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="usernameInput" name="username" required placeholder="Username">
+                                    <label for="usernameInput">Username *</label>
+                                    <div class="form-text">Unique username for login</div>
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Password *</label>
-                                    <input type="password" class="form-control" name="password" required>
+                                <div class="form-floating">
+                                    <input type="password" class="form-control" id="passwordInput" name="password" required placeholder="Password">
+                                    <label for="passwordInput">Password *</label>
+                                    <div class="form-text">Minimum 6 characters</div>
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Full Name *</label>
-                                    <input type="text" class="form-control" name="name" required>
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="nameInput" name="name" required placeholder="Full Name">
+                                    <label for="nameInput">Full Name *</label>
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Designation *</label>
-                                    <input type="text" class="form-control" name="designation" required>
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="designationInput" name="designation" required placeholder="Designation">
+                                    <label for="designationInput">Designation *</label>
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Division *</label>
+                                <div class="form-floating">
                                     <select class="form-select" id="divisionSelect" required>
                                         <option value="">Select Division</option>
                                         {% for division in divisions %}
                                         <option value="{{ division.id }}">{{ division.name }}</option>
                                         {% endfor %}
                                     </select>
+                                    <label for="divisionSelect">Division *</label>
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Department *</label>
+                                <div class="form-floating">
                                     <select class="form-select" name="department_id" id="departmentSelect" required>
-                                        <option value="">Select Division First</option>
+                                        <option value="">Select Department</option>
                                     </select>
+                                    <label for="departmentSelect">Department *</label>
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Role *</label>
-                                    <!-- UPDATED: Added system_admin role -->
-                                    <select class="form-select" name="role" required>
-                                        <option value="user">User</option>
+                                <div class="form-floating">
+                                    <select class="form-select" name="role" id="roleSelect" required>
+                                        <option value="user">Regular User</option>
                                         <option value="department_head">Department Head</option>
                                         <option value="store_manager">Store Manager</option>
-                                        <option value="security">Security</option>
+                                        <option value="security">Security Personnel</option>
                                         <option value="system_admin">System Administrator</option>
                                     </select>
+                                    <label for="roleSelect">Role *</label>
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Phone</label>
-                                    <input type="tel" class="form-control" name="phone">
+                                <div class="form-floating">
+                                    <input type="tel" class="form-control" id="phoneInput" name="phone" placeholder="Phone">
+                                    <label for="phoneInput">Phone Number</label>
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Email</label>
-                                    <input type="email" class="form-control" name="email">
+                                <div class="form-floating">
+                                    <input type="email" class="form-control" id="emailInput" name="email" placeholder="Email">
+                                    <label for="emailInput">Email Address</label>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Create User</button>
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Create User
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Users List -->
-    <div class="card">
-        <div class="card-header bg-secondary text-white">
-            <h5 class="mb-0"><i class="fas fa-users"></i> All Users ({{ users|length }})</h5>
+    <!-- Users Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="fas fa-users me-2"></i>All Users ({{ users|length if users else 0 }})
+                </h5>
+                <div class="input-group w-auto">
+                    <span class="input-group-text bg-light border-end-0">
+                        <i class="fas fa-search text-muted"></i>
+                    </span>
+                    <input type="text" class="form-control border-start-0" id="userSearch" placeholder="Search users...">
+                </div>
+            </div>
         </div>
-        <div class="card-body">
+        <div class="card-body p-0">
             {% if users %}
             <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
+                <table class="table table-hover align-middle mb-0" id="usersTable">
+                    <thead class="table-light">
                         <tr>
-                            <th>ID</th>
-                            <th>Username</th>
-                            <th>Name</th>
-                            <th>Designation</th>
-                            <th>Division</th>
+                            <th class="ps-4">User Details</th>
                             <th>Department</th>
                             <th>Role</th>
                             <th>Status</th>
-                            <th>Created</th>
-                            <th>Actions</th>
+                            <th class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for user in users %}
-                        <tr>
-                            <td>{{ user.id }}</td>
-                            <td>
-                                <strong>{{ user.username }}</strong>
-                                {% if user.email %}
-                                <br><small class="text-muted">{{ user.email }}</small>
-                                {% endif %}
+                        <tr class="user-row" data-user-id="{{ user.id }}">
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-circle me-3 bg-{{ 
+                                        'primary' if user.role == 'system_admin' else
+                                        'info' if user.role == 'department_head' else
+                                        'warning' if user.role == 'store_manager' else
+                                        'dark' if user.role == 'security' else
+                                        'secondary'
+                                    }}-gradient">
+                                        <span class="avatar-text">{{ user.name[0]|upper }}</span>
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold mb-0">{{ user.name }}</h6>
+                                        <small class="text-muted d-block">
+                                            <i class="fas fa-user me-1"></i>{{ user.username }}
+                                        </small>
+                                        <small class="text-muted d-block">
+                                            <i class="fas fa-briefcase me-1"></i>{{ user.designation }}
+                                        </small>
+                                        {% if user.email %}
+                                        <small class="text-muted d-block">
+                                            <i class="fas fa-envelope me-1"></i>{{ user.email }}
+                                        </small>
+                                        {% endif %}
+                                    </div>
+                                </div>
                             </td>
-                            <td>{{ user.name }}</td>
-                            <td>{{ user.designation }}</td>
-                            <td>{{ user.division_name or '-' }}</td>
-                            <td>{{ user.department_name or '-' }}</td>
+                            <td>
+                                <div>
+                                    <span class="badge bg-light text-dark border">
+                                        <i class="fas fa-building me-1"></i>{{ user.department_name or '-' }}
+                                    </span>
+                                    {% if user.division_name %}
+                                    <br>
+                                    <small class="text-muted mt-1 d-block">
+                                        <i class="fas fa-sitemap me-1"></i>{{ user.division_name }}
+                                    </small>
+                                    {% endif %}
+                                </div>
+                            </td>
                             <td>
                                 <span class="badge bg-{{ 
                                     'primary' if user.role == 'system_admin' else
@@ -153,8 +261,15 @@
                                     'warning' if user.role == 'store_manager' else
                                     'dark' if user.role == 'security' else
                                     'secondary'
-                                }}">
-                                    {{ user.role|title }}
+                                }}-gradient py-2 px-3">
+                                    <i class="fas fa-{{ 
+                                        'user-shield' if user.role == 'system_admin' else
+                                        'user-tie' if user.role == 'department_head' else
+                                        'store' if user.role == 'store_manager' else
+                                        'shield-alt' if user.role == 'security' else
+                                        'user'
+                                    }} me-1"></i>
+                                    {{ user.role|replace('_', ' ')|title }}
                                 </span>
                             </td>
                             <td>
@@ -163,201 +278,375 @@
                                     'warning' if user.status == 'pending' else
                                     'danger' if user.status == 'rejected' else
                                     'secondary'
-                                }}">
+                                }}-gradient py-2 px-3">
+                                    <i class="fas fa-{{ 
+                                        'check-circle' if user.status == 'approved' else
+                                        'clock' if user.status == 'pending' else
+                                        'times-circle' if user.status == 'rejected' else
+                                        'ban'
+                                    }} me-1"></i>
                                     {{ user.status|title }}
                                 </span>
+                                <br>
+                                <small class="text-muted mt-1 d-block">
+                                    <i class="fas fa-calendar me-1"></i>{{ user.created_at.strftime('%d %b, %Y') }}
+                                </small>
                             </td>
-                            <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
-                            <td>
-                                <div class="btn-group btn-group-sm">
-                                    <button type="button" class="btn btn-outline-primary" 
-                                            data-bs-toggle="modal" data-bs-target="#editUserModal{{ user.id }}">
+                            <td class="text-center">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-outline-primary btn-sm px-3" 
+                                            onclick="openEditModal({{ user.id }})"
+                                            title="Edit User">
                                         <i class="fas fa-edit"></i>
                                     </button>
+                                    
                                     {% if user.status == 'pending' %}
-                                    <button onclick="approveUser({{ user.id }}, 'approve')" 
-                                            class="btn btn-outline-success" title="Approve">
+                                    <button type="button" class="btn btn-outline-success btn-sm px-3" 
+                                            onclick="approveUserFromList({{ user.id }}, 'approve')"
+                                            title="Approve User">
                                         <i class="fas fa-check"></i>
                                     </button>
-                                    <button onclick="approveUser({{ user.id }}, 'reject')" 
-                                            class="btn btn-outline-danger" title="Reject">
+                                    <button type="button" class="btn btn-outline-danger btn-sm px-3" 
+                                            onclick="approveUserFromList({{ user.id }}, 'reject')"
+                                            title="Reject User">
                                         <i class="fas fa-times"></i>
                                     </button>
                                     {% endif %}
-                                    <button type="button" class="btn btn-outline-danger"
-                                            data-bs-toggle="modal" data-bs-target="#deleteUserModal{{ user.id }}">
+                                    
+                                    <button type="button" class="btn btn-outline-danger btn-sm px-3" 
+                                            onclick="deleteUser({{ user.id }}, '{{ user.name }}')"
+                                            title="Delete User">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
                             </td>
                         </tr>
-
-                        <!-- Edit User Modal -->
-                        <div class="modal fade" id="editUserModal{{ user.id }}" tabindex="-1">
-                            <div class="modal-dialog modal-lg">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title">Edit User: {{ user.name }}</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <form class="edit-user-form" data-user-id="{{ user.id }}">
-                                        <div class="modal-body">
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Full Name *</label>
-                                                        <input type="text" class="form-control" name="name" 
-                                                               value="{{ user.name }}" required>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Designation *</label>
-                                                        <input type="text" class="form-control" name="designation" 
-                                                               value="{{ user.designation }}" required>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Division *</label>
-                                                        <select class="form-select edit-division-select" required>
-                                                            <option value="">Select Division</option>
-                                                            {% for division in divisions %}
-                                                            <option value="{{ division.id }}" 
-                                                                    {% if user.division_id == division.id %}selected{% endif %}>
-                                                                {{ division.name }}
-                                                            </option>
-                                                            {% endfor %}
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Department *</label>
-                                                        <select class="form-select edit-department-select" name="department_id" required>
-                                                            <option value="">Select Department</option>
-                                                            {% for dept in departments %}
-                                                            {% if dept.division_id == user.division_id %}
-                                                            <option value="{{ dept.id }}" 
-                                                                    {% if user.department_id == dept.id %}selected{% endif %}>
-                                                                {{ dept.name }}
-                                                            </option>
-                                                            {% endif %}
-                                                            {% endfor %}
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Role *</label>
-                                                        <!-- UPDATED: Added system_admin role -->
-                                                        <select class="form-select" name="role" required>
-                                                            <option value="user" {% if user.role == 'user' %}selected{% endif %}>User</option>
-                                                            <option value="department_head" {% if user.role == 'department_head' %}selected{% endif %}>Department Head</option>
-                                                            <option value="store_manager" {% if user.role == 'store_manager' %}selected{% endif %}>Store Manager</option>
-                                                            <option value="security" {% if user.role == 'security' %}selected{% endif %}>Security</option>
-                                                            <option value="system_admin" {% if user.role == 'system_admin' %}selected{% endif %}>System Administrator</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Status *</label>
-                                                        <select class="form-select" name="status" required>
-                                                            <option value="pending" {% if user.status == 'pending' %}selected{% endif %}>Pending</option>
-                                                            <option value="approved" {% if user.status == 'approved' %}selected{% endif %}>Approved</option>
-                                                            <option value="rejected" {% if user.status == 'rejected' %}selected{% endif %}>Rejected</option>
-                                                            <option value="inactive" {% if user.status == 'inactive' %}selected{% endif %}>Inactive</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Phone</label>
-                                                        <input type="tel" class="form-control" name="phone" 
-                                                               value="{{ user.phone or '' }}">
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Email</label>
-                                                        <input type="email" class="form-control" name="email" 
-                                                               value="{{ user.email or '' }}">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                            <button type="submit" class="btn btn-primary">Save Changes</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Delete User Modal -->
-                        <div class="modal fade" id="deleteUserModal{{ user.id }}" tabindex="-1">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-header bg-danger text-white">
-                                        <h5 class="modal-title">Delete User</h5>
-                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <form class="delete-user-form" data-user-id="{{ user.id }}">
-                                        <div class="modal-body">
-                                            <p>Are you sure you want to delete user <strong>{{ user.name }}</strong>?</p>
-                                            <p class="text-danger"><i class="fas fa-exclamation-triangle"></i> Warning: This action cannot be undone!</p>
-                                            <p class="text-warning"><i class="fas fa-exclamation-circle"></i> Note: Cannot delete user with existing gate passes.</p>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                            <button type="submit" class="btn btn-danger">Delete User</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+            
+            <!-- Pagination -->
+            <div class="d-flex justify-content-between align-items-center p-3 border-top">
+                <div class="text-muted">
+                    Showing <strong>{{ users|length if users else 0 }}</strong> users
+                </div>
+                <nav>
+                    <ul class="pagination mb-0">
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1">Previous</a>
+                        </li>
+                        <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                        <li class="page-item"><a class="page-link" href="#">2</a></li>
+                        <li class="page-item"><a class="page-link" href="#">3</a></li>
+                        <li class="page-item">
+                            <a class="page-link" href="#">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            
             {% else %}
             <div class="text-center py-5">
-                <i class="fas fa-users fa-3x text-muted mb-3"></i>
-                <h5>No Users Found</h5>
-                <p class="text-muted">Create your first user to get started.</p>
+                <div class="empty-state-icon mb-3">
+                    <i class="fas fa-users fa-4x text-muted opacity-25"></i>
+                </div>
+                <h5 class="fw-bold text-muted mb-2">No Users Found</h5>
+                <p class="text-muted mb-4">Create your first user to get started</p>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
+                    <i class="fas fa-user-plus me-2"></i>Create First User
+                </button>
             </div>
             {% endif %}
         </div>
     </div>
 </div>
 
-<!-- Success Toast -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert">
-        <div class="d-flex">
-            <div class="toast-body" id="toastMessage">
-                Operation completed successfully!
+<!-- Edit User Modal (Fixed - No page flicker) -->
+<div class="modal fade" id="editUserModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-gradient-info text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-user-edit me-2"></i>Edit User
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            <form id="editUserForm">
+                <input type="hidden" id="editUserId" name="user_id">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="editName" name="name" required placeholder="Full Name">
+                                <label for="editName">Full Name *</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="editDesignation" name="designation" required placeholder="Designation">
+                                <label for="editDesignation">Designation *</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <select class="form-select" id="editDivision" required>
+                                    <option value="">Select Division</option>
+                                    {% for division in divisions %}
+                                    <option value="{{ division.id }}">{{ division.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <label for="editDivision">Division *</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <select class="form-select" name="department_id" id="editDepartment" required>
+                                    <option value="">Select Department</option>
+                                </select>
+                                <label for="editDepartment">Department *</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <select class="form-select" name="role" id="editRole" required>
+                                    <option value="user">Regular User</option>
+                                    <option value="department_head">Department Head</option>
+                                    <option value="store_manager">Store Manager</option>
+                                    <option value="security">Security Personnel</option>
+                                    <option value="system_admin">System Administrator</option>
+                                </select>
+                                <label for="editRole">Role *</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <select class="form-select" name="status" id="editStatus" required>
+                                    <option value="pending">Pending</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="rejected">Rejected</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                                <label for="editStatus">Status *</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="tel" class="form-control" id="editPhone" name="phone" placeholder="Phone">
+                                <label for="editPhone">Phone Number</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="email" class="form-control" id="editEmail" name="email" placeholder="Email">
+                                <label for="editEmail">Email Address</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-info">
+                        <i class="fas fa-save me-2"></i>Save Changes
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
+<!-- Toast Notifications -->
+<div class="toast-container position-fixed top-0 end-0 p-3">
+    <!-- Success Toast -->
+    <div id="successToast" class="toast border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-success text-white">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong class="me-auto">Success</strong>
+            <small>Just now</small>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            <div id="toastMessage">Operation completed successfully!</div>
+        </div>
+    </div>
+
+    <!-- Error Toast -->
+    <div id="errorToast" class="toast border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-danger text-white">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <strong class="me-auto">Error</strong>
+            <small>Just now</small>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            <div id="errorMessage">An error occurred!</div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Custom Styles */
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    --warning-gradient: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+    --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    --danger-gradient: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+}
+
+.stat-card {
+    border-radius: 15px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+}
+
+.bg-gradient-primary { background: var(--primary-gradient) !important; }
+.bg-gradient-success { background: var(--success-gradient) !important; }
+.bg-gradient-warning { background: var(--warning-gradient) !important; }
+.bg-gradient-info { background: var(--info-gradient) !important; }
+.bg-gradient-danger { background: var(--danger-gradient) !important; }
+.bg-dark-gradient { background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%) !important; }
+
+.stat-icon-container {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.avatar-circle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    font-size: 18px;
+}
+
+.avatar-text {
+    line-height: 1;
+}
+
+.hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.user-row {
+    border-left: 4px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.user-row:hover {
+    border-left-color: #667eea;
+    background-color: rgba(102, 126, 234, 0.05);
+}
+
+.table th {
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+    background-color: #f8f9fa;
+}
+
+.table td {
+    vertical-align: middle;
+    padding: 1rem;
+}
+
+.badge {
+    font-weight: 500;
+    letter-spacing: 0.3px;
+}
+
+.btn-group .btn {
+    border-radius: 8px !important;
+    margin: 2px;
+    transition: all 0.2s ease;
+}
+
+.btn-group .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.card {
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.08);
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    border-radius: 12px 12px 0 0 !important;
+}
+
+.modal-content {
+    border-radius: 15px;
+    border: none;
+}
+
+.form-floating > .form-control,
+.form-floating > .form-select {
+    height: calc(3.5rem + 2px);
+    line-height: 1.25;
+}
+
+.form-floating > label {
+    padding: 1rem 0.75rem;
+}
+
+.empty-state-icon {
+    opacity: 0.5;
+}
+
+@media (max-width: 768px) {
+    .stat-card .stat-icon-container {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .stat-card h2 {
+        font-size: 1.5rem;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+    }
+    
+    .btn-group .btn {
+        border-radius: 8px !important;
+        margin: 2px 0;
+        width: 100%;
+    }
+}
+</style>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Department filtering based on division
+// Department filtering for Create Modal
 document.getElementById('divisionSelect').addEventListener('change', function() {
     const divisionId = this.value;
     const deptSelect = document.getElementById('departmentSelect');
     
-    // Clear existing options
     deptSelect.innerHTML = '<option value="">Select Department</option>';
     
     if (divisionId) {
-        // This would typically be an AJAX call, but for now we'll use available data
         const departments = {{ departments|tojson }};
         const filteredDepts = departments.filter(dept => dept.division_id == divisionId);
         
@@ -370,29 +659,77 @@ document.getElementById('divisionSelect').addEventListener('change', function() 
     }
 });
 
-// Similar for edit modals
-document.querySelectorAll('.edit-division-select').forEach(select => {
-    select.addEventListener('change', function() {
-        const modal = this.closest('.modal');
-        const deptSelect = modal.querySelector('.edit-department-select');
-        const divisionId = this.value;
+// Department filtering for Edit Modal
+document.getElementById('editDivision').addEventListener('change', function() {
+    const divisionId = this.value;
+    const deptSelect = document.getElementById('editDepartment');
+    
+    deptSelect.innerHTML = '<option value="">Select Department</option>';
+    
+    if (divisionId) {
+        const departments = {{ departments|tojson }};
+        const filteredDepts = departments.filter(dept => dept.division_id == divisionId);
         
-        // Clear existing options
-        deptSelect.innerHTML = '<option value="">Select Department</option>';
-        
-        if (divisionId) {
-            const departments = {{ departments|tojson }};
-            const filteredDepts = departments.filter(dept => dept.division_id == divisionId);
-            
-            filteredDepts.forEach(dept => {
-                const option = document.createElement('option');
-                option.value = dept.id;
-                option.textContent = dept.name;
-                deptSelect.appendChild(option);
-            });
-        }
+        filteredDepts.forEach(dept => {
+            const option = document.createElement('option');
+            option.value = dept.id;
+            option.textContent = dept.name;
+            deptSelect.appendChild(option);
+        });
+    }
+});
+
+// Search functionality
+document.getElementById('userSearch').addEventListener('keyup', function() {
+    const searchTerm = this.value.toLowerCase();
+    const rows = document.querySelectorAll('#usersTable tbody tr');
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm) ? '' : 'none';
     });
 });
+
+// Open Edit Modal (FIXED - No page flicker)
+function openEditModal(userId) {
+    // Fetch user data via AJAX
+    fetch(`/admin/get_user/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const user = data.user;
+                
+                // Fill form fields
+                document.getElementById('editUserId').value = user.id;
+                document.getElementById('editName').value = user.name;
+                document.getElementById('editDesignation').value = user.designation;
+                document.getElementById('editDivision').value = user.division_id;
+                document.getElementById('editRole').value = user.role;
+                document.getElementById('editStatus').value = user.status;
+                document.getElementById('editPhone').value = user.phone || '';
+                document.getElementById('editEmail').value = user.email || '';
+                
+                // Trigger department loading
+                const divisionEvent = new Event('change');
+                document.getElementById('editDivision').dispatchEvent(divisionEvent);
+                
+                // Set department after a small delay to ensure options are loaded
+                setTimeout(() => {
+                    document.getElementById('editDepartment').value = user.department_id;
+                }, 100);
+                
+                // Show modal
+                const editModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+                editModal.show();
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error loading user data', 'error');
+        });
+}
 
 // Create User Form
 document.getElementById('createUserForm').addEventListener('submit', function(e) {
@@ -407,10 +744,10 @@ document.getElementById('createUserForm').addEventListener('submit', function(e)
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showToast(data.message);
+            showToast(data.message, 'success');
             setTimeout(() => {
                 location.reload();
-            }, 1000);
+            }, 1500);
         } else {
             showToast(data.message, 'error');
         }
@@ -422,64 +759,43 @@ document.getElementById('createUserForm').addEventListener('submit', function(e)
 });
 
 // Edit User Form
-document.querySelectorAll('.edit-user-form').forEach(form => {
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const userId = this.dataset.userId;
-        const formData = new FormData(this);
-        
-        fetch(`/admin/update_user/${userId}`, {
-            method: 'POST',
-            body: formData
-        })
+document.getElementById('editUserForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const userId = document.getElementById('editUserId').value;
+    const formData = new FormData(this);
+    
+    fetch(`/admin/update_user/${userId}`, {
+        method: 'POST',
+        body: formData
+    })
     .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showToast(data.message);
-                setTimeout(() => {
-                    location.reload();
-                }, 1000);
-            } else {
-                showToast(data.message, 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast('Error updating user!', 'error');
-        });
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            // Close modal
+            const editModal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
+            editModal.hide();
+            // Reload page after delay
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showToast(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error updating user!', 'error');
     });
 });
 
-// Delete User Form
-document.querySelectorAll('.delete-user-form').forEach(form => {
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const userId = this.dataset.userId;
-        
-        fetch(`/admin/delete_user/${userId}`, {
-            method: 'POST'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showToast(data.message);
-                setTimeout(() => {
-                    location.reload();
-                }, 1000);
-            } else {
-                showToast(data.message, 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast('Error deleting user!', 'error');
-        });
-    });
-});
-
-// User approval function (for pending users in list)
-function approveUser(userId, action) {
-    if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} this user?`)) return;
+// User approval function
+function approveUserFromList(userId, action) {
+    const actionText = action === 'approve' ? 'Approve' : 'Reject';
+    const icon = action === 'approve' ? '✅' : '❌';
+    
+    if (!confirm(`${icon} ${actionText} this user?`)) return;
 
     fetch(`/approve_user/${userId}/${action}`, {
         method: 'GET'
@@ -487,8 +803,8 @@ function approveUser(userId, action) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showToast(data.message);
-            setTimeout(() => location.reload(), 1000);
+            showToast(data.message, 'success');
+            setTimeout(() => location.reload(), 1500);
         } else {
             showToast(data.message, 'error');
         }
@@ -499,23 +815,74 @@ function approveUser(userId, action) {
     });
 }
 
-// Toast notification
+// Delete User function
+function deleteUser(userId, userName) {
+    if (!confirm(`❌ Are you sure you want to delete user "${userName}"? This action cannot be undone!`)) return;
+
+    fetch(`/admin/delete_user/${userId}`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error deleting user!', 'error');
+    });
+}
+
+// Toast notification function
 function showToast(message, type = 'success') {
-    const toast = document.getElementById('successToast');
-    const toastMessage = document.getElementById('toastMessage');
-    
-    toastMessage.textContent = message;
+    let toastElement, toastMessage;
     
     if (type === 'error') {
-        toast.classList.remove('bg-success');
-        toast.classList.add('bg-danger');
+        toastElement = document.getElementById('errorToast');
+        toastMessage = document.getElementById('errorMessage');
+        
+        // Update header
+        toastElement.querySelector('.toast-header').className = 'toast-header bg-danger text-white';
+        toastElement.querySelector('.fa-check-circle')?.classList.replace('fa-check-circle', 'fa-exclamation-circle');
     } else {
-        toast.classList.remove('bg-danger');
-        toast.classList.add('bg-success');
+        toastElement = document.getElementById('successToast');
+        toastMessage = document.getElementById('toastMessage');
+        
+        // Update header
+        toastElement.querySelector('.toast-header').className = 'toast-header bg-success text-white';
+        toastElement.querySelector('.fa-exclamation-circle')?.classList.replace('fa-exclamation-circle', 'fa-check-circle');
     }
     
-    const bsToast = new bootstrap.Toast(toast);
+    // Update message and timestamp
+    toastMessage.textContent = message;
+    const timeElement = toastElement.querySelector('small');
+    if (timeElement) {
+        const now = new Date();
+        timeElement.textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }
+    
+    // Show toast
+    const bsToast = new bootstrap.Toast(toastElement);
     bsToast.show();
 }
+
+// Add animation to table rows
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('.user-row');
+    rows.forEach((row, index) => {
+        row.style.opacity = '0';
+        row.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            row.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            row.style.opacity = '1';
+            row.style.transform = 'translateY(0)';
+        }, index * 50);
+    });
+});
 </script>
 {% endblock %}

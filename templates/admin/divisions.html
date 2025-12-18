@@ -1,170 +1,738 @@
 {% extends "base.html" %}
 
+{% block page_title %}Manage Divisions{% endblock %}
+
 {% block content %}
 <div class="container-fluid p-4">
+    <!-- Header -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
-                <h4><i class="fas fa-sitemap"></i> Manage Divisions</h4>
-                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary">
-                    <i class="fas fa-arrow-left"></i> Back to Dashboard
-                </a>
+                <h3 class="fw-bold text-primary">
+                    <i class="fas fa-sitemap me-2"></i>Manage Divisions
+                </h3>
+                <div>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary btn-lg">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                </div>
             </div>
-            <p class="text-muted">Create and manage divisions (No duplicate division names allowed)</p>
+            <p class="text-muted mb-0">
+                <i class="fas fa-info-circle me-2"></i>
+                Create and manage divisions. Division names must be unique.
+            </p>
         </div>
     </div>
 
-    <!-- Create Division Form -->
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="fas fa-plus-circle"></i> Create New Division</h5>
-        </div>
-        <div class="card-body">
-            <form method="POST">
-                <input type="hidden" name="action" value="create">
-                <div class="row">
-                    <div class="col-md-8">
-                        <div class="mb-3">
-                            <label class="form-label">Division Name *</label>
-                            <input type="text" class="form-control" name="name" required 
-                                   placeholder="Enter division name">
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-5">
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-gradient-primary border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-sitemap fa-2x text-white"></i>
                         </div>
-                    </div>
-                    <div class="col-md-12">
-                        <div class="mb-3">
-                            <label class="form-label">Description</label>
-                            <textarea class="form-control" name="description" rows="2" 
-                                      placeholder="Optional description"></textarea>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Total Divisions</h6>
+                            <h2 class="text-white mb-0">{{ divisions|length }}</h2>
                         </div>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save"></i> Create Division
-                </button>
-            </form>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-gradient-success border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-check-circle fa-2x text-white"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Active Divisions</h6>
+                            <h2 class="text-white mb-0">{{ divisions|selectattr('status', 'equalto', 'active')|list|length }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-gradient-warning border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-building fa-2x text-white"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Departments</h6>
+                            <h2 class="text-white mb-0">{{ total_departments if total_departments else 0 }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-gradient-info border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-users fa-2x text-white"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Users</h6>
+                            <h2 class="text-white mb-0">{{ total_users if total_users else 0 }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Divisions List -->
-    <div class="card">
-        <div class="card-header bg-secondary text-white">
-            <h5 class="mb-0"><i class="fas fa-list"></i> All Divisions ({{ divisions|length }})</h5>
+    <!-- Main Content -->
+    <div class="row g-4">
+        <!-- Create Division Card -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="fw-bold mb-0 text-primary">
+                        <i class="fas fa-plus-circle me-2"></i>
+                        Create New Division
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="createDivisionForm" method="POST" class="needs-validation" novalidate>
+                        <input type="hidden" name="action" value="create">
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Division Name *</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-sitemap"></i></span>
+                                <input type="text" class="form-control form-control-lg" 
+                                       name="name" required placeholder="e.g., Administration, Production">
+                                <div class="invalid-feedback">
+                                    Please enter division name.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Description</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-file-alt"></i></span>
+                                <textarea class="form-control form-control-lg" name="description" 
+                                          rows="4" placeholder="Optional division description..."></textarea>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg w-100 py-3">
+                            <i class="fas fa-save me-2"></i>Create Division
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            {% if divisions %}
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Division Name</th>
-                            <th>Description</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for division in divisions %}
-                        <tr>
-                            <td>{{ division.id }}</td>
-                            <td>
-                                <strong>{{ division.name }}</strong>
-                            </td>
-                            <td>{{ division.description or '-' }}</td>
-                            <td>
-                                <span class="badge bg-{{ 'success' if division.status == 'active' else 'secondary' }}">
-                                    {{ division.status|title }}
-                                </span>
-                            </td>
-                            <td>{{ division.created_at.strftime('%Y-%m-%d') }}</td>
-                            <td>
-                                <div class="btn-group btn-group-sm">
-                                    <button type="button" class="btn btn-outline-primary" 
-                                            data-bs-toggle="modal" data-bs-target="#editModal{{ division.id }}">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-outline-danger"
-                                            data-bs-toggle="modal" data-bs-target="#deleteModal{{ division.id }}">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
 
-                        <!-- Edit Modal -->
-                        <div class="modal fade" id="editModal{{ division.id }}" tabindex="-1">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title">Edit Division</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <form method="POST">
-                                        <input type="hidden" name="action" value="update">
-                                        <input type="hidden" name="id" value="{{ division.id }}">
-                                        <div class="modal-body">
-                                            <div class="mb-3">
-                                                <label class="form-label">Division Name *</label>
-                                                <input type="text" class="form-control" name="name" 
-                                                       value="{{ division.name }}" required>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label">Description</label>
-                                                <textarea class="form-control" name="description" rows="3">{{ division.description }}</textarea>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label">Status</label>
-                                                <select class="form-select" name="status">
-                                                    <option value="active" {% if division.status == 'active' %}selected{% endif %}>Active</option>
-                                                    <option value="inactive" {% if division.status == 'inactive' %}selected{% endif %}>Inactive</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                            <button type="submit" class="btn btn-primary">Save Changes</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
+        <!-- Divisions List Card -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0 text-primary">
+                            <i class="fas fa-list me-2"></i>
+                            All Divisions ({{ divisions|length }})
+                        </h5>
+                        <div>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="refreshTable()" title="Refresh">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
                         </div>
-
-                        <!-- Delete Modal -->
-                        <div class="modal fade" id="deleteModal{{ division.id }}" tabindex="-1">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-header bg-danger text-white">
-                                        <h5 class="modal-title">Delete Division</h5>
-                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <form method="POST">
-                                        <input type="hidden" name="action" value="delete">
-                                        <input type="hidden" name="id" value="{{ division.id }}">
-                                        <div class="modal-body">
-                                            <p>Are you sure you want to delete division <strong>{{ division.name }}</strong>?</p>
-                                            <p class="text-danger"><i class="fas fa-exclamation-triangle"></i> Warning: This action cannot be undone!</p>
+                    </div>
+                </div>
+                
+                <div class="card-body p-0">
+                    {% if divisions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Division Details</th>
+                                    <th class="text-center">Departments</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for division in divisions %}
+                                <tr class="division-row hover-lift" data-division-id="{{ division.id }}">
+                                    <td class="ps-4">
+                                        <div>
+                                            <h6 class="fw-bold mb-1 text-dark">
+                                                <i class="fas fa-sitemap me-2"></i>{{ division.name }}
+                                            </h6>
+                                            {% if division.description %}
+                                            <p class="text-muted mb-1 small">
+                                                <i class="fas fa-align-left me-1"></i>
+                                                {{ division.description[:80] }}{% if division.description|length > 80 %}...{% endif %}
+                                            </p>
+                                            {% endif %}
+                                            <small class="text-muted">
+                                                <i class="fas fa-calendar me-1"></i>
+                                                Created: {{ division.created_at.strftime('%d %b, %Y') }}
+                                            </small>
                                         </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                            <button type="submit" class="btn btn-danger">Delete Division</button>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="department-count">
+                                            <span class="badge bg-info rounded-pill px-3 py-2">
+                                                <i class="fas fa-building me-1"></i>
+                                                {{ division.department_count if division.department_count else 0 }}
+                                            </span>
                                         </div>
-                                    </form>
-                                </div>
-                            </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="status-badge">
+                                            {% if division.status == 'active' %}
+                                            <span class="badge bg-success-gradient py-2 px-3">
+                                                <i class="fas fa-check-circle me-1"></i>Active
+                                            </span>
+                                            {% else %}
+                                            <span class="badge bg-secondary-gradient py-2 px-3">
+                                                <i class="fas fa-ban me-1"></i>Inactive
+                                            </span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button type="button" class="btn btn-outline-primary px-3 action-btn"
+                                                    onclick="editDivision({{ division.id }})"
+                                                    title="Edit Division">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-warning px-3 action-btn"
+                                                    onclick="toggleDivisionStatus({{ division.id }}, '{{ division.status }}')"
+                                                    title="Toggle Status">
+                                                <i class="fas fa-toggle-{{ 'on' if division.status == 'active' else 'off' }}"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger px-3 action-btn"
+                                                    onclick="deleteDivision({{ division.id }}, '{{ division.name }}')"
+                                                    title="Delete Division">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <div class="empty-state-icon mb-3">
+                            <i class="fas fa-sitemap fa-4x text-primary opacity-25"></i>
                         </div>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                        <h5 class="fw-bold text-muted mb-2">No Divisions Found</h5>
+                        <p class="text-muted mb-0">Create your first division to get started.</p>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-            {% else %}
-            <div class="text-center py-5">
-                <i class="fas fa-sitemap fa-3x text-muted mb-3"></i>
-                <h5>No Divisions Found</h5>
-                <p class="text-muted">Create your first division to get started.</p>
-            </div>
-            {% endif %}
         </div>
     </div>
 </div>
+
+<!-- Edit Division Modal (Dynamic) -->
+<div class="modal fade" id="editDivisionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>Edit Division
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editDivisionForm" method="POST" class="needs-validation" novalidate>
+                <input type="hidden" name="action" value="update">
+                <input type="hidden" id="editDivisionId" name="id">
+                
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Division Name *</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-sitemap"></i></span>
+                                <input type="text" class="form-control form-control-lg" 
+                                       id="editDivisionName" name="name" required>
+                                <div class="invalid-feedback">
+                                    Division name is required.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Description</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-align-left"></i></span>
+                                <textarea class="form-control form-control-lg" id="editDivisionDescription" 
+                                          name="description" rows="4"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Status</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-toggle-on"></i></span>
+                                <select class="form-select form-control-lg" id="editDivisionStatus" name="status">
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-lg" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save me-2"></i>Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteDivisionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Delete Division
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="deleteDivisionForm" method="POST">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" id="deleteDivisionId" name="id">
+                
+                <div class="modal-body text-center">
+                    <div class="alert-icon mb-3">
+                        <i class="fas fa-trash-alt fa-4x text-danger"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3" id="deleteDivisionName"></h4>
+                    <p class="text-muted">Are you sure you want to delete this division?</p>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>Warning:</strong> This action cannot be undone!
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-lg" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-danger btn-lg">
+                        <i class="fas fa-trash-alt me-2"></i>Delete Division
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notifications -->
+<div class="toast-container position-fixed top-0 end-0 p-3">
+    <div id="successToast" class="toast border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-success text-white">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong class="me-auto">Success</strong>
+            <small>Just now</small>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body">
+            <div id="toastMessage">Operation completed successfully!</div>
+        </div>
+    </div>
+    
+    <div id="errorToast" class="toast border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-danger text-white">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <strong class="me-auto">Error</strong>
+            <small>Just now</small>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body">
+            <div id="errorMessage">An error occurred!</div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Custom Styles */
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    --warning-gradient: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+    --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    --danger-gradient: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+}
+
+.stat-card {
+    border-radius: 15px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+}
+
+.bg-gradient-primary { background: var(--primary-gradient) !important; }
+.bg-gradient-success { background: var(--success-gradient) !important; }
+.bg-gradient-warning { background: var(--warning-gradient) !important; }
+.bg-gradient-info { background: var(--info-gradient) !important; }
+.bg-gradient-danger { background: var(--danger-gradient) !important; }
+
+.stat-icon-container {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    background-color: rgba(52, 152, 219, 0.05);
+}
+
+.division-row {
+    border-left: 4px solid transparent;
+}
+
+.division-row:hover {
+    border-left-color: #667eea;
+}
+
+.action-btn {
+    transition: all 0.2s ease;
+    border-radius: 8px !important;
+}
+
+.action-btn:hover {
+    transform: scale(1.1);
+}
+
+.empty-state-icon {
+    opacity: 0.5;
+}
+
+.table th {
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table td {
+    vertical-align: middle;
+    padding: 1rem;
+}
+
+.badge {
+    font-weight: 500;
+    letter-spacing: 0.3px;
+}
+
+.card {
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.08);
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    border-radius: 12px 12px 0 0 !important;
+}
+
+.modal-header {
+    border-radius: 12px 12px 0 0 !important;
+}
+
+.toast {
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+/* Form validation styling */
+.was-validated .form-control:valid {
+    border-color: #198754;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+}
+
+.was-validated .form-control:invalid {
+    border-color: #dc3545;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+}
+
+@media (max-width: 768px) {
+    .stat-card .stat-icon-container {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .stat-card h2 {
+        font-size: 1.5rem;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+    }
+    
+    .btn-group .btn {
+        border-radius: 8px !important;
+        margin: 2px 0;
+    }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Form Validation
+(function () {
+    'use strict'
+    var forms = document.querySelectorAll('.needs-validation')
+    Array.prototype.slice.call(forms)
+        .forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+})()
+
+// Edit Division Function
+function editDivision(divisionId) {
+    console.log('Editing division:', divisionId);
+    
+    // Get division data from table row
+    const row = document.querySelector(`[data-division-id="${divisionId}"]`);
+    if (!row) return;
+    
+    const divisionName = row.querySelector('h6').textContent.replace(/.*?[\s\S]*?/, '').trim();
+    const divisionDescription = row.querySelector('.text-muted.small') ? 
+        row.querySelector('.text-muted.small').textContent.replace(/.*?[\s\S]*?/, '').trim() : '';
+    
+    // Set values in modal
+    document.getElementById('editDivisionId').value = divisionId;
+    document.getElementById('editDivisionName').value = divisionName;
+    document.getElementById('editDivisionDescription').value = divisionDescription || '';
+    
+    // Set status based on current badge
+    const statusBadge = row.querySelector('.status-badge .badge');
+    const isActive = statusBadge.classList.contains('bg-success-gradient');
+    document.getElementById('editDivisionStatus').value = isActive ? 'active' : 'inactive';
+    
+    // Show modal
+    const editModal = new bootstrap.Modal(document.getElementById('editDivisionModal'));
+    editModal.show();
+}
+
+// Toggle Division Status
+function toggleDivisionStatus(divisionId, currentStatus) {
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    const actionText = newStatus === 'active' ? 'Activate' : 'Deactivate';
+    const icon = newStatus === 'active' ? '✅' : '⏸️';
+    
+    if (!confirm(`${icon} ${actionText} this division?`)) return;
+    
+    showLoading('Updating division status...');
+    
+    // Send AJAX request
+    fetch(`/admin/toggle_division_status/${divisionId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || 'Division status updated!', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast(data.message || 'Error updating status', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error updating status', 'error');
+    });
+}
+
+// Delete Division Function
+function deleteDivision(divisionId, divisionName) {
+    // Set values in delete modal
+    document.getElementById('deleteDivisionId').value = divisionId;
+    document.getElementById('deleteDivisionName').textContent = divisionName;
+    
+    // Show modal
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteDivisionModal'));
+    deleteModal.show();
+}
+
+// Delete form submission
+document.getElementById('deleteDivisionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const divisionId = document.getElementById('deleteDivisionId').value;
+    const divisionName = document.getElementById('deleteDivisionName').textContent;
+    
+    showLoading('Deleting division...');
+    
+    fetch(`/admin/delete_division/${divisionId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteDivisionModal'));
+        deleteModal.hide();
+        
+        if (data.success) {
+            showToast(data.message || `Division "${divisionName}" deleted!`, 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast(data.message || 'Error deleting division', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error deleting division', 'error');
+    });
+});
+
+// Create form submission with AJAX
+document.getElementById('createDivisionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    showLoading('Creating division...');
+    
+    fetch('/admin/divisions', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.text())
+    .then(html => {
+        // Parse the response and show toast
+        if (html.includes('successfully')) {
+            showToast('Division created successfully!', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast('Error creating division', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error creating division', 'error');
+    });
+});
+
+// Edit form submission with AJAX
+document.getElementById('editDivisionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    showLoading('Updating division...');
+    
+    fetch('/admin/divisions', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.text())
+    .then(html => {
+        const editModal = bootstrap.Modal.getInstance(document.getElementById('editDivisionModal'));
+        editModal.hide();
+        
+        if (html.includes('successfully')) {
+            showToast('Division updated successfully!', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast('Error updating division', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error updating division', 'error');
+    });
+});
+
+// Show loading indicator
+function showLoading(message) {
+    // You can add a loading spinner here
+    console.log('Loading:', message);
+}
+
+// Toast notification function
+function showToast(message, type = 'success') {
+    let toastElement, toastMessage;
+    
+    if (type === 'error') {
+        toastElement = document.getElementById('errorToast');
+        toastMessage = document.getElementById('errorMessage');
+    } else {
+        toastElement = document.getElementById('successToast');
+        toastMessage = document.getElementById('toastMessage');
+    }
+    
+    toastMessage.textContent = message;
+    const bsToast = new bootstrap.Toast(toastElement);
+    bsToast.show();
+}
+
+// Refresh table
+function refreshTable() {
+    location.reload();
+}
+
+// Add animation to table rows
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('.division-row');
+    rows.forEach((row, index) => {
+        row.style.opacity = '0';
+        row.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            row.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            row.style.opacity = '1';
+            row.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+    
+    // Auto-hide toasts after 5 seconds
+    const toasts = document.querySelectorAll('.toast');
+    toasts.forEach(toast => {
+        const bsToast = new bootstrap.Toast(toast, { delay: 5000 });
+    });
+});
+</script>
 {% endblock %}
