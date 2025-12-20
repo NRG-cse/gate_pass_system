@@ -3,253 +3,384 @@
 {% block page_title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="fade-in">
-    <!-- Welcome Banner -->
-    <div class="card border-0 shadow-lg mb-4 overflow-hidden" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <div class="card-body text-white p-4">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <h1 class="display-6 fw-bold mb-2">Welcome back, {{ session.name }}! 👋</h1>
-                    <p class="mb-0 opacity-75">
-                        <i class="fas fa-building me-2"></i>{{ session.department }} | 
-                        <i class="fas fa-user-tie me-2 ms-3"></i>{{ session.designation }}
-                    </p>
-                </div>
-                <div class="col-md-4 text-end">
-                    <div class="bg-white bg-opacity-10 p-3 rounded-pill d-inline-block">
-                        <span class="badge bg-white text-primary px-3 py-2 fs-6">
-                            <i class="fas fa-shield-alt me-2"></i>{{ session.role|upper }}
-                        </span>
+<div class="container-fluid px-4 py-3">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm bg-gradient-primary text-white">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h2 class="fw-bold mb-2">Welcome back, {{ session.name }}!</h2>
+                            <p class="mb-0 opacity-75">
+                                <i class="fas fa-user-shield me-2"></i>{{ session.role|replace('_', ' ')|title }}
+                                {% if session.department %}
+                                | <i class="fas fa-building me-2"></i>{{ session.department }}
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="date-time">
+                                <h3 id="currentTime" class="fw-bold mb-1">{{ now.strftime('%I:%M %p') if now else '' }}</h3>
+                                <p id="currentDate" class="mb-0 opacity-75">{{ now.strftime('%A, %d %B %Y') if now else '' }}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Statistics Cards -->
-    <div class="row g-4 mb-4">
+    <!-- Quick Stats -->
+    <div class="row g-4 mb-5">
         <div class="col-xl-3 col-md-6">
-            <div class="stat-card slide-in" style="animation-delay: 0.1s;">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0">
-                        <div class="rounded-circle bg-primary bg-opacity-10 p-3">
-                            <i class="fas fa-passport fa-2x text-primary"></i>
+            <div class="card stat-card bg-gradient-primary border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-passport fa-2x text-white"></i>
                         </div>
-                    </div>
-                    <div class="flex-grow-1 ms-3">
-                        <h3 class="display-6 fw-bold mb-0">{{ total_passes }}</h3>
-                        <p class="text-muted mb-0">Total Gate Passes</p>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Total Gate Passes</h6>
+                            <h2 class="text-white mb-0">{{ total_passes }}</h2>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
         
         <div class="col-xl-3 col-md-6">
-            <div class="stat-card slide-in" style="animation-delay: 0.2s;">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0">
-                        <div class="rounded-circle bg-warning bg-opacity-10 p-3">
-                            <i class="fas fa-clock fa-2x text-warning"></i>
+            <div class="card stat-card bg-gradient-warning border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-clock fa-2x text-white"></i>
                         </div>
-                    </div>
-                    <div class="flex-grow-1 ms-3">
-                        <h3 class="display-6 fw-bold mb-0">{{ pending_passes }}</h3>
-                        <p class="text-muted mb-0">Pending Passes</p>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Pending Approvals</h6>
+                            <h2 class="text-white mb-0">{{ pending_passes }}</h2>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
         
         <div class="col-xl-3 col-md-6">
-            <div class="stat-card slide-in" style="animation-delay: 0.3s;">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0">
-                        <div class="rounded-circle bg-danger bg-opacity-10 p-3">
-                            <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
+            <div class="card stat-card bg-gradient-danger border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-exclamation-triangle fa-2x text-white"></i>
                         </div>
-                    </div>
-                    <div class="flex-grow-1 ms-3">
-                        <h3 class="display-6 fw-bold mb-0">{{ overdue_passes }}</h3>
-                        <p class="text-muted mb-0">Overdue Returns</p>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Overdue Returns</h6>
+                            <h2 class="text-white mb-0">{{ overdue_passes }}</h2>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
         
-        {% if session.role in ['department_head', 'hr_admin'] %}
         <div class="col-xl-3 col-md-6">
-            <div class="stat-card slide-in" style="animation-delay: 0.4s;">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0">
-                        <div class="rounded-circle bg-success bg-opacity-10 p-3">
-                            <i class="fas fa-check-circle fa-2x text-success"></i>
+            <div class="card stat-card bg-gradient-success border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-check-circle fa-2x text-white"></i>
                         </div>
-                    </div>
-                    <div class="flex-grow-1 ms-3">
-                        <h3 class="display-6 fw-bold mb-0">{{ pending_approvals }}</h3>
-                        <p class="text-muted mb-0">Pending Approvals</p>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Approved Today</h6>
+                            <h2 class="text-white mb-0">{{ approved_today if approved_today else 0 }}</h2>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        {% endif %}
     </div>
 
-    <!-- Quick Actions & Recent Activity -->
+    <!-- Main Content -->
     <div class="row g-4">
-        <!-- Quick Actions -->
-        <div class="col-lg-6">
-            <div class="card border-0 shadow h-100">
-                <div class="card-header bg-white border-0 pb-0">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-bolt text-warning me-2"></i>Quick Actions
+        <!-- Left Column: Quick Actions -->
+        <div class="col-lg-8">
+            <!-- Quick Actions Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="fw-bold mb-0 text-primary">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
                     </h5>
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        {% if session.role != 'security' %}
-                        <div class="col-6">
-                            <a href="{{ url_for('gate_pass.create_gate_pass') }}" 
-                               class="btn btn-primary w-100 h-100 py-4 d-flex flex-column align-items-center justify-content-center">
-                                <i class="fas fa-plus-circle fa-3x mb-3"></i>
-                                <span class="fs-5 fw-bold">Create Gate Pass</span>
+                        {% if session.role != 'security' and session.role != 'store_manager' %}
+                        <div class="col-md-4">
+                            <a href="{{ url_for('gate_pass.create_gate_pass') }}" class="btn btn-primary btn-lg w-100 py-3 text-start">
+                                <div class="d-flex align-items-center">
+                                    <div class="action-icon me-3">
+                                        <i class="fas fa-plus-circle fa-2x"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold mb-1">Create Gate Pass</h6>
+                                        <small class="opacity-75">New material transfer</small>
+                                    </div>
+                                </div>
                             </a>
                         </div>
                         {% endif %}
                         
-                        <div class="col-6">
-                            <a href="{{ url_for('gate_pass.gate_pass_list') }}" 
-                               class="btn btn-info w-100 h-100 py-4 d-flex flex-column align-items-center justify-content-center">
-                                <i class="fas fa-list fa-3x mb-3"></i>
-                                <span class="fs-5 fw-bold">View All</span>
+                        <div class="col-md-4">
+                            <a href="{{ url_for('gate_pass.gate_pass_list') }}" class="btn btn-info btn-lg w-100 py-3 text-start">
+                                <div class="d-flex align-items-center">
+                                    <div class="action-icon me-3">
+                                        <i class="fas fa-list fa-2x"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold mb-1">View Passes</h6>
+                                        <small class="opacity-75">All gate passes</small>
+                                    </div>
+                                </div>
                             </a>
                         </div>
                         
-                        {% if session.role in ['department_head', 'hr_admin'] %}
-                        <div class="col-6">
-                            <a href="{{ url_for('approval_pending') }}" 
-                               class="btn btn-warning w-100 h-100 py-4 d-flex flex-column align-items-center justify-content-center">
-                                <i class="fas fa-check-circle fa-3x mb-3"></i>
-                                <span class="fs-5 fw-bold">Pending Approvals</span>
+                        {% if session.role in ['system_admin', 'department_head'] %}
+                        <div class="col-md-4">
+                            <a href="{{ url_for('approval_pending') }}" class="btn btn-warning btn-lg w-100 py-3 text-start">
+                                <div class="d-flex align-items-center">
+                                    <div class="action-icon me-3">
+                                        <i class="fas fa-check-circle fa-2x"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold mb-1">Pending Approvals</h6>
+                                        <small class="opacity-75">{{ pending_approvals }} waiting</small>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if session.role == 'system_admin' %}
+                        <div class="col-md-4">
+                            <a href="{{ url_for('admin.all_users') }}" class="btn btn-secondary btn-lg w-100 py-3 text-start">
+                                <div class="d-flex align-items-center">
+                                    <div class="action-icon me-3">
+                                        <i class="fas fa-users-cog fa-2x"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold mb-1">User Management</h6>
+                                        <small class="opacity-75">Manage all users</small>
+                                    </div>
+                                </div>
                             </a>
                         </div>
                         
-                        <div class="col-6">
-                            <a href="{{ url_for('user_management') }}" 
-                               class="btn btn-success w-100 h-100 py-4 d-flex flex-column align-items-center justify-content-center">
-                                <i class="fas fa-users fa-3x mb-3"></i>
-                                <span class="fs-5 fw-bold">User Management</span>
+                        <div class="col-md-4">
+                            <a href="{{ url_for('admin.manage_divisions') }}" class="btn btn-success btn-lg w-100 py-3 text-start">
+                                <div class="d-flex align-items-center">
+                                    <div class="action-icon me-3">
+                                        <i class="fas fa-sitemap fa-2x"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold mb-1">Manage Divisions</h6>
+                                        <small class="opacity-75">Setup organization</small>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <a href="{{ url_for('admin.all_gate_passes') }}" class="btn btn-dark btn-lg w-100 py-3 text-start">
+                                <div class="d-flex align-items-center">
+                                    <div class="action-icon me-3">
+                                        <i class="fas fa-passport fa-2x"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold mb-1">All Gate Passes</h6>
+                                        <small class="opacity-75">System-wide view</small>
+                                    </div>
+                                </div>
                             </a>
                         </div>
                         {% endif %}
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Recent Notifications -->
-        <div class="col-lg-6">
-            <div class="card border-0 shadow h-100">
-                <div class="card-header bg-white border-0">
+
+            <!-- Recent Gate Passes Card -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-bell text-primary me-2"></i>Recent Notifications
+                        <h5 class="fw-bold mb-0 text-primary">
+                            <i class="fas fa-history me-2"></i>Recent Gate Passes
                         </h5>
-                        <span class="badge bg-primary">{{ notifications|length }}</span>
+                        <a href="{{ url_for('gate_pass.gate_pass_list') }}" class="btn btn-sm btn-outline-primary">
+                            View All <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
                     </div>
                 </div>
-                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
-                    {% if notifications %}
-                        <div class="list-group list-group-flush">
-                            {% for notification in notifications %}
-                            <div class="list-group-item border-0 px-0 py-3">
-                                <div class="d-flex align-items-start">
-                                    <div class="flex-shrink-0">
-                                        {% if notification.type == 'approval' %}
-                                        <div class="rounded-circle bg-warning bg-opacity-10 p-2">
-                                            <i class="fas fa-check-circle text-warning"></i>
-                                        </div>
-                                        {% elif notification.type == 'status' %}
-                                        <div class="rounded-circle bg-success bg-opacity-10 p-2">
-                                            <i class="fas fa-info-circle text-success"></i>
-                                        </div>
-                                        {% elif notification.type == 'alert' %}
-                                        <div class="rounded-circle bg-danger bg-opacity-10 p-2">
-                                            <i class="fas fa-exclamation-triangle text-danger"></i>
-                                        </div>
+                <div class="card-body">
+                    {% if recent_passes and recent_passes|length > 0 %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Gate Pass Number</th>
+                                    <th>Material</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pass in recent_passes %}
+                                <tr>
+                                    <td>
+                                        <strong class="text-primary">{{ pass.pass_number }}</strong>
+                                    </td>
+                                    <td>
+                                        <small>{{ pass.material_description[:50] }}{% if pass.material_description|length > 50 %}...{% endif %}</small>
+                                    </td>
+                                    <td>
+                                        {% if pass.status == 'approved' %}
+                                        <span class="badge bg-success">Approved</span>
+                                        {% elif pass.status == 'pending_dept' %}
+                                        <span class="badge bg-warning">Pending Dept</span>
+                                        {% elif pass.status == 'pending_store' %}
+                                        <span class="badge bg-info">Pending Store</span>
+                                        {% elif pass.status == 'pending_security' %}
+                                        <span class="badge bg-primary">Pending Security</span>
+                                        {% elif pass.status == 'rejected' %}
+                                        <span class="badge bg-danger">Rejected</span>
                                         {% else %}
-                                        <div class="rounded-circle bg-info bg-opacity-10 p-2">
-                                            <i class="fas fa-bell text-info"></i>
-                                        </div>
+                                        <span class="badge bg-secondary">{{ pass.status }}</span>
                                         {% endif %}
-                                    </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <p class="mb-1">{{ notification.message }}</p>
-                                        <small class="text-muted">
-                                            <i class="fas fa-clock me-1"></i>
-                                            {{ notification.created_at.strftime('%Y-%m-%d %H:%M') }}
-                                        </small>
-                                        {% if not notification.is_read %}
-                                        <span class="badge bg-success ms-2">NEW</span>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
+                                    </td>
+                                    <td>
+                                        <small>{{ pass.created_at.strftime('%d/%m/%y %H:%M') }}</small>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('gate_pass.gate_pass_detail', gate_pass_id=pass.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                     {% else %}
-                        <div class="text-center py-5">
-                            <i class="fas fa-bell-slash fa-4x text-muted mb-3"></i>
-                            <h5 class="text-muted">No notifications yet</h5>
-                            <p class="text-muted">You're all caught up!</p>
-                        </div>
+                    <div class="text-center py-4">
+                        <i class="fas fa-passport fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No Gate Passes Yet</h5>
+                        <p class="text-muted">Create your first gate pass to get started.</p>
+                    </div>
                     {% endif %}
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- System Info -->
-    <div class="row g-4 mt-4">
-        <div class="col-12">
-            <div class="card border-0 shadow">
-                <div class="card-header bg-white border-0">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-info-circle text-success me-2"></i>System Information
+        <!-- Right Column: Notifications & Activity -->
+        <div class="col-lg-4">
+            <!-- Notifications Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0 py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0 text-primary">
+                            <i class="fas fa-bell me-2"></i>Notifications
+                            {% if unread_notifications > 0 %}
+                            <span class="badge bg-danger ms-2">{{ unread_notifications }}</span>
+                            {% endif %}
+                        </h5>
+                        <form method="POST" action="{{ url_for('mark_all_notifications_read') }}" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                Mark All Read
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if notifications and notifications|length > 0 %}
+                    <div class="list-group list-group-flush">
+                        {% for notification in notifications %}
+                        <div class="list-group-item list-group-item-action {% if not notification.is_read %}bg-light{% endif %}">
+                            <div class="d-flex w-100 justify-content-between">
+                                <small class="text-muted">{{ notification.created_at.strftime('%H:%M') }}</small>
+                                <form method="POST" action="{{ url_for('mark_notification_read', notification_id=notification.id) }}" 
+                                      style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-link text-danger p-0">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </form>
+                            </div>
+                            <p class="mb-1">{{ notification.message }}</p>
+                            {% if notification.gate_pass_id %}
+                            <small>
+                                <a href="{{ url_for('gate_pass.gate_pass_detail', gate_pass_id=notification.gate_pass_id) }}"
+                                   class="text-primary">
+                                    View Details <i class="fas fa-external-link-alt ms-1"></i>
+                                </a>
+                            </small>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-bell-slash fa-2x text-muted mb-3"></i>
+                        <h6 class="text-muted">No notifications</h6>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- System Status Card -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="fw-bold mb-0 text-primary">
+                        <i class="fas fa-chart-bar me-2"></i>System Status
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6 class="text-muted mb-3">Features</h6>
-                            <ul class="list-unstyled">
-                                <li><i class="fas fa-check text-success me-2"></i> Create and manage gate passes</li>
-                                <li><i class="fas fa-check text-success me-2"></i> Automatic camera photo capture</li>
-                                <li><i class="fas fa-check text-success me-2"></i> QR code generation and verification</li>
-                                <li><i class="fas fa-check text-success me-2"></i> Multi-level approval workflow</li>
-                                <li><i class="fas fa-check text-success me-2"></i> Real-time notifications</li>
-                                <li><i class="fas fa-check text-success me-2"></i> Return tracking system</li>
-                                <li><i class="fas fa-check text-success me-2"></i> User approval system</li>
-                            </ul>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small">Database</span>
+                            <span class="small text-success">Connected</span>
                         </div>
-                        
-                        <div class="col-md-6">
-                            <h6 class="text-muted mb-3">Security Features</h6>
-                            <ul class="list-unstyled">
-                                <li><i class="fas fa-shield-alt text-primary me-2"></i> Mobile QR scanning blocked</li>
-                                <li><i class="fas fa-shield-alt text-primary me-2"></i> Gate scanner verification only</li>
-                                <li><i class="fas fa-shield-alt text-primary me-2"></i> Real-time return notifications</li>
-                                <li><i class="fas fa-shield-alt text-primary me-2"></i> Material photo verification</li>
-                                <li><i class="fas fa-shield-alt text-primary me-2"></i> User role-based access control</li>
-                            </ul>
-                            
-                            {% if session.role in ['hr_admin', 'department_head'] %}
-                            <div class="alert alert-info mt-3">
-                                <i class="fas fa-user-check me-2"></i>
-                                <strong>Approval System Active:</strong> You can approve pending users and gate passes.
-                            </div>
-                            {% endif %}
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar bg-success" style="width: 100%"></div>
                         </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small">Server Uptime</span>
+                            <span class="small text-success">100%</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar bg-success" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small">Security Check</span>
+                            <span class="small text-success">Active</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar bg-success" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="text-center">
+                        <p class="text-muted small mb-2">
+                            <i class="fas fa-info-circle me-1"></i>
+                            System Version: 2.0.0
+                        </p>
+                        <p class="text-muted small">
+                            <i class="fas fa-calendar me-1"></i>
+                            Last Updated: Today
+                        </p>
                     </div>
                 </div>
             </div>
@@ -257,39 +388,166 @@
     </div>
 </div>
 
-<!-- CSS for Dashboard -->
 <style>
+/* Custom Dashboard Styles */
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    --warning-gradient: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+    --danger-gradient: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+    --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
 .stat-card {
-    background: white;
     border-radius: 15px;
-    padding: 25px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-    height: 100%;
-    border: none;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
 }
 
 .stat-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
 }
 
-.fade-in {
-    animation: fadeIn 0.5s ease-in;
+.bg-gradient-primary { background: var(--primary-gradient) !important; }
+.bg-gradient-success { background: var(--success-gradient) !important; }
+.bg-gradient-warning { background: var(--warning-gradient) !important; }
+.bg-gradient-danger { background: var(--danger-gradient) !important; }
+.bg-gradient-info { background: var(--info-gradient) !important; }
+
+.stat-icon-container {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.slide-in {
-    animation: slideIn 0.5s ease-out;
+.action-icon {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+.btn.text-start {
+    transition: all 0.3s ease;
 }
 
-@keyframes slideIn {
-    from { transform: translateY(20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+.btn.text-start:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.card {
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.08);
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    border-radius: 12px 12px 0 0 !important;
+}
+
+.table td, .table th {
+    vertical-align: middle;
+}
+
+.list-group-item {
+    border: none;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding: 1rem;
+}
+
+.list-group-item:last-child {
+    border-bottom: none;
+}
+
+.progress {
+    border-radius: 10px;
+    background-color: rgba(0,0,0,0.05);
+}
+
+.date-time {
+    background: rgba(255,255,255,0.1);
+    padding: 15px;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+}
+
+@media (max-width: 768px) {
+    .stat-card .stat-icon-container {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .stat-card h2 {
+        font-size: 1.5rem;
+    }
+    
+    .btn-lg {
+        padding: 0.75rem 1rem;
+    }
 }
 </style>
+
+<script>
+// Real-time clock
+function updateDateTime() {
+    const now = new Date();
+    
+    // Update time
+    const timeElement = document.getElementById('currentTime');
+    if (timeElement) {
+        timeElement.textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }
+    
+    // Update date
+    const dateElement = document.getElementById('currentDate');
+    if (dateElement) {
+        const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+        dateElement.textContent = now.toLocaleDateString('en-US', options);
+    }
+}
+
+// Update time every second
+setInterval(updateDateTime, 1000);
+
+// Initial call
+document.addEventListener('DOMContentLoaded', function() {
+    updateDateTime();
+    
+    // Add animation to stat cards
+    const statCards = document.querySelectorAll('.stat-card');
+    statCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+    
+    // Auto-refresh notifications every 30 seconds
+    setInterval(function() {
+        fetch('/check_notifications')
+            .then(response => response.json())
+            .then(data => {
+                if (data.new_notifications > 0) {
+                    // Show notification badge
+                    const badge = document.querySelector('.notification-badge');
+                    if (badge) {
+                        badge.textContent = data.new_notifications;
+                        badge.classList.remove('d-none');
+                    }
+                }
+            });
+    }, 30000);
+});
+</script>
 {% endblock %}

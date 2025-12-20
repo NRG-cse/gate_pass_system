@@ -66,7 +66,11 @@ def dashboard():
                              pending_passes=0, 
                              overdue_passes=0, 
                              pending_approvals=0,
-                             notifications=[])
+                             notifications=[],
+                             recent_passes=[],
+                             unread_notifications=0,
+                             approved_today=0,
+                             now=datetime.now())
     
     cursor = conn.cursor()
     
@@ -97,16 +101,30 @@ def dashboard():
             
             pending_approvals = pending_user_approvals + pending_gatepass_approvals
             
+            # Approved today
+            cursor.execute('''SELECT COUNT(*) FROM gate_passes 
+                           WHERE DATE(created_at) = CURDATE() 
+                           AND status = 'approved' ''')
+            approved_today = cursor.fetchone()[0]
+            
+            # Recent passes for admin (all)
+            cursor.execute('''
+                SELECT * FROM gate_passes 
+                ORDER BY created_at DESC 
+                LIMIT 5
+            ''')
+            recent_passes = dict_fetchall(cursor)
+            
         elif session['role'] == 'store_manager':
             # Store Manager - Statistics for their store
-            cursor.execute('SELECT COUNT(*) FROM gate_passes WHERE store_location = %s', 
-                         ('store_1' if 'store1' in session['username'] else 'store_2',))
+            store_location = 'store_1' if 'store1' in session['username'] else 'store_2'
+            
+            cursor.execute('SELECT COUNT(*) FROM gate_passes WHERE store_location = %s', (store_location,))
             total_passes = cursor.fetchone()[0]
             
             cursor.execute('''SELECT COUNT(*) FROM gate_passes 
                            WHERE store_location = %s 
-                           AND status = "pending_store"''', 
-                         ('store_1' if 'store1' in session['username'] else 'store_2',))
+                           AND status = "pending_store"''', (store_location,))
             pending_passes = cursor.fetchone()[0]
             
             cursor.execute('''SELECT COUNT(*) FROM gate_passes 
@@ -114,11 +132,26 @@ def dashboard():
                            AND material_type = 'returnable' 
                            AND expected_return_date < NOW() 
                            AND actual_return_date IS NULL 
-                           AND status = 'approved' ''', 
-                         ('store_1' if 'store1' in session['username'] else 'store_2',))
+                           AND status = 'approved' ''', (store_location,))
             overdue_passes = cursor.fetchone()[0]
             
             pending_approvals = pending_passes
+            
+            # Approved today
+            cursor.execute('''SELECT COUNT(*) FROM gate_passes 
+                           WHERE store_location = %s 
+                           AND DATE(created_at) = CURDATE() 
+                           AND status = 'approved' ''', (store_location,))
+            approved_today = cursor.fetchone()[0]
+            
+            # Recent passes for store manager
+            cursor.execute('''
+                SELECT * FROM gate_passes 
+                WHERE store_location = %s
+                ORDER BY created_at DESC 
+                LIMIT 5
+            ''', (store_location,))
+            recent_passes = dict_fetchall(cursor)
             
         elif session['role'] == 'department_head':
             # Department Head - Only their department statistics
@@ -128,11 +161,6 @@ def dashboard():
             
             if user_dept:
                 department_id = user_dept[0]
-                
-                # Get department name
-                cursor.execute('SELECT name FROM departments WHERE id = %s', (department_id,))
-                dept_name_result = cursor.fetchone()
-                dept_name = dept_name_result[0] if dept_name_result else ""
                 
                 cursor.execute('''SELECT COUNT(*) FROM gate_passes gp 
                                WHERE gp.department_id = %s''', (department_id,))
@@ -158,8 +186,25 @@ def dashboard():
                 pending_user_approvals = cursor.fetchone()[0]
                 
                 pending_approvals = pending_user_approvals + pending_passes
+                
+                # Approved today
+                cursor.execute('''SELECT COUNT(*) FROM gate_passes 
+                               WHERE department_id = %s 
+                               AND DATE(created_at) = CURDATE() 
+                               AND status = 'approved' ''', (department_id,))
+                approved_today = cursor.fetchone()[0]
+                
+                # Recent passes for department
+                cursor.execute('''
+                    SELECT * FROM gate_passes 
+                    WHERE department_id = %s
+                    ORDER BY created_at DESC 
+                    LIMIT 5
+                ''', (department_id,))
+                recent_passes = dict_fetchall(cursor)
             else:
-                total_passes = pending_passes = overdue_passes = pending_approvals = 0
+                total_passes = pending_passes = overdue_passes = pending_approvals = approved_today = 0
+                recent_passes = []
             
         elif session['role'] == 'security':
             # Security - Statistics for security approvals
@@ -176,16 +221,29 @@ def dashboard():
             total_passes = 0
             pending_approvals = pending_passes
             
+            # Approved today
+            cursor.execute('''SELECT COUNT(*) FROM gate_passes 
+                           WHERE DATE(created_at) = CURDATE() 
+                           AND status = 'approved' ''')
+            approved_today = cursor.fetchone()[0]
+            
+            # Recent passes for security
+            cursor.execute('''
+                SELECT * FROM gate_passes 
+                WHERE status = 'pending_security'
+                ORDER BY created_at DESC 
+                LIMIT 5
+            ''')
+            recent_passes = dict_fetchall(cursor)
+            
         else:
             # Regular user - Only their own passes
-            cursor.execute('SELECT COUNT(*) FROM gate_passes WHERE created_by = %s', 
-                         (session['user_id'],))
+            cursor.execute('SELECT COUNT(*) FROM gate_passes WHERE created_by = %s', (session['user_id'],))
             total_passes = cursor.fetchone()[0]
             
             cursor.execute('''SELECT COUNT(*) FROM gate_passes 
                            WHERE created_by = %s 
-                           AND status IN ("pending_dept", "pending_store", "pending_security")''', 
-                         (session['user_id'],))
+                           AND status IN ("pending_dept", "pending_store", "pending_security")''', (session['user_id'],))
             pending_passes = cursor.fetchone()[0]
             
             cursor.execute('''SELECT COUNT(*) FROM gate_passes 
@@ -193,11 +251,26 @@ def dashboard():
                            AND material_type = 'returnable' 
                            AND expected_return_date < NOW() 
                            AND actual_return_date IS NULL 
-                           AND status = 'approved' ''', 
-                         (session['user_id'],))
+                           AND status = 'approved' ''', (session['user_id'],))
             overdue_passes = cursor.fetchone()[0]
             
             pending_approvals = 0
+            
+            # Approved today
+            cursor.execute('''SELECT COUNT(*) FROM gate_passes 
+                           WHERE created_by = %s 
+                           AND DATE(created_at) = CURDATE() 
+                           AND status = 'approved' ''', (session['user_id'],))
+            approved_today = cursor.fetchone()[0]
+            
+            # Recent passes for user
+            cursor.execute('''
+                SELECT * FROM gate_passes 
+                WHERE created_by = %s
+                ORDER BY created_at DESC 
+                LIMIT 5
+            ''', (session['user_id'],))
+            recent_passes = dict_fetchall(cursor)
         
         # Get user notifications
         cursor.execute(''' 
@@ -208,10 +281,20 @@ def dashboard():
         ''', (session['user_id'],))
         notifications = dict_fetchall(cursor)
         
+        # Get unread notification count
+        cursor.execute(''' 
+            SELECT COUNT(*) FROM notifications 
+            WHERE user_id = %s AND is_read = FALSE
+        ''', (session['user_id'],))
+        unread_notifications = cursor.fetchone()[0]
+        
     except Exception as e:
         print(f"Dashboard error: {e}")
         total_passes = pending_passes = overdue_passes = pending_approvals = 0
+        approved_today = 0
         notifications = []
+        recent_passes = []
+        unread_notifications = 0
     finally:
         cursor.close()
         conn.close()
@@ -221,7 +304,11 @@ def dashboard():
                          pending_passes=pending_passes,
                          overdue_passes=overdue_passes,
                          pending_approvals=pending_approvals,
-                         notifications=notifications)
+                         approved_today=approved_today,
+                         notifications=notifications,
+                         recent_passes=recent_passes,
+                         unread_notifications=unread_notifications,
+                         now=datetime.now())
 
 @app.route('/approval_pending')
 def approval_pending():
@@ -470,6 +557,130 @@ def mark_returned(gate_pass_id):
     finally:
         cursor.close()
         conn.close()
+
+@app.route('/check_notifications')
+def check_notifications():
+    if 'user_id' not in session:
+        return jsonify({'new_notifications': 0})
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'new_notifications': 0})
+    
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('''
+            SELECT COUNT(*) FROM notifications 
+            WHERE user_id = %s AND is_read = FALSE
+        ''', (session['user_id'],))
+        
+        count = cursor.fetchone()[0]
+        return jsonify({'new_notifications': count})
+        
+    except Exception as e:
+        print(f"Notification check error: {e}")
+        return jsonify({'new_notifications': 0})
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/mark_notification_read/<int:notification_id>', methods=['POST'])
+def mark_notification_read(notification_id):
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    
+    conn = get_db_connection()
+    if conn is None:
+        flash('Database connection failed!', 'error')
+        return redirect(url_for('dashboard'))
+    
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('''
+            UPDATE notifications SET is_read = TRUE 
+            WHERE id = %s AND user_id = %s
+        ''', (notification_id, session['user_id']))
+        
+        conn.commit()
+        flash('Notification marked as read!', 'success')
+    except Exception as e:
+        conn.rollback()
+        flash(f'Error marking notification: {str(e)}', 'error')
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return redirect(url_for('dashboard'))
+
+@app.route('/mark_all_notifications_read', methods=['POST'])
+def mark_all_notifications_read():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    
+    conn = get_db_connection()
+    if conn is None:
+        flash('Database connection failed!', 'error')
+        return redirect(url_for('dashboard'))
+    
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('''
+            UPDATE notifications SET is_read = TRUE 
+            WHERE user_id = %s AND is_read = FALSE
+        ''', (session['user_id'],))
+        
+        conn.commit()
+        flash('All notifications marked as read!', 'success')
+    except Exception as e:
+        conn.rollback()
+        flash(f'Error marking notifications: {str(e)}', 'error')
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return redirect(url_for('dashboard'))
+
+@app.route('/upload_photo', methods=['POST'])
+def upload_photo():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'})
+    
+    try:
+        if 'photo' not in request.files:
+            return jsonify({'success': False, 'message': 'No photo uploaded'})
+        
+        photo = request.files['photo']
+        if photo.filename == '':
+            return jsonify({'success': False, 'message': 'No selected file'})
+        
+        # Save the photo
+        upload_folder = 'static/uploads'
+        if not os.path.exists(upload_folder):
+            os.makedirs(upload_folder)
+        
+        filename = f"upload_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{session['user_id']}.jpg"
+        filepath = os.path.join(upload_folder, filename)
+        photo.save(filepath)
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Photo uploaded successfully',
+            'filepath': filepath.replace('static/', '')
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/check_camera_support')
+def check_camera_support():
+    """Check if browser supports camera API"""
+    return jsonify({
+        'supports_getUserMedia': True,
+        'message': 'Camera support check complete'
+    })
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

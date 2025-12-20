@@ -39,15 +39,38 @@
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
-                            <div class="col-12">
-                                <label class="form-label">Division/Department *</label>
+                            <!-- Division Dropdown -->
+                            <div class="col-md-6">
+                                <label class="form-label">Division *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-sitemap"></i></span>
+                                    <select class="form-select form-control-lg" name="division_id" id="divisionSelect" required>
+                                        <option value="">Select Division</option>
+                                        {% for division in divisions %}
+                                        <option value="{{ division.id }}">{{ division.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="invalid-feedback">
+                                        Please select division.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Department Dropdown -->
+                            <div class="col-md-6">
+                                <label class="form-label">Department *</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-building"></i></span>
-                                    <input type="text" class="form-control form-control-lg" 
-                                           name="division_department" required
-                                           placeholder="e.g., Production, IT, HR">
+                                    <select class="form-select form-control-lg" name="department_id" id="departmentSelect" required>
+                                        <option value="">Select Department</option>
+                                        {% for department in departments %}
+                                        <option value="{{ department.id }}" data-division="{{ department.division_id }}">
+                                            {{ department.name }} ({{ department.division_name }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
                                     <div class="invalid-feedback">
-                                        Please enter department name.
+                                        Please select department.
                                     </div>
                                 </div>
                             </div>
@@ -194,12 +217,15 @@
                             </div>
                             
                             <div class="col-md-6">
-                                <label class="form-label">Receiver Contact</label>
+                                <label class="form-label">Receiver Contact *</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-phone"></i></span>
                                     <input type="tel" class="form-control form-control-lg" 
-                                           name="receiver_contact"
-                                           placeholder="Phone number" pattern="[0-9]{3}-[0-9]{2}-[0-9]{3}" required>
+                                           name="receiver_contact" required
+                                           placeholder="Phone number">
+                                    <div class="invalid-feedback">
+                                        Please enter receiver contact.
+                                    </div>
                                 </div>
                             </div>
                             
@@ -226,31 +252,80 @@
                     </div>
                 </div>
                 
-                <!-- Photo Capture Section -->
+                <!-- Photo Section with Multiple Options -->
                 <div class="card border-0 shadow mb-4">
                     <div class="card-header bg-danger text-white">
-                        <h5 class="mb-0"><i class="fas fa-camera me-2"></i>Material Photos (Required: 4 Photos)</h5>
+                        <h5 class="mb-0"><i class="fas fa-camera me-2"></i>Material Photos (Required: Minimum 4 Photos)</h5>
                     </div>
                     <div class="card-body">
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            <strong>Important:</strong> System will automatically capture 4 photos (front, back, left, right) 
-                            with 3-second intervals. Make sure material is properly placed.
+                        <!-- Photo Upload Options -->
+                        <div class="mb-4">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="card option-card text-center h-100">
+                                        <div class="card-body">
+                                            <i class="fas fa-camera fa-3x text-primary mb-3"></i>
+                                            <h5 class="fw-bold">Capture Live Photos</h5>
+                                            <p class="text-muted small">Use camera to take photos directly</p>
+                                            <button type="button" class="btn btn-primary w-100" id="useCameraBtn">
+                                                <i class="fas fa-camera me-2"></i>Use Camera
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card option-card text-center h-100">
+                                        <div class="card-body">
+                                            <i class="fas fa-upload fa-3x text-success mb-3"></i>
+                                            <h5 class="fw-bold">Upload Existing Photos</h5>
+                                            <p class="text-muted small">Upload photos from device</p>
+                                            <button type="button" class="btn btn-success w-100" id="uploadPhotosBtn">
+                                                <i class="fas fa-upload me-2"></i>Upload Photos
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
-                        <div class="text-center mb-4">
-                            <button type="button" class="btn btn-success btn-lg px-5" id="startCamera">
-                                <i class="fas fa-camera me-2"></i>Start Camera & Capture Photos
-                            </button>
-                            <button type="button" class="btn btn-warning btn-lg px-5" id="stopCamera" style="display: none;">
-                                <i class="fas fa-stop me-2"></i>Stop Camera
-                            </button>
-                        </div>
-                        
+                        <!-- Camera Section (Initially Hidden) -->
                         <div id="cameraSection" style="display: none;">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Instructions:</strong> 
+                                <ul class="mb-0">
+                                    <li>Position the material properly</li>
+                                    <li>Camera will capture 4 photos automatically</li>
+                                    <li>Make sure photos are clear and show all sides</li>
+                                </ul>
+                            </div>
+                            
                             <div class="text-center mb-4">
-                                <video id="video" autoplay playsinline class="img-fluid rounded camera-preview"></video>
-                                <canvas id="canvas" style="display: none;"></canvas>
+                                <div class="camera-controls mb-3">
+                                    <button type="button" class="btn btn-outline-primary me-2" id="switchCamera">
+                                        <i class="fas fa-sync-alt"></i> Switch Camera
+                                    </button>
+                                    <button type="button" class="btn btn-outline-warning" id="flashToggle">
+                                        <i class="fas fa-bolt"></i> Flash
+                                    </button>
+                                </div>
+                                
+                                <div class="camera-container position-relative">
+                                    <video id="video" autoplay playsinline class="img-fluid rounded camera-preview"></video>
+                                    <div class="camera-overlay">
+                                        <div class="guide-grid"></div>
+                                    </div>
+                                    <canvas id="canvas" style="display: none;"></canvas>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <button type="button" class="btn btn-success btn-lg px-5 me-2" id="captureBtn">
+                                        <i class="fas fa-camera me-2"></i>Capture Photo
+                                    </button>
+                                    <button type="button" class="btn btn-danger btn-lg px-5" id="stopCameraBtn">
+                                        <i class="fas fa-stop me-2"></i>Stop Camera
+                                    </button>
+                                </div>
                             </div>
                             
                             <div class="progress mb-3">
@@ -258,13 +333,50 @@
                                      id="photoProgress" style="width: 0%"></div>
                             </div>
                             <p class="text-center mb-0" id="photoStatus">Ready to capture photos...</p>
-                            
-                            <div class="mt-4">
-                                <h6>Captured Photos Preview:</h6>
-                                <div class="row g-2" id="capturedPhotos">
-                                    <!-- Photos will appear here -->
-                                </div>
+                        </div>
+                        
+                        <!-- Upload Section (Initially Hidden) -->
+                        <div id="uploadSection" style="display: none;">
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Important:</strong> Upload minimum 4 photos showing different angles (front, back, left, right)
                             </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Upload Photos *</label>
+                                <input type="file" class="form-control form-control-lg" 
+                                       id="photoUpload" name="photo_upload[]" 
+                                       accept="image/*" multiple capture="environment">
+                                <small class="text-muted">You can select multiple photos (Minimum 4 required)</small>
+                            </div>
+                            
+                            <div class="text-center">
+                                <button type="button" class="btn btn-success btn-lg px-5" id="processUploadBtn">
+                                    <i class="fas fa-check me-2"></i>Process Uploaded Photos
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Captured/Uploaded Photos Preview -->
+                        <div class="mt-4" id="photosPreviewSection" style="display: none;">
+                            <h6 class="fw-bold mb-3">
+                                <i class="fas fa-images me-2"></i>Photos Preview 
+                                <span class="badge bg-primary ms-2" id="photoCount">0 photos</span>
+                            </h6>
+                            
+                            <div class="row g-2" id="capturedPhotos">
+                                <!-- Photos will appear here -->
+                            </div>
+                            
+                            <div class="alert alert-success mt-3" id="photoRequirements" style="display: none;">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <span id="requirementText"></span>
+                            </div>
+                        </div>
+                        
+                        <!-- Hidden Inputs for Photos -->
+                        <div id="photoInputsContainer">
+                            <!-- Base64 encoded photos will be added here -->
                         </div>
                     </div>
                 </div>
@@ -299,7 +411,7 @@
                                     <input class="form-check-input" type="checkbox" 
                                            name="terms" id="termsCheck" required>
                                     <label class="form-check-label" for="termsCheck">
-                                        I confirm that all information provided is accurate
+                                        I confirm that all information provided is accurate and photos are genuine
                                     </label>
                                     <div class="invalid-feedback">
                                         You must agree before submitting.
@@ -314,7 +426,7 @@
         
         <!-- Submit Buttons -->
         <div class="text-center mt-4">
-            <button type="submit" class="btn btn-primary btn-lg px-5 py-3">
+            <button type="submit" class="btn btn-primary btn-lg px-5 py-3" id="submitBtn" disabled>
                 <i class="fas fa-paper-plane me-2"></i>Submit Gate Pass
             </button>
             <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-lg px-5 py-3 ms-3">
@@ -324,223 +436,32 @@
     </form>
 </div>
 
-<!-- Camera Script -->
-<script>
-// Form Validation
-(function () {
-    'use strict'
-    var forms = document.querySelectorAll('.needs-validation')
-    Array.prototype.slice.call(forms)
-        .forEach(function (form) {
-            form.addEventListener('submit', function (event) {
-                if (!form.checkValidity()) {
-                    event.preventDefault()
-                    event.stopPropagation()
-                }
-                form.classList.add('was-validated')
-            }, false)
-        })
-})()
-
-// Material Type Change Handler
-const materialType = document.getElementById('materialType');
-const returnDateField = document.getElementById('returnDateField');
-const returnDateInput = document.getElementById('expectedReturnDate');
-
-materialType.addEventListener('change', function() {
-    if (this.value === 'returnable') {
-        returnDateField.style.display = 'block';
-        returnDateInput.required = true;
-    } else {
-        returnDateField.style.display = 'none';
-        returnDateInput.required = false;
-    }
-});
-
-// Camera Functionality
-let stream = null;
-let photoCount = 0;
-const maxPhotos = 4;
-let captureInterval = null;
-
-document.getElementById('startCamera').addEventListener('click', startCamera);
-document.getElementById('stopCamera').addEventListener('click', stopCamera);
-
-async function startCamera() {
-    try {
-        // Check camera permissions
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
-                facingMode: 'environment',
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            } 
-        });
-        
-        const video = document.getElementById('video');
-        video.srcObject = stream;
-        
-        // Show camera section
-        document.getElementById('cameraSection').style.display = 'block';
-        document.getElementById('startCamera').style.display = 'none';
-        document.getElementById('stopCamera').style.display = 'inline-block';
-        
-        // Reset photo count
-        photoCount = 0;
-        document.getElementById('capturedPhotos').innerHTML = '';
-        updateProgress(0);
-        
-        // Start capturing photos
-        captureInterval = setInterval(capturePhoto, 3000);
-        
-    } catch (err) {
-        alert('Error accessing camera: ' + err.message);
-    }
-}
-
-function stopCamera() {
-    if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-    }
-    if (captureInterval) {
-        clearInterval(captureInterval);
-    }
-    
-    document.getElementById('cameraSection').style.display = 'none';
-    document.getElementById('startCamera').style.display = 'inline-block';
-    document.getElementById('stopCamera').style.display = 'none';
-}
-
-function capturePhoto() {
-    if (photoCount >= maxPhotos) {
-        clearInterval(captureInterval);
-        document.getElementById('stopCamera').style.display = 'none';
-        document.getElementById('photoStatus').textContent = 'All photos captured!';
-        return;
-    }
-    
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const context = canvas.getContext('2d');
-    
-    // Set canvas size
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    // Draw video frame
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    // Convert to data URL
-    const photoData = canvas.toDataURL('image/jpeg', 0.8);
-    
-    // Display photo
-    displayCapturedPhoto(photoData, photoCount + 1);
-    
-    // Add to form
-    addPhotoToForm(photoData);
-    
-    // Update progress
-    photoCount++;
-    updateProgress((photoCount / maxPhotos) * 100);
-    document.getElementById('photoStatus').textContent = `Captured ${photoCount} of ${maxPhotos} photos`;
-    
-    if (photoCount >= maxPhotos) {
-        clearInterval(captureInterval);
-        document.getElementById('stopCamera').style.display = 'none';
-        document.getElementById('photoStatus').textContent = 'All photos captured successfully!';
-        
-        // Show success message
-        showToast('✅ All 4 photos captured successfully!', 'success');
-    }
-}
-
-function displayCapturedPhoto(photoData, number) {
-    const photosContainer = document.getElementById('capturedPhotos');
-    
-    const photoCol = document.createElement('div');
-    photoCol.className = 'col-md-3 col-6';
-    photoCol.innerHTML = `
-        <div class="photo-item">
-            <img src="${photoData}" alt="Photo ${number}">
-            <div class="photo-number">${number}</div>
+<!-- Toast Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3">
+    <div id="successToast" class="toast border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-success text-white">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong class="me-auto">Success</strong>
+            <small>Just now</small>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
         </div>
-    `;
-    
-    photosContainer.appendChild(photoCol);
-}
-
-function addPhotoToForm(photoData) {
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'captured_images[]';
-    input.value = photoData;
-    
-    document.getElementById('gatePassForm').appendChild(input);
-}
-
-function updateProgress(percent) {
-    document.getElementById('photoProgress').style.width = percent + '%';
-}
-
-// Toast Notification
-function showToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0`;
-    toast.setAttribute('role', 'alert');
-    
-    toast.innerHTML = `
-        <div class="d-flex">
-            <div class="toast-body">
-                ${message}
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" 
-                    onclick="this.parentElement.parentElement.remove()"></button>
+        <div class="toast-body">
+            <div id="toastMessage">Operation completed successfully!</div>
         </div>
-    `;
+    </div>
     
-    const container = document.getElementById('toastContainer') || createToastContainer();
-    container.appendChild(toast);
-    
-    // Auto-remove after 3 seconds
-    setTimeout(() => {
-        if (toast.parentElement) {
-            toast.remove();
-        }
-    }, 3000);
-}
-
-function createToastContainer() {
-    const container = document.createElement('div');
-    container.id = 'toastContainer';
-    container.className = 'position-fixed top-0 end-0 p-3';
-    container.style.zIndex = '9999';
-    document.body.appendChild(container);
-    return container;
-}
-
-// Auto-fill today's date for send date
-window.addEventListener('load', function() {
-    const now = new Date();
-    const timezoneOffset = now.getTimezoneOffset() * 60000;
-    const localISOTime = new Date(now - timezoneOffset).toISOString().slice(0, 16);
-    
-    const sendDateInput = document.querySelector('input[name="send_date"]');
-    if (sendDateInput && !sendDateInput.value) {
-        sendDateInput.value = localISOTime;
-    }
-    
-    // Set return date to tomorrow by default
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowISOTime = new Date(tomorrow - timezoneOffset).toISOString().slice(0, 16);
-    
-    const returnDateInput = document.getElementById('expectedReturnDate');
-    if (returnDateInput) {
-        returnDateInput.value = tomorrowISOTime;
-        returnDateInput.min = localISOTime;
-    }
-});
-</script>
+    <div id="errorToast" class="toast border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-danger text-white">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <strong class="me-auto">Error</strong>
+            <small>Just now</small>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body">
+            <div id="errorMessage">An error occurred!</div>
+        </div>
+    </div>
+</div>
 
 <style>
 /* Steps Progress */
@@ -604,6 +525,85 @@ window.addEventListener('load', function() {
     font-weight: 600;
 }
 
+/* Photo Options Cards */
+.option-card {
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.option-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+/* Camera Styles */
+.camera-container {
+    position: relative;
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+.camera-preview {
+    width: 100%;
+    height: auto;
+    border: 3px solid #ddd;
+    border-radius: 10px;
+}
+
+.camera-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+}
+
+.guide-grid {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, transparent 49%, rgba(255,255,255,0.3) 49%, rgba(255,255,255,0.3) 51%, transparent 51%),
+                linear-gradient(to bottom, transparent 49%, rgba(255,255,255,0.3) 49%, rgba(255,255,255,0.3) 51%, transparent 51%);
+}
+
+/* Photo Preview */
+.photo-item {
+    position: relative;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.photo-item:hover {
+    border-color: var(--primary);
+    transform: scale(1.05);
+}
+
+.photo-item img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+}
+
+.photo-number {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: var(--primary);
+    color: white;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.8rem;
+}
+
 /* Form validation styling */
 .was-validated .form-control:valid {
     border-color: #198754;
@@ -614,5 +614,454 @@ window.addEventListener('load', function() {
     border-color: #dc3545;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
 }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .step-number {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    .step-label {
+        font-size: 0.9rem;
+    }
+    
+    .camera-preview {
+        max-height: 300px;
+    }
+}
 </style>
+
+<script>
+// Form Validation
+(function () {
+    'use strict'
+    var forms = document.querySelectorAll('.needs-validation')
+    Array.prototype.slice.call(forms)
+        .forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+})()
+
+// Material Type Change Handler
+const materialType = document.getElementById('materialType');
+const returnDateField = document.getElementById('returnDateField');
+const returnDateInput = document.getElementById('expectedReturnDate');
+
+materialType.addEventListener('change', function() {
+    if (this.value === 'returnable') {
+        returnDateField.style.display = 'block';
+        returnDateInput.required = true;
+    } else {
+        returnDateField.style.display = 'none';
+        returnDateInput.required = false;
+    }
+});
+
+// Department Filter based on Division
+const divisionSelect = document.getElementById('divisionSelect');
+const departmentSelect = document.getElementById('departmentSelect');
+
+divisionSelect.addEventListener('change', function() {
+    const selectedDivision = this.value;
+    const departments = departmentSelect.querySelectorAll('option');
+    
+    // Show all departments first
+    departments.forEach(dept => {
+        dept.style.display = '';
+    });
+    
+    // If division selected, filter departments
+    if (selectedDivision) {
+        departments.forEach(dept => {
+            if (dept.value && dept.dataset.division !== selectedDivision) {
+                dept.style.display = 'none';
+            }
+        });
+        
+        // Select first available department
+        const availableDepts = Array.from(departments).filter(
+            dept => dept.dataset.division === selectedDivision && dept.value
+        );
+        if (availableDepts.length > 0) {
+            departmentSelect.value = availableDepts[0].value;
+        }
+    }
+});
+
+// Photo Management Variables
+let capturedPhotos = [];
+let photoCount = 0;
+const minPhotos = 4;
+const maxPhotos = 8;
+let stream = null;
+let currentFacingMode = 'environment'; // Default to back camera for mobile
+let flashEnabled = false;
+
+// Option Selection
+document.getElementById('useCameraBtn').addEventListener('click', function() {
+    document.getElementById('cameraSection').style.display = 'block';
+    document.getElementById('uploadSection').style.display = 'none';
+    initializeCamera();
+});
+
+document.getElementById('uploadPhotosBtn').addEventListener('click', function() {
+    document.getElementById('cameraSection').style.display = 'none';
+    document.getElementById('uploadSection').style.display = 'block';
+    document.getElementById('photosPreviewSection').style.display = 'block';
+});
+
+// Camera Functions
+async function initializeCamera() {
+    try {
+        // Stop existing stream if any
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+        
+        const constraints = {
+            video: {
+                facingMode: currentFacingMode,
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            },
+            audio: false
+        };
+        
+        // Try to get camera access
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        const video = document.getElementById('video');
+        video.srcObject = stream;
+        video.play();
+        
+        document.getElementById('photosPreviewSection').style.display = 'block';
+        showToast('Camera activated successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Camera error:', error);
+        
+        // Fallback for browsers that don't support getUserMedia
+        if (error.name === 'NotSupportedError' || error.name === 'NotFoundError') {
+            showToast('Camera not available. Please upload photos instead.', 'error');
+            document.getElementById('useCameraBtn').disabled = true;
+            document.getElementById('uploadPhotosBtn').click();
+        } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            showToast('Camera permission denied. Please allow camera access or upload photos.', 'error');
+            document.getElementById('useCameraBtn').disabled = true;
+            document.getElementById('uploadPhotosBtn').click();
+        } else {
+            showToast('Error accessing camera: ' + error.message, 'error');
+            document.getElementById('uploadPhotosBtn').click();
+        }
+    }
+}
+
+// Switch Camera (Front/Back)
+document.getElementById('switchCamera').addEventListener('click', function() {
+    currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+    initializeCamera();
+});
+
+// Flash Toggle
+document.getElementById('flashToggle').addEventListener('click', function() {
+    flashEnabled = !flashEnabled;
+    this.innerHTML = flashEnabled ? 
+        '<i class="fas fa-bolt"></i> Flash ON' : 
+        '<i class="fas fa-bolt"></i> Flash';
+    this.classList.toggle('btn-warning', flashEnabled);
+});
+
+// Capture Photo
+document.getElementById('captureBtn').addEventListener('click', function() {
+    if (photoCount >= maxPhotos) {
+        showToast(`Maximum ${maxPhotos} photos allowed!`, 'warning');
+        return;
+    }
+    
+    capturePhoto();
+});
+
+function capturePhoto() {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    
+    // Set canvas size
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // Apply flash effect if enabled
+    if (flashEnabled) {
+        context.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Brief flash animation
+        document.getElementById('video').style.filter = 'brightness(1.5)';
+        setTimeout(() => {
+            document.getElementById('video').style.filter = 'brightness(1)';
+        }, 100);
+    }
+    
+    // Draw video frame
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Convert to data URL with compression
+    const photoData = canvas.toDataURL('image/jpeg', 0.7);
+    
+    // Add to captured photos
+    addCapturedPhoto(photoData, 'camera');
+    
+    // Update progress
+    photoCount++;
+    updatePhotoProgress();
+    
+    // Check if minimum photos reached
+    if (photoCount >= minPhotos) {
+        enableSubmitButton();
+    }
+}
+
+// Upload Photo Processing
+document.getElementById('photoUpload').addEventListener('change', function(event) {
+    const files = event.target.files;
+    if (files.length > maxPhotos) {
+        showToast(`Maximum ${maxPhotos} photos allowed!`, 'warning');
+        this.value = '';
+        return;
+    }
+    
+    if (files.length < minPhotos) {
+        showToast(`Minimum ${minPhotos} photos required!`, 'warning');
+        return;
+    }
+    
+    // Process each file
+    for (let i = 0; i < files.length && i < maxPhotos; i++) {
+        const file = files[i];
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                addCapturedPhoto(e.target.result, 'upload');
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+});
+
+document.getElementById('processUploadBtn').addEventListener('click', function() {
+    const files = document.getElementById('photoUpload').files;
+    if (files.length < minPhotos) {
+        showToast(`Minimum ${minPhotos} photos required! Please select more photos.`, 'error');
+        return;
+    }
+    
+    photoCount = files.length;
+    updatePhotoProgress();
+    enableSubmitButton();
+    showToast(`${files.length} photos uploaded successfully!`, 'success');
+});
+
+// Add Photo to Preview and Form
+function addCapturedPhoto(photoData, source) {
+    const photoId = `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Add to preview
+    const photosContainer = document.getElementById('capturedPhotos');
+    const photoCol = document.createElement('div');
+    photoCol.className = 'col-md-3 col-6';
+    photoCol.innerHTML = `
+        <div class="photo-item">
+            <img src="${photoData}" alt="Photo ${capturedPhotos.length + 1}" data-id="${photoId}">
+            <div class="photo-number">${capturedPhotos.length + 1}</div>
+            <button type="button" class="btn btn-danger btn-sm position-absolute bottom-0 start-0 m-2" 
+                    onclick="removePhoto('${photoId}')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    photosContainer.appendChild(photoCol);
+    
+    // Add hidden input
+    const inputContainer = document.getElementById('photoInputsContainer');
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.name = 'captured_images[]';
+    hiddenInput.value = photoData;
+    hiddenInput.id = photoId;
+    inputContainer.appendChild(hiddenInput);
+    
+    // Store in array
+    capturedPhotos.push({
+        id: photoId,
+        data: photoData,
+        source: source
+    });
+    
+    // Update photo count
+    updatePhotoCount();
+}
+
+// Remove Photo
+function removePhoto(photoId) {
+    // Remove from array
+    capturedPhotos = capturedPhotos.filter(photo => photo.id !== photoId);
+    
+    // Remove from preview
+    const photoElement = document.querySelector(`img[data-id="${photoId}"]`);
+    if (photoElement) {
+        photoElement.closest('.col-md-3').remove();
+    }
+    
+    // Remove hidden input
+    const inputElement = document.getElementById(photoId);
+    if (inputElement) {
+        inputElement.remove();
+    }
+    
+    // Update counts
+    photoCount = capturedPhotos.length;
+    updatePhotoCount();
+    updatePhotoProgress();
+    
+    // Check if still meets requirements
+    if (photoCount < minPhotos) {
+        disableSubmitButton();
+    }
+}
+
+// Update Photo Count Display
+function updatePhotoCount() {
+    const countElement = document.getElementById('photoCount');
+    const requirementElement = document.getElementById('photoRequirements');
+    const requirementText = document.getElementById('requirementText');
+    
+    countElement.textContent = `${capturedPhotos.length} photos`;
+    
+    if (capturedPhotos.length >= minPhotos) {
+        requirementElement.style.display = 'block';
+        requirementText.textContent = `✓ Minimum ${minPhotos} photos requirement met!`;
+        requirementElement.className = 'alert alert-success mt-3';
+    } else {
+        requirementElement.style.display = 'block';
+        requirementText.textContent = `⚠ Need ${minPhotos - capturedPhotos.length} more photos`;
+        requirementElement.className = 'alert alert-warning mt-3';
+    }
+}
+
+// Update Photo Progress
+function updatePhotoProgress() {
+    const progressElement = document.getElementById('photoProgress');
+    const statusElement = document.getElementById('photoStatus');
+    
+    const percentage = (photoCount / minPhotos) * 100;
+    progressElement.style.width = Math.min(percentage, 100) + '%';
+    
+    if (photoCount >= minPhotos) {
+        statusElement.textContent = `✅ ${photoCount} photos captured (Minimum requirement met)`;
+        statusElement.className = 'text-center mb-0 text-success';
+    } else {
+        statusElement.textContent = `${photoCount} of ${minPhotos} photos captured`;
+        statusElement.className = 'text-center mb-0 text-warning';
+    }
+}
+
+// Enable/Disable Submit Button
+function enableSubmitButton() {
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Submit Gate Pass';
+}
+
+function disableSubmitButton() {
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-ban me-2"></i>Add More Photos (Min 4 Required)';
+}
+
+// Stop Camera
+document.getElementById('stopCameraBtn').addEventListener('click', function() {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+    }
+    document.getElementById('cameraSection').style.display = 'none';
+    showToast('Camera stopped', 'info');
+});
+
+// Toast Notification
+function showToast(message, type = 'success') {
+    let toastElement, toastMessage;
+    
+    if (type === 'error') {
+        toastElement = document.getElementById('errorToast');
+        toastMessage = document.getElementById('errorMessage');
+    } else {
+        toastElement = document.getElementById('successToast');
+        toastMessage = document.getElementById('toastMessage');
+    }
+    
+    toastMessage.textContent = message;
+    const bsToast = new bootstrap.Toast(toastElement);
+    bsToast.show();
+}
+
+// Auto-fill today's date for send date
+window.addEventListener('load', function() {
+    const now = new Date();
+    const timezoneOffset = now.getTimezoneOffset() * 60000;
+    const localISOTime = new Date(now - timezoneOffset).toISOString().slice(0, 16);
+    
+    // Set send date to current time
+    const sendDateInput = document.querySelector('input[name="send_date"]');
+    if (sendDateInput && !sendDateInput.value) {
+        sendDateInput.value = localISOTime;
+    }
+    
+    // Set return date to tomorrow by default
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowISOTime = new Date(tomorrow - timezoneOffset).toISOString().slice(0, 16);
+    
+    if (returnDateInput) {
+        returnDateInput.value = tomorrowISOTime;
+        returnDateInput.min = localISOTime;
+    }
+    
+    // Auto-select first division and department if available
+    const divisions = document.querySelectorAll('#divisionSelect option');
+    if (divisions.length > 1) {
+        divisionSelect.value = divisions[1].value;
+        divisionSelect.dispatchEvent(new Event('change'));
+    }
+    
+    // Initialize photo requirements
+    updatePhotoCount();
+    updatePhotoProgress();
+});
+
+// Handle form submission
+document.getElementById('gatePassForm').addEventListener('submit', function(e) {
+    if (capturedPhotos.length < minPhotos) {
+        e.preventDefault();
+        showToast(`Minimum ${minPhotos} photos required! Please add more photos.`, 'error');
+        return;
+    }
+    
+    // Show loading state
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Submitting...';
+    
+    // Form is valid, allow submission
+    showToast('Submitting gate pass...', 'success');
+});
+</script>
 {% endblock %}

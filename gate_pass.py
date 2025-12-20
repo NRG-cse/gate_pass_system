@@ -31,7 +31,7 @@ def save_captured_images(images_data):
                 with open(filepath, 'wb') as f:
                     f.write(image_bytes)
                 
-                saved_paths.append(filepath)
+                saved_paths.append(filepath.replace('static/', ''))
             except Exception as e:
                 print(f"Error saving image {i+1}: {e}")
                 continue
@@ -80,17 +80,22 @@ def create_gate_pass():
     
     if request.method == 'POST':
         # Get form data
-        division_id = request.form['division_id']
-        department_id = request.form['department_id']
-        material_description = request.form['material_description']
-        destination = request.form['destination']
-        purpose = request.form['purpose']
-        material_type = request.form['material_type']
-        material_status = request.form['material_status']
-        receiver_name = request.form['receiver_name']
-        receiver_contact = request.form['receiver_contact']
-        send_date = request.form['send_date']
+        division_id = request.form.get('division_id')
+        department_id = request.form.get('department_id')
+        material_description = request.form.get('material_description')
+        destination = request.form.get('destination')
+        purpose = request.form.get('purpose')
+        material_type = request.form.get('material_type')
+        material_status = request.form.get('material_status')
+        receiver_name = request.form.get('receiver_name')
+        receiver_contact = request.form.get('receiver_contact')
+        send_date = request.form.get('send_date')
         expected_return_date = request.form.get('expected_return_date') if material_type == 'returnable' else None
+        
+        # Validate required fields
+        if not all([division_id, department_id, material_description, destination, purpose, material_type, material_status, receiver_name, receiver_contact, send_date]):
+            flash('Please fill all required fields!', 'error')
+            return render_template('create_gate_pass.html', divisions=divisions, departments=departments)
         
         # Get captured images - REQUIRED
         images_data = request.form.getlist('captured_images[]')
@@ -169,6 +174,7 @@ def create_gate_pass():
         except Exception as e:
             conn.rollback()
             flash(f'Error creating gate pass: {str(e)}', 'error')
+            print(f"Gate pass creation error: {e}")
         finally:
             cursor.close()
             conn.close()
