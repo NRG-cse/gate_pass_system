@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block page_title %}Create Store Request{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="fw-bold text-primary">
+                    <i class="fas fa-shopping-cart me-2"></i>Create Store Request
+                </h3>
+                <a href="{{ url_for('gate_pass.gate_pass_list') }}" class="btn btn-outline-primary btn-lg">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Gate Passes
+                </a>
+            </div>
+            <p class="text-muted mb-0">
+                <i class="fas fa-info-circle me-2"></i>
+                Request HR/Admin to create a gate pass for sending materials from store
+            </p>
+        </div>
+    </div>
+
+    <!-- Request Form -->
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-signature me-2"></i>Request Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" class="needs-validation" novalidate>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Store Location</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-store"></i></span>
+                                    <input type="text" class="form-control form-control-lg" 
+                                           value="Store {{ '1' if 'store1' in session.username else '2' }}" readonly>
+                                </div>
+                            </div>
+                            
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Material Description *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-box-open"></i></span>
+                                    <textarea class="form-control form-control-lg" 
+                                              name="material_description" rows="3" required
+                                              placeholder="Describe the material to be sent"></textarea>
+                                    <div class="invalid-feedback">
+                                        Please describe the material.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Destination *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
+                                    <input type="text" class="form-control form-control-lg" 
+                                           name="destination" required
+                                           placeholder="Where is the material going?">
+                                    <div class="invalid-feedback">
+                                        Please enter destination.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Purpose *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-bullseye"></i></span>
+                                    <textarea class="form-control form-control-lg" 
+                                              name="purpose" rows="2" required
+                                              placeholder="Purpose of sending the material"></textarea>
+                                    <div class="invalid-feedback">
+                                        Please enter purpose.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Receiver Name *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                    <input type="text" class="form-control form-control-lg" 
+                                           name="receiver_name" required
+                                           placeholder="Who will receive the material?">
+                                    <div class="invalid-feedback">
+                                        Please enter receiver name.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Receiver Contact</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                                    <input type="tel" class="form-control form-control-lg" 
+                                           name="receiver_contact"
+                                           placeholder="Phone number">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Quantity</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-hashtag"></i></span>
+                                    <input type="number" class="form-control form-control-lg" 
+                                           name="quantity" value="1" min="1">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Urgency Level</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-clock"></i></span>
+                                    <select class="form-select form-control-lg" name="urgency">
+                                        <option value="normal">Normal</option>
+                                        <option value="urgent">Urgent</option>
+                                        <option value="emergency">Emergency</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="col-12">
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <strong>Note:</strong> This request will be sent to HR/Admin for approval. 
+                                    They will create the actual gate pass for you.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg px-5 py-3">
+                                <i class="fas fa-paper-plane me-2"></i>Submit Request
+                            </button>
+                            <a href="{{ url_for('gate_pass.gate_pass_list') }}" class="btn btn-outline-secondary btn-lg px-5 py-3 ms-3">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.08);
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    border-radius: 12px 12px 0 0 !important;
+}
+
+.input-group-text {
+    background-color: #f8f9fa;
+    border-right: none;
+}
+
+.form-control-lg {
+    border-left: none;
+}
+</style>
+
+<script>
+// Form Validation
+(function () {
+    'use strict'
+    var forms = document.querySelectorAll('.needs-validation')
+    Array.prototype.slice.call(forms)
+        .forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+})()
+</script>
+{% endblock %}

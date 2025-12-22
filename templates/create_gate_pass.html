@@ -28,7 +28,7 @@
         </div>
     </div>
 
-    <form id="gatePassForm" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+    <form id="gatePassForm" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate action="{{ url_for('gate_pass.create_gate_pass') }}">
         <div class="row">
             <!-- Left Column -->
             <div class="col-lg-6">
@@ -655,46 +655,50 @@ const materialType = document.getElementById('materialType');
 const returnDateField = document.getElementById('returnDateField');
 const returnDateInput = document.getElementById('expectedReturnDate');
 
-materialType.addEventListener('change', function() {
-    if (this.value === 'returnable') {
-        returnDateField.style.display = 'block';
-        returnDateInput.required = true;
-    } else {
-        returnDateField.style.display = 'none';
-        returnDateInput.required = false;
-    }
-});
+if (materialType && returnDateField && returnDateInput) {
+    materialType.addEventListener('change', function() {
+        if (this.value === 'returnable') {
+            returnDateField.style.display = 'block';
+            returnDateInput.required = true;
+        } else {
+            returnDateField.style.display = 'none';
+            returnDateInput.required = false;
+        }
+    });
+}
 
 // Department Filter based on Division
 const divisionSelect = document.getElementById('divisionSelect');
 const departmentSelect = document.getElementById('departmentSelect');
 
-divisionSelect.addEventListener('change', function() {
-    const selectedDivision = this.value;
-    const departments = departmentSelect.querySelectorAll('option');
-    
-    // Show all departments first
-    departments.forEach(dept => {
-        dept.style.display = '';
-    });
-    
-    // If division selected, filter departments
-    if (selectedDivision) {
+if (divisionSelect && departmentSelect) {
+    divisionSelect.addEventListener('change', function() {
+        const selectedDivision = this.value;
+        const departments = departmentSelect.querySelectorAll('option');
+        
+        // Show all departments first
         departments.forEach(dept => {
-            if (dept.value && dept.dataset.division !== selectedDivision) {
-                dept.style.display = 'none';
-            }
+            dept.style.display = '';
         });
         
-        // Select first available department
-        const availableDepts = Array.from(departments).filter(
-            dept => dept.dataset.division === selectedDivision && dept.value
-        );
-        if (availableDepts.length > 0) {
-            departmentSelect.value = availableDepts[0].value;
+        // If division selected, filter departments
+        if (selectedDivision) {
+            departments.forEach(dept => {
+                if (dept.value && dept.dataset.division !== selectedDivision) {
+                    dept.style.display = 'none';
+                }
+            });
+            
+            // Select first available department
+            const availableDepts = Array.from(departments).filter(
+                dept => dept.dataset.division === selectedDivision && dept.value
+            );
+            if (availableDepts.length > 0) {
+                departmentSelect.value = availableDepts[0].value;
+            }
         }
-    }
-});
+    });
+}
 
 // Photo Management Variables
 let capturedPhotos = [];
@@ -792,6 +796,12 @@ document.getElementById('captureBtn').addEventListener('click', function() {
 function capturePhoto() {
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
+    
+    if (!video || !canvas) {
+        console.error('Camera elements not found');
+        return;
+    }
+    
     const context = canvas.getContext('2d');
     
     // Set canvas size
@@ -871,10 +881,20 @@ document.getElementById('processUploadBtn').addEventListener('click', function()
 
 // Add Photo to Preview and Form
 function addCapturedPhoto(photoData, source) {
+    if (!photoData) {
+        console.error('No photo data provided');
+        return;
+    }
+    
     const photoId = `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     // Add to preview
     const photosContainer = document.getElementById('capturedPhotos');
+    if (!photosContainer) {
+        console.error('capturedPhotos container not found');
+        return;
+    }
+    
     const photoCol = document.createElement('div');
     photoCol.className = 'col-md-3 col-6';
     photoCol.innerHTML = `
@@ -891,12 +911,14 @@ function addCapturedPhoto(photoData, source) {
     
     // Add hidden input
     const inputContainer = document.getElementById('photoInputsContainer');
-    const hiddenInput = document.createElement('input');
-    hiddenInput.type = 'hidden';
-    hiddenInput.name = 'captured_images[]';
-    hiddenInput.value = photoData;
-    hiddenInput.id = photoId;
-    inputContainer.appendChild(hiddenInput);
+    if (inputContainer) {
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'captured_images[]';
+        hiddenInput.value = photoData;
+        hiddenInput.id = photoId;
+        inputContainer.appendChild(hiddenInput);
+    }
     
     // Store in array
     capturedPhotos.push({
@@ -937,29 +959,39 @@ function removePhoto(photoId) {
     }
 }
 
-// Update Photo Count Display
+// Update Photo Count Display - FIXED VERSION
 function updatePhotoCount() {
     const countElement = document.getElementById('photoCount');
     const requirementElement = document.getElementById('photoRequirements');
     const requirementText = document.getElementById('requirementText');
     
-    countElement.textContent = `${capturedPhotos.length} photos`;
+    // Check if elements exist before using them
+    if (countElement) {
+        countElement.textContent = `${capturedPhotos.length} photos`;
+    }
     
-    if (capturedPhotos.length >= minPhotos) {
-        requirementElement.style.display = 'block';
-        requirementText.textContent = `✓ Minimum ${minPhotos} photos requirement met!`;
-        requirementElement.className = 'alert alert-success mt-3';
-    } else {
-        requirementElement.style.display = 'block';
-        requirementText.textContent = `⚠ Need ${minPhotos - capturedPhotos.length} more photos`;
-        requirementElement.className = 'alert alert-warning mt-3';
+    if (requirementElement && requirementText) {
+        if (capturedPhotos.length >= minPhotos) {
+            requirementElement.style.display = 'block';
+            requirementText.textContent = `✓ Minimum ${minPhotos} photos requirement met!`;
+            requirementElement.className = 'alert alert-success mt-3';
+        } else {
+            requirementElement.style.display = 'block';
+            requirementText.textContent = `⚠ Need ${minPhotos - capturedPhotos.length} more photos`;
+            requirementElement.className = 'alert alert-warning mt-3';
+        }
     }
 }
 
-// Update Photo Progress
+// Update Photo Progress - FIXED VERSION
 function updatePhotoProgress() {
     const progressElement = document.getElementById('photoProgress');
     const statusElement = document.getElementById('photoStatus');
+    
+    if (!progressElement || !statusElement) {
+        console.warn('Progress or status elements not found');
+        return;
+    }
     
     const percentage = (photoCount / minPhotos) * 100;
     progressElement.style.width = Math.min(percentage, 100) + '%';
@@ -976,14 +1008,18 @@ function updatePhotoProgress() {
 // Enable/Disable Submit Button
 function enableSubmitButton() {
     const submitBtn = document.getElementById('submitBtn');
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Submit Gate Pass';
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Submit Gate Pass';
+    }
 }
 
 function disableSubmitButton() {
     const submitBtn = document.getElementById('submitBtn');
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-ban me-2"></i>Add More Photos (Min 4 Required)';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-ban me-2"></i>Add More Photos (Min 4 Required)';
+    }
 }
 
 // Stop Camera
@@ -1006,6 +1042,11 @@ function showToast(message, type = 'success') {
     } else {
         toastElement = document.getElementById('successToast');
         toastMessage = document.getElementById('toastMessage');
+    }
+    
+    if (!toastElement || !toastMessage) {
+        console.error('Toast elements not found');
+        return;
     }
     
     toastMessage.textContent = message;
@@ -1047,21 +1088,94 @@ window.addEventListener('load', function() {
     updatePhotoProgress();
 });
 
-// Handle form submission
-document.getElementById('gatePassForm').addEventListener('submit', function(e) {
+// Handle form submission - FINAL WORKING VERSION
+document.getElementById('gatePassForm').addEventListener('submit', async function(e) {
+    console.log("🚀 Form submission started...");
+    
+    // Prevent default form submission
+    e.preventDefault();
+    
+    // Basic validation
     if (capturedPhotos.length < minPhotos) {
-        e.preventDefault();
-        showToast(`Minimum ${minPhotos} photos required! Please add more photos.`, 'error');
+        showToast(`❌ Minimum ${minPhotos} photos required! You have ${capturedPhotos.length}.`, 'error');
         return;
     }
     
+    if (!this.checkValidity()) {
+        this.classList.add('was-validated');
+        showToast('❌ Please fill all required fields correctly!', 'error');
+        return;
+    }
+    
+    console.log("✅ All validations passed");
+    console.log(`📸 Total photos: ${capturedPhotos.length}`);
+    
     // Show loading state
     const submitBtn = document.getElementById('submitBtn');
+    const originalText = submitBtn.innerHTML;
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Submitting...';
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating Gate Pass...';
     
-    // Form is valid, allow submission
-    showToast('Submitting gate pass...', 'success');
+    try {
+        // Clear any existing photo inputs
+        const existingInputs = document.querySelectorAll('input[name="captured_images[]"]');
+        existingInputs.forEach(input => input.remove());
+        
+        // Add photos as hidden inputs
+        capturedPhotos.forEach((photo, index) => {
+            if (photo && photo.data) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'captured_images[]';
+                input.value = photo.data;
+                this.appendChild(input);
+            }
+        });
+        
+        // Create FormData
+        const formData = new FormData(this);
+        
+        // Send AJAX request
+        const response = await fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('✅ ' + result.message, 'success');
+            console.log("✅ Gate pass created successfully!");
+            
+            // Redirect after delay
+            setTimeout(() => {
+                window.location.href = result.redirect || '/gate_pass/gate_pass_list';
+            }, 1500);
+            
+        } else {
+            showToast('❌ ' + (result.message || 'Error creating gate pass'), 'error');
+            console.error("❌ Error:", result.message);
+            
+            // Reset button
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+        
+    } catch (error) {
+        console.error('❌ Network error:', error);
+        showToast('❌ Network error. Please try again.', 'error');
+        
+        // Reset button
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        
+        // Fallback to normal form submission
+        console.log("🔄 Trying normal form submission...");
+        this.submit();
+    }
 });
 </script>
 {% endblock %}

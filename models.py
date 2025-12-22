@@ -189,6 +189,46 @@ def init_db():
                 FOREIGN KEY (gate_pass_id) REFERENCES gate_passes(id)
             )
         ''')
+
+        # Store Requests Table (For store managers to request gate passes)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS store_manager_requests (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                store_manager_id INT NOT NULL,
+                store_location ENUM('store_1', 'store_2') NOT NULL,
+                material_description TEXT NOT NULL,
+                destination VARCHAR(200) NOT NULL,
+                purpose TEXT NOT NULL,
+                receiver_name VARCHAR(100) NOT NULL,
+                receiver_contact VARCHAR(15),
+                quantity INT DEFAULT 1,
+                urgency ENUM('normal', 'urgent', 'emergency') DEFAULT 'normal',
+                status ENUM('pending', 'approved', 'rejected', 'processing') DEFAULT 'pending',
+                admin_response TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (store_manager_id) REFERENCES users(id)
+            )
+        ''')
+
+        # Store Material Movement Log Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS store_material_logs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                store_location ENUM('store_1', 'store_2') NOT NULL,
+                gate_pass_id INT,
+                material_description TEXT NOT NULL,
+                movement_type ENUM('incoming', 'outgoing', 'transfer') NOT NULL,
+                quantity INT DEFAULT 1,
+                from_location VARCHAR(100),
+                to_location VARCHAR(100),
+                handled_by INT NOT NULL,
+                remarks TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (gate_pass_id) REFERENCES gate_passes(id),
+                FOREIGN KEY (handled_by) REFERENCES users(id)
+            )
+        ''')
         
         # Add missing columns if they don't exist
         try:

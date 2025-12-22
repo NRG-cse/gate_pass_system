@@ -39,6 +39,11 @@ def offline():
 def install_pwa():
     return render_template('install_pwa.html')
 
+# Create upload folder if not exists
+if not os.path.exists('static/uploads'):
+    os.makedirs('static/uploads')
+    print("✅ Created upload folder: static/uploads")
+
 # Initialize database and start scheduler
 with app.app_context():
     if init_db():
@@ -681,6 +686,32 @@ def check_camera_support():
         'supports_getUserMedia': True,
         'message': 'Camera support check complete'
     })
+
+def create_directories():
+    directories = ['static/uploads', 'static/icons', 'static/js']
+    for directory in directories:
+        if not os.path.exists(directory):
+            os.makedirs(directory, exist_ok=True)
+            print(f"✅ Created directory: {directory}")
+
+# Call this function at the start
+create_directories()
+
+@app.route('/check_photo_count', methods=['POST'])
+def check_photo_count():
+    """Check if photos are being sent correctly"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not logged in'})
+    
+    try:
+        captured_images = request.form.getlist('captured_images[]')
+        return jsonify({
+            'success': True,
+            'photo_count': len(captured_images),
+            'message': f'Received {len(captured_images)} photos'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

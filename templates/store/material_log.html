@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block page_title %}Material Movement Log{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="fw-bold text-primary">
+                    <i class="fas fa-exchange-alt me-2"></i>Material Movement Log
+                </h3>
+                <div>
+                    <a href="{{ url_for('gate_pass.gate_pass_list') }}" class="btn btn-outline-primary btn-lg me-2">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Gate Passes
+                    </a>
+                    <a href="{{ url_for('gate_pass.create_store_request') }}" class="btn btn-success btn-lg">
+                        <i class="fas fa-plus me-2"></i>New Request
+                    </a>
+                </div>
+            </div>
+            <p class="text-muted mb-0">
+                <i class="fas fa-info-circle me-2"></i>
+                Track all material movements in and out of your store
+            </p>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-5">
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-gradient-primary border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-sign-out-alt fa-2x text-white"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Outgoing Today</h6>
+                            <h2 class="text-white mb-0">
+                                {{ logs|selectattr('movement_type', 'equalto', 'outgoing')|list|length }}
+                            </h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-gradient-success border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-sign-in-alt fa-2x text-white"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Incoming Today</h6>
+                            <h2 class="text-white mb-0">
+                                {{ logs|selectattr('movement_type', 'equalto', 'incoming')|list|length }}
+                            </h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-gradient-warning border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-truck-loading fa-2x text-white"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Total Movements</h6>
+                            <h2 class="text-white mb-0">{{ logs|length }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card bg-gradient-info border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon-container">
+                            <i class="fas fa-calendar-day fa-2x text-white"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-white-50 mb-1">Today</h6>
+                            <h2 class="text-white mb-0">{{ now.strftime('%d %b') if now else '' }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Material Log Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0 text-primary">
+                    <i class="fas fa-list me-2"></i>Movement History
+                </h5>
+                <button class="btn btn-outline-secondary btn-sm" onclick="refreshTable()" title="Refresh">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="card-body p-0">
+            {% if logs %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Date & Time</th>
+                            <th>Material</th>
+                            <th>Movement Type</th>
+                            <th>Gate Pass</th>
+                            <th>To/From</th>
+                            <th>Handled By</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td class="ps-4">
+                                <small class="text-muted">{{ log.created_at.strftime('%d/%m/%Y') }}</small>
+                                <br>
+                                <small class="text-muted">{{ log.created_at.strftime('%I:%M %p') }}</small>
+                            </td>
+                            <td>
+                                <strong>{{ log.material_description[:50] }}</strong>
+                                {% if log.material_description|length > 50 %}...{% endif %}
+                                {% if log.quantity > 1 %}
+                                <br><small class="text-muted">Qty: {{ log.quantity }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.movement_type == 'outgoing' %}
+                                <span class="badge bg-danger py-2 px-3">
+                                    <i class="fas fa-sign-out-alt me-1"></i>Outgoing
+                                </span>
+                                {% elif log.movement_type == 'incoming' %}
+                                <span class="badge bg-success py-2 px-3">
+                                    <i class="fas fa-sign-in-alt me-1"></i>Incoming
+                                </span>
+                                {% else %}
+                                <span class="badge bg-info py-2 px-3">
+                                    <i class="fas fa-exchange-alt me-1"></i>Transfer
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.gate_pass_id and log.pass_number %}
+                                <a href="{{ url_for('gate_pass.gate_pass_detail', gate_pass_id=log.gate_pass_id) }}" 
+                                   class="badge bg-primary text-decoration-none">
+                                    {{ log.pass_number }}
+                                </a>
+                                {% else %}
+                                <span class="badge bg-secondary">No Gate Pass</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.movement_type == 'outgoing' %}
+                                <small>To: {{ log.to_location }}</small>
+                                {% elif log.movement_type == 'incoming' %}
+                                <small>From: {{ log.from_location }}</small>
+                                {% else %}
+                                <small>From: {{ log.from_location }}</small>
+                                <br>
+                                <small>To: {{ log.to_location }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ log.handler_name }}</small>
+                            </td>
+                            <td>
+                                <small class="text-muted">{{ log.remarks[:60] }}</small>
+                                {% if log.remarks|length > 60 %}...{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <div class="empty-state-icon mb-3">
+                    <i class="fas fa-exchange-alt fa-4x text-primary opacity-25"></i>
+                </div>
+                <h5 class="fw-bold text-muted mb-2">No Material Movements Yet</h5>
+                <p class="text-muted mb-0">Material movement records will appear here</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.stat-card {
+    border-radius: 15px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+}
+
+.bg-gradient-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; }
+.bg-gradient-success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%) !important; }
+.bg-gradient-warning { background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%) !important; }
+.bg-gradient-info { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important; }
+
+.stat-icon-container {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.empty-state-icon {
+    opacity: 0.5;
+}
+
+.table th {
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table td {
+    vertical-align: middle;
+    padding: 1rem;
+}
+
+.card {
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.08);
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    border-radius: 12px 12px 0 0 !important;
+}
+
+@media (max-width: 768px) {
+    .stat-card .stat-icon-container {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .stat-card h2 {
+        font-size: 1.5rem;
+    }
+}
+</style>
+
+<script>
+function refreshTable() {
+    location.reload();
+}
+</script>
+{% endblock %}

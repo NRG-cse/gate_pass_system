@@ -618,6 +618,7 @@ def delete_gate_pass(gate_pass_id):
 
 @admin_bp.route('/store_requests')
 def store_requests():
+    """View all store manager requests"""
     if 'user_id' not in session or session['role'] != 'system_admin':
         flash('Access denied! Only System Admin can view store requests.', 'error')
         return redirect(url_for('dashboard'))
@@ -631,10 +632,10 @@ def store_requests():
     
     try:
         cursor.execute('''
-            SELECT sr.*, u.name as security_name 
-            FROM store_requests sr 
-            JOIN users u ON sr.security_user_id = u.id 
-            WHERE sr.status = 'pending'
+            SELECT sr.*, u.name as store_manager_name, u2.name as admin_name
+            FROM store_manager_requests sr
+            JOIN users u ON sr.store_manager_id = u.id
+            LEFT JOIN users u2 ON sr.admin_response_by = u2.id
             ORDER BY sr.created_at DESC
         ''')
         requests = dict_fetchall(cursor)
@@ -649,10 +650,12 @@ def store_requests():
 
 @admin_bp.route('/process_store_request/<int:request_id>', methods=['POST'])
 def process_store_request(request_id):
+    """Process store manager request (approve/reject)"""
     if 'user_id' not in session or session['role'] != 'system_admin':
         return jsonify({'success': False, 'message': 'Access denied!'})
     
     action = request.form.get('action')
+    admin_response = request.form.get('admin_response', '')
     
     conn = get_db_connection()
     if conn is None:
@@ -661,66 +664,91 @@ def process_store_request(request_id):
     cursor = conn.cursor()
     
     try:
+        # Get request details
+        cursor.execute('''
+            SELECT sr.*, u.name as store_manager_name
+            FROM store_manager_requests sr
+            JOIN users u ON sr.store_manager_id = u.id
+            WHERE sr.id = %s
+        ''', (request_id,))
+        
+        request_data = dict_fetchone(cursor)
+        
+        if not request_data:
+            return jsonify({'success': False, 'message': 'Request not found!'})
+        
         if action == 'approve':
-            # Get request details
-            cursor.execute('''
-                SELECT material_description, destination, purpose, receiver_name, receiver_contact, security_user_id 
-                FROM store_requests WHERE id = %s
-            ''', (request_id,))
-            request_data = cursor.fetchone()
-            
-            if not request_data:
-                return jsonify({'success': False, 'message': 'Request not found!'})
-            
-            # Create gate pass for security
+            # Create gate pass for the store manager
             pass_number = f"GP{datetime.now().strftime('%Y%m%d%H%M%S')}"
             
+            # Insert gate pass
             cursor.execute('''
                 INSERT INTO gate_passes (
                     pass_number, created_by, division_id, department_id,
                     material_description, destination, purpose, 
                     material_type, material_status, receiver_name, 
-                    receiver_contact, send_date, images, status
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'non_returnable', 'new', %s, %s, %s, '[]', 'approved')
+                    receiver_contact, send_date, images, status, store_location
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'non_returnable', 'new', %s, %s, %s, '[]', 'approved', %s)
             ''', (
-                pass_number, session['user_id'], 1, 1,  # Using default division/department
-                request_data[0], request_data[1], request_data[2],
-                request_data[3], request_data[4], datetime.now()
+                pass_number, session['user_id'], 1, 1,  # Using default division/department for store
+                request_data['material_description'], request_data['destination'], request_data['purpose'],
+                request_data['receiver_name'], request_data['receiver_contact'], datetime.now(),
+                request_data['store_location']
             ))
             
             gate_pass_id = cursor.lastrowid
             
+            # Generate QR codes
+            from qr_utils import generate_gate_pass_qr_data
+            qr_data_form = generate_gate_pass_qr_data(gate_pass_id, pass_number)
+            qr_data_sticker = generate_gate_pass_qr_data(gate_pass_id, f"{pass_number}_STICKER")
+            
+            cursor.execute('''
+                UPDATE gate_passes 
+                SET qr_code_form = %s, qr_code_sticker = %s 
+                WHERE id = %s
+            ''', (qr_data_form, qr_data_sticker, gate_pass_id))
+            
             # Update request status
             cursor.execute('''
-                UPDATE store_requests 
-                SET status = 'approved', admin_id = %s, gate_pass_id = %s
+                UPDATE store_manager_requests 
+                SET status = 'approved', admin_response = %s, admin_response_by = %s, gate_pass_id = %s
                 WHERE id = %s
-            ''', (session['user_id'], gate_pass_id, request_id))
+            ''', (admin_response, session['user_id'], gate_pass_id, request_id))
             
-            # Notify security user
+            # Notify store manager
             create_notification(
-                request_data[5],
+                request_data['store_manager_id'],
                 f"✅ Your store request has been approved! Gate Pass #{pass_number} created.",
                 'status',
                 gate_pass_id
             )
             
-            message = 'Store request approved and gate pass created!'
+            # Add to material log
+            cursor.execute('''
+                INSERT INTO store_material_logs (
+                    store_location, gate_pass_id, material_description, movement_type,
+                    quantity, to_location, handled_by, remarks
+                ) VALUES (%s, %s, %s, 'outgoing', %s, %s, %s, %s)
+            ''', (
+                request_data['store_location'], gate_pass_id, request_data['material_description'],
+                request_data['quantity'], request_data['destination'], session['user_id'],
+                f"Gate pass created by admin for store request #{request_id}"
+            ))
+            
+            message = f'Store request approved! Gate Pass #{pass_number} created.'
             
         elif action == 'reject':
             cursor.execute('''
-                UPDATE store_requests 
-                SET status = 'rejected', admin_id = %s
+                UPDATE store_manager_requests 
+                SET status = 'rejected', admin_response = %s, admin_response_by = %s
                 WHERE id = %s
-            ''', (session['user_id'], request_id))
+            ''', (admin_response, session['user_id'], request_id))
             
-            # Notify security user
-            cursor.execute('SELECT security_user_id FROM store_requests WHERE id = %s', (request_id,))
-            security_id = cursor.fetchone()[0]
-            
+            # Notify store manager
             create_notification(
-                security_id,
-                f"❌ Your store request has been rejected by System Administrator.",
+                request_data['store_manager_id'],
+                f"❌ Your store request has been rejected. Reason: {admin_response}",
                 'status',
                 None
             )
