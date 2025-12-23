@@ -1088,22 +1088,21 @@ window.addEventListener('load', function() {
     updatePhotoProgress();
 });
 
-// Handle form submission - FINAL WORKING VERSION
-document.getElementById('gatePassForm').addEventListener('submit', async function(e) {
+// Handle form submission - SIMPLE WORKING VERSION
+document.getElementById('gatePassForm').addEventListener('submit', function(e) {
     console.log("🚀 Form submission started...");
-    
-    // Prevent default form submission
-    e.preventDefault();
     
     // Basic validation
     if (capturedPhotos.length < minPhotos) {
         showToast(`❌ Minimum ${minPhotos} photos required! You have ${capturedPhotos.length}.`, 'error');
+        e.preventDefault();
         return;
     }
     
     if (!this.checkValidity()) {
         this.classList.add('was-validated');
         showToast('❌ Please fill all required fields correctly!', 'error');
+        e.preventDefault();
         return;
     }
     
@@ -1116,66 +1115,43 @@ document.getElementById('gatePassForm').addEventListener('submit', async functio
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating Gate Pass...';
     
-    try {
-        // Clear any existing photo inputs
-        const existingInputs = document.querySelectorAll('input[name="captured_images[]"]');
-        existingInputs.forEach(input => input.remove());
-        
-        // Add photos as hidden inputs
-        capturedPhotos.forEach((photo, index) => {
-            if (photo && photo.data) {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'captured_images[]';
-                input.value = photo.data;
-                this.appendChild(input);
-            }
-        });
-        
-        // Create FormData
-        const formData = new FormData(this);
-        
-        // Send AJAX request
-        const response = await fetch(this.action, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            showToast('✅ ' + result.message, 'success');
-            console.log("✅ Gate pass created successfully!");
-            
-            // Redirect after delay
-            setTimeout(() => {
-                window.location.href = result.redirect || '/gate_pass/gate_pass_list';
-            }, 1500);
-            
-        } else {
-            showToast('❌ ' + (result.message || 'Error creating gate pass'), 'error');
-            console.error("❌ Error:", result.message);
-            
-            // Reset button
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-        }
-        
-    } catch (error) {
-        console.error('❌ Network error:', error);
-        showToast('❌ Network error. Please try again.', 'error');
-        
-        // Reset button
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-        
-        // Fallback to normal form submission
-        console.log("🔄 Trying normal form submission...");
-        this.submit();
+    // Allow form to submit normally
+    console.log("🔄 Submitting form normally...");
+    
+    // Hide camera if open
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
     }
+});
+
+// Additional validation for receiver contact
+function validateReceiverContact() {
+    const contactInput = document.querySelector('input[name="receiver_contact"]');
+    if (contactInput) {
+        contactInput.addEventListener('input', function() {
+            const value = this.value;
+            // Limit to 15 characters
+            if (value.length > 15) {
+                this.value = value.substring(0, 15);
+                showToast('Receiver contact limited to 15 characters', 'warning');
+            }
+            
+            // Validate phone number format (optional)
+            const phoneRegex = /^[0-9\+\-\s\(\)]{6,15}$/;
+            if (value && !phoneRegex.test(value)) {
+                this.classList.add('is-invalid');
+            } else {
+                this.classList.remove('is-invalid');
+            }
+        });
+    }
+}
+
+// Call this function on page load
+window.addEventListener('load', function() {
+    // ... existing code ...
+    validateReceiverContact();  // Add this line
 });
 </script>
 {% endblock %}

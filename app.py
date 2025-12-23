@@ -420,7 +420,7 @@ def approval_pending():
 
 @app.route('/approve_user/<int:user_id>/<action>')
 def approve_user(user_id, action):
-    """Approve or reject user registration - FIXED VERSION"""
+    """Approve or reject user registration - ULTIMATE FIXED VERSION"""
     if 'user_id' not in session or session['role'] not in ['system_admin', 'department_head']:
         return jsonify({'success': False, 'message': 'Access denied!'})
     
@@ -439,12 +439,18 @@ def approve_user(user_id, action):
             SELECT u.*, d.name as department_name, d.id as dept_id
             FROM users u 
             LEFT JOIN departments d ON u.department_id = d.id 
-            WHERE u.id = %s AND u.status = 'pending'
+            WHERE u.id = %s
         ''', (user_id,))
         user = dict_fetchone(cursor)
         
         if not user:
-            return jsonify({'success': False, 'message': 'User not found or already processed!'})
+            return jsonify({'success': False, 'message': 'User not found!'})
+        
+        print(f"DEBUG: Current user status: {user['status']}")
+        
+        # Check if already approved/rejected
+        if user['status'] != 'pending':
+            return jsonify({'success': False, 'message': f'User already {user["status"]}!'})
         
         # Check permissions for department head
         if session['role'] == 'department_head':
@@ -515,6 +521,8 @@ def approve_user(user_id, action):
     except Exception as e:
         conn.rollback()
         print(f"Error approving user: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error processing user: {str(e)}'})
     finally:
         cursor.close()
@@ -687,15 +695,16 @@ def check_camera_support():
         'message': 'Camera support check complete'
     })
 
-def create_directories():
-    directories = ['static/uploads', 'static/icons', 'static/js']
+# Create necessary directories at startup
+def setup_directories():
+    directories = ['static/uploads', 'static/icons', 'static/js', 'static/css']
     for directory in directories:
         if not os.path.exists(directory):
             os.makedirs(directory, exist_ok=True)
             print(f"✅ Created directory: {directory}")
 
-# Call this function at the start
-create_directories()
+# Call this at the beginning of your main app
+setup_directories()
 
 @app.route('/check_photo_count', methods=['POST'])
 def check_photo_count():

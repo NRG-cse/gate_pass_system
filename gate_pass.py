@@ -4,10 +4,11 @@ from models import get_db_connection, dict_fetchall, dict_fetchone
 from qr_utils import generate_qr_code, generate_gate_pass_qr_data
 from notifications import create_notification
 import MySQLdb
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import json
 import base64
+import traceback
 
 gate_pass_bp = Blueprint('gate_pass', __name__)
 
@@ -19,6 +20,7 @@ def save_captured_images(images_data):
     # Create upload folder if not exists
     if not os.path.exists(upload_folder):
         os.makedirs(upload_folder, exist_ok=True)
+        print(f"📁 Created upload folder: {upload_folder}")
     
     for i, image_data in enumerate(images_data):
         if image_data and isinstance(image_data, str) and image_data.startswith('data:image'):
@@ -29,23 +31,29 @@ def save_captured_images(images_data):
                 else:
                     encoded = image_data
                 
-                # Skip if too short
-                if len(encoded) < 100:
-                    print(f"⚠️ Image {i+1}: Too short, skipping")
+                # Validate base64
+                if not encoded or len(encoded) < 100:
+                    print(f"⚠️ Image {i+1}: Invalid base64 data (too short)")
                     continue
                 
-                image_bytes = base64.b64decode(encoded)
+                # Decode base64
+                try:
+                    image_bytes = base64.b64decode(encoded)
+                except Exception as decode_error:
+                    print(f"⚠️ Image {i+1}: Base64 decode error: {decode_error}")
+                    continue
                 
                 # Generate unique filename
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
                 filename = f"material_{timestamp}_{i+1}.jpg"
                 filepath = os.path.join(upload_folder, filename)
                 
+                # Save file
                 with open(filepath, 'wb') as f:
                     f.write(image_bytes)
                 
                 saved_paths.append(f"uploads/{filename}")
-                print(f"✅ Image {i+1} saved: {filename}")
+                print(f"✅ Image {i+1} saved: {filename} ({len(image_bytes)} bytes)")
             except Exception as e:
                 print(f"❌ Error saving image {i+1}: {e}")
                 continue
@@ -58,19 +66,27 @@ def save_captured_images(images_data):
 
 @gate_pass_bp.route('/create_gate_pass', methods=['GET', 'POST'])
 def create_gate_pass():
-    """Create new gate pass - SIMPLE AND WORKING VERSION"""
+    """Create new gate pass - ULTIMATE FIXED VERSION"""
+    print(f"\n{'='*90}")
+    print(f"📋 GATE PASS CREATION STARTED - User: {session.get('username', 'Unknown')}")
+    print(f"{'='*90}")
     
     if 'user_id' not in session:
+        print("❌ User not logged in, redirecting to login")
+        flash('Please login first!', 'error')
         return redirect(url_for('auth.login'))
     
     # Check if user can create gate pass
     if session['role'] in ['security', 'store_manager']:
-        flash(f'{session["role"].replace("_", " ").title()} cannot create gate passes!', 'error')
+        error_msg = f'{session["role"].replace("_", " ").title()} cannot create gate passes!'
+        flash(error_msg, 'error')
+        print(f"❌ {error_msg}")
         return redirect(url_for('dashboard'))
     
     conn = get_db_connection()
     if conn is None:
-        flash('Database connection failed!', 'error')
+        flash('❌ Database connection failed!', 'error')
+        print("❌ Database connection failed")
         return render_template('create_gate_pass.html', divisions=[], departments=[])
     
     cursor = conn.cursor()
@@ -79,6 +95,7 @@ def create_gate_pass():
     try:
         cursor.execute('SELECT id, name FROM divisions WHERE status = "active" ORDER BY name')
         divisions = dict_fetchall(cursor)
+        print(f"📊 Loaded {len(divisions)} active divisions")
         
         cursor.execute('''
             SELECT d.id, d.name, d.division_id, dv.name as division_name 
@@ -88,154 +105,236 @@ def create_gate_pass():
             ORDER BY dv.name, d.name
         ''')
         departments = dict_fetchall(cursor)
+        print(f"📊 Loaded {len(departments)} active departments")
     except Exception as e:
-        print(f"Error fetching divisions/departments: {e}")
+        print(f"❌ Error fetching divisions/departments: {e}")
+        flash('Error loading form data!', 'error')
         divisions = []
         departments = []
     
     if request.method == 'POST':
-        print("\n" + "="*80)
-        print("🚀 FORM SUBMISSION RECEIVED - PROCESSING...")
-        print("="*80)
+        print(f"\n{'='*90}")
+        print("🚀 FORM SUBMISSION RECEIVED")
+        print(f"{'='*90}")
         
-        # Get form data using get() to avoid KeyError
+        # Collect all form data
+        form_fields = [
+            'division_id', 'department_id', 'material_description', 'destination',
+            'purpose', 'material_type', 'material_status', 'receiver_name',
+            'receiver_contact', 'send_date', 'expected_return_date', 'vehicle_number',
+            'receiver_id', 'delivery_address', 'special_instructions', 'urgent'
+        ]
+        
+        form_data = {}
+        for field in form_fields:
+            value = request.form.get(field, '').strip()
+            form_data[field] = value
+            print(f"  {field}: {'✅ ' + value[:50] + '...' if value else '❌ EMPTY'}")
+        
+        # Get captured images
+        captured_images = request.form.getlist('captured_images[]')
+        print(f"\n📸 CAPTURED IMAGES: {len(captured_images)} received")
+        
+        # Filter valid images
+        valid_images = []
+        for i, img in enumerate(captured_images):
+            if img and img.strip() and img.startswith('data:image'):
+                valid_images.append(img.strip())
+                print(f"  ✅ Photo {i+1}: Valid base64 ({len(img)} chars)")
+            elif img and img.strip():
+                print(f"  ⚠️ Photo {i+1}: Not base64 format")
+            else:
+                print(f"  ❌ Photo {i+1}: Empty")
+        
+        # Validate required fields
+        required_fields = {
+            'division_id': 'Division',
+            'department_id': 'Department', 
+            'material_description': 'Material Description',
+            'destination': 'Destination',
+            'purpose': 'Purpose',
+            'material_type': 'Material Type',
+            'material_status': 'Material Status',
+            'receiver_name': 'Receiver Name',
+            'receiver_contact': 'Receiver Contact',
+            'send_date': 'Send Date'
+        }
+        
+        validation_errors = []
+        
+        # Check required fields
+        for field, name in required_fields.items():
+            if not form_data.get(field):
+                validation_errors.append(name)
+                print(f"❌ Missing: {name}")
+        
+        # Check photos
+        if len(valid_images) < 4:
+            validation_errors.append(f"Minimum 4 photos (you have {len(valid_images)})")
+            print(f"❌ Not enough photos: {len(valid_images)} < 4")
+        
+        # If validation errors, show them and return
+        if validation_errors:
+            error_msg = f"❌ Please fix: {', '.join(validation_errors)}"
+            flash(error_msg, 'error')
+            print(f"❌ VALIDATION FAILED: {error_msg}")
+            
+            cursor.close()
+            conn.close()
+            return render_template('create_gate_pass.html', 
+                                 divisions=divisions, 
+                                 departments=departments,
+                                 form_data=form_data)
+        
+        print("✅ All validations passed!")
+        
         try:
-            division_id = request.form.get('division_id', '').strip()
-            department_id = request.form.get('department_id', '').strip()
-            material_description = request.form.get('material_description', '').strip()
-            destination = request.form.get('destination', '').strip()
-            purpose = request.form.get('purpose', '').strip()
-            material_type = request.form.get('material_type', '').strip()
-            material_status = request.form.get('material_status', '').strip()
-            receiver_name = request.form.get('receiver_name', '').strip()
-            receiver_contact = request.form.get('receiver_contact', '').strip()
-            send_date_str = request.form.get('send_date', '').strip()
-            expected_return_date = request.form.get('expected_return_date', '').strip()
-            vehicle_number = request.form.get('vehicle_number', '').strip()
-            receiver_id = request.form.get('receiver_id', '').strip()
-            delivery_address = request.form.get('delivery_address', '').strip()
-            special_instructions = request.form.get('special_instructions', '').strip()
-            urgent = request.form.get('urgent', 'false') == 'true'
+            # Generate unique pass number
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+            pass_number = f"GP{timestamp}"
+            print(f"🔢 Generated Pass Number: {pass_number}")
             
-            # Get captured images
-            captured_images = request.form.getlist('captured_images[]')
+            # Process send date
+            send_datetime = None
+            send_date_str = form_data['send_date']
+            if send_date_str:
+                try:
+                    # Try multiple date formats
+                    if 'T' in send_date_str:
+                        send_datetime = datetime.strptime(send_date_str, '%Y-%m-%dT%H:%M')
+                    elif ' ' in send_date_str and ':' in send_date_str:
+                        send_datetime = datetime.strptime(send_date_str, '%Y-%m-%d %H:%M:%S')
+                    else:
+                        send_datetime = datetime.strptime(send_date_str, '%Y-%m-%d')
+                    print(f"📅 Send Date parsed: {send_datetime}")
+                except Exception as e:
+                    print(f"⚠️ Could not parse send date '{send_date_str}': {e}, using current time")
+                    send_datetime = datetime.now()
+            else:
+                send_datetime = datetime.now()
+                print(f"📅 No send date provided, using current: {send_datetime}")
             
-            print(f"📊 Form Data Summary:")
-            print(f"  Division ID: {division_id}")
-            print(f"  Department ID: {department_id}")
-            print(f"  Material: {material_description[:50]}...")
-            print(f"  Destination: {destination}")
-            print(f"  Receiver: {receiver_name}")
-            print(f"  Photos: {len(captured_images)} received")
+            # Process return date (if returnable)
+            return_datetime = None
+            if form_data['material_type'] == 'returnable' and form_data['expected_return_date']:
+                return_date_str = form_data['expected_return_date']
+                try:
+                    if 'T' in return_date_str:
+                        return_datetime = datetime.strptime(return_date_str, '%Y-%m-%dT%H:%M')
+                    elif ' ' in return_date_str and ':' in return_date_str:
+                        return_datetime = datetime.strptime(return_date_str, '%Y-%m-%d %H:%M:%S')
+                    else:
+                        return_datetime = datetime.strptime(return_date_str, '%Y-%m-%d')
+                    print(f"📅 Return Date parsed: {return_datetime}")
+                except Exception as e:
+                    print(f"⚠️ Could not parse return date '{return_date_str}': {e}")
+                    # Set default return date (7 days from now)
+                    return_datetime = datetime.now() + timedelta(days=7)
+                    print(f"📅 Using default return date: {return_datetime}")
             
-            # Validate required fields
-            errors = []
+            # Save images
+            print("💾 Saving images...")
+            images_json = save_captured_images(valid_images)
+            print(f"💾 Images JSON created ({len(images_json)} chars)")
             
-            if not division_id:
-                errors.append("Please select a Division")
-            if not department_id:
-                errors.append("Please select a Department")
-            if not material_description:
-                errors.append("Please enter Material Description")
-            if not destination:
-                errors.append("Please enter Destination")
-            if not purpose:
-                errors.append("Please enter Purpose")
-            if not material_type:
-                errors.append("Please select Material Type")
-            if not material_status:
-                errors.append("Please select Material Status")
-            if not receiver_name:
-                errors.append("Please enter Receiver Name")
-            if not receiver_contact:
-                errors.append("Please enter Receiver Contact")
-            if not send_date_str:
-                errors.append("Please select Send Date")
-            
-            # Validate photos
-            valid_images = []
-            for i, img in enumerate(captured_images):
-                if img and img.strip() and img.startswith('data:image'):
-                    valid_images.append(img.strip())
-            
-            if len(valid_images) < 4:
-                errors.append(f"Minimum 4 photos required (you have {len(valid_images)})")
-            
-            if errors:
-                for error in errors:
-                    flash(f'❌ {error}', 'error')
+            # Convert division_id and department_id to integers
+            try:
+                division_id = int(form_data['division_id'])
+                department_id = int(form_data['department_id'])
+                print(f"🔢 Converted IDs: division={division_id}, department={department_id}")
+            except ValueError as e:
+                flash('❌ Invalid division or department selected!', 'error')
+                print(f"❌ Invalid ID conversion: {e}")
                 cursor.close()
                 conn.close()
                 return render_template('create_gate_pass.html', 
                                      divisions=divisions, 
                                      departments=departments,
-                                     form_data=request.form)
+                                     form_data=form_data)
             
-            # Process dates
-            send_date = None
-            if send_date_str:
-                try:
-                    if 'T' in send_date_str:
-                        send_date = datetime.strptime(send_date_str, '%Y-%m-%dT%H:%M')
-                    else:
-                        send_date = datetime.strptime(send_date_str, '%Y-%m-%d %H:%M:%S')
-                except:
-                    send_date = datetime.now()
-            else:
-                send_date = datetime.now()
+            # Check if division and department exist
+            print("🔍 Verifying division and department...")
+            cursor.execute('SELECT id FROM divisions WHERE id = %s AND status = "active"', (division_id,))
+            if not cursor.fetchone():
+                flash('❌ Invalid or inactive division!', 'error')
+                print(f"❌ Division {division_id} not found or inactive")
+                cursor.close()
+                conn.close()
+                return render_template('create_gate_pass.html', 
+                                     divisions=divisions, 
+                                     departments=departments,
+                                     form_data=form_data)
             
-            return_date = None
-            if material_type == 'returnable' and expected_return_date:
-                try:
-                    if 'T' in expected_return_date:
-                        return_date = datetime.strptime(expected_return_date, '%Y-%m-%dT%H:%M')
-                    else:
-                        return_date = datetime.strptime(expected_return_date, '%Y-%m-%d %H:%M:%S')
-                except:
-                    return_date = None
+            cursor.execute('SELECT id FROM departments WHERE id = %s AND division_id = %s AND status = "active"', 
+                         (department_id, division_id))
+            if not cursor.fetchone():
+                flash('❌ Invalid department for selected division!', 'error')
+                print(f"❌ Department {department_id} not found or doesn't belong to division {division_id}")
+                cursor.close()
+                conn.close()
+                return render_template('create_gate_pass.html', 
+                                     divisions=divisions, 
+                                     departments=departments,
+                                     form_data=form_data)
             
-            # Save images
-            images_json = save_captured_images(valid_images)
+            print("✅ Division and department verified")
             
-            # Generate pass number
-            pass_number = f"GP{datetime.now().strftime('%Y%m%d%H%M%S')}"
-            print(f"🔢 Generated Pass Number: {pass_number}")
+            # Prepare data for insertion
+            print("💾 Preparing data for database insertion...")
             
-            # Insert into database
-            cursor.execute('''
+            # Handle NULL values for optional fields
+            receiver_id = form_data['receiver_id'] if form_data['receiver_id'] else None
+            vehicle_number = form_data['vehicle_number'] if form_data['vehicle_number'] else None
+            delivery_address = form_data['delivery_address'] if form_data['delivery_address'] else None
+            special_instructions = form_data['special_instructions'] if form_data['special_instructions'] else None
+            urgent = 1 if form_data.get('urgent') == 'true' else 0
+            
+            # Build the SQL query and parameters
+            sql = '''
                 INSERT INTO gate_passes (
                     pass_number, created_by, division_id, department_id, 
                     material_description, destination, purpose, material_type, 
                     material_status, expected_return_date, receiver_name, 
                     receiver_contact, receiver_id, delivery_address, send_date,
                     vehicle_number, special_instructions, images, status, urgent
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending_dept', %s)
-            ''', (
-                pass_number, 
-                session['user_id'], 
-                division_id, 
-                department_id, 
-                material_description,
-                destination, 
-                purpose, 
-                material_type, 
-                material_status, 
-                return_date,
-                receiver_name, 
-                receiver_contact, 
-                receiver_id or None, 
-                delivery_address, 
-                send_date,
-                vehicle_number, 
-                special_instructions, 
-                images_json, 
-                urgent
-            ))
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            '''
+            
+            params = (
+                pass_number,                         # pass_number
+                session['user_id'],                  # created_by
+                division_id,                         # division_id
+                department_id,                       # department_id
+                form_data['material_description'],   # material_description
+                form_data['destination'],            # destination
+                form_data['purpose'],                # purpose
+                form_data['material_type'],          # material_type
+                form_data['material_status'],        # material_status
+                return_datetime,                     # expected_return_date
+                form_data['receiver_name'],          # receiver_name
+                form_data['receiver_contact'],       # receiver_contact
+                receiver_id,                         # receiver_id
+                delivery_address,                    # delivery_address
+                send_datetime,                       # send_date
+                vehicle_number,                      # vehicle_number
+                special_instructions,                # special_instructions
+                images_json,                         # images
+                'pending_dept',                      # status
+                urgent                               # urgent (0 or 1)
+            )
+            
+            print(f"📝 SQL Query ready, {len(params)} parameters")
+            print(f"📝 Sample data - Material: {form_data['material_description'][:50]}...")
+            
+            # Execute the INSERT
+            print("💾 Executing database INSERT...")
+            cursor.execute(sql, params)
             
             gate_pass_id = cursor.lastrowid
             print(f"✅ Gate Pass inserted! ID: {gate_pass_id}")
             
             # Generate QR codes
+            print("🔳 Generating QR codes...")
             qr_data_form = generate_gate_pass_qr_data(gate_pass_id, pass_number)
             qr_data_sticker = generate_gate_pass_qr_data(gate_pass_id, f"{pass_number}_STICKER")
             
@@ -246,6 +345,7 @@ def create_gate_pass():
             ''', (qr_data_form, qr_data_sticker, gate_pass_id))
             
             # Get department head for notification
+            print("🔔 Setting up notifications...")
             cursor.execute('''
                 SELECT u.id, u.name 
                 FROM users u 
@@ -264,7 +364,7 @@ def create_gate_pass():
                     gate_pass_id
                 )
                 flash_message = f'✅ Gate Pass {pass_number} created successfully! Waiting for department head approval.'
-                print(f"📢 Notified department head")
+                print(f"📢 Notified department head: {dept_head['name']}")
             else:
                 # If no department head, send to store
                 cursor.execute('UPDATE gate_passes SET status = "pending_store" WHERE id = %s', (gate_pass_id,))
@@ -290,7 +390,9 @@ def create_gate_pass():
                 gate_pass_id
             )
             
+            # Commit the transaction
             conn.commit()
+            print(f"💾 Database changes committed!")
             print(f"🎉 SUCCESS! Gate Pass {pass_number} fully created!")
             
             flash(flash_message, 'success')
@@ -298,48 +400,40 @@ def create_gate_pass():
             cursor.close()
             conn.close()
             
-            # Return success for AJAX
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return jsonify({
-                    'success': True,
-                    'message': flash_message,
-                    'redirect': url_for('gate_pass.gate_pass_list')
-                })
-            
-            # Normal redirect
+            # Redirect to gate pass list
+            print(f"🔀 Redirecting to gate pass list...")
             return redirect(url_for('gate_pass.gate_pass_list'))
             
         except MySQLdb.Error as e:
             conn.rollback()
             error_msg = f'❌ Database Error: {str(e)}'
-            print(f"❌ MYSQL ERROR: {e}")
-            
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return jsonify({'success': False, 'message': error_msg})
-            
             flash(error_msg, 'error')
+            print(f"❌ MYSQL ERROR: {e}")
+            print(f"❌ SQL Error Code: {e.args[0] if hasattr(e, 'args') else 'N/A'}")
+            print(f"❌ SQL Error Message: {e.args[1] if len(e.args) > 1 else 'N/A'}")
+            traceback.print_exc()
+            
+            # Check for specific MySQL errors
+            if hasattr(e, 'args') and len(e.args) > 1:
+                if 'foreign key constraint' in str(e.args[1]).lower():
+                    flash('❌ Database constraint error. Please check division/department selection.', 'error')
+                elif 'duplicate entry' in str(e.args[1]).lower():
+                    flash('❌ Duplicate gate pass number. Please try again.', 'error')
             
         except Exception as e:
             conn.rollback()
             error_msg = f'❌ System Error: {str(e)}'
-            print(f"❌ SYSTEM ERROR: {e}")
-            import traceback
-            traceback.print_exc()
-            
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return jsonify({'success': False, 'message': error_msg})
-            
             flash(error_msg, 'error')
-        
-        finally:
-            cursor.close()
-            conn.close()
+            print(f"❌ SYSTEM ERROR: {e}")
+            traceback.print_exc()
         
         # Return to form with errors
+        cursor.close()
+        conn.close()
         return render_template('create_gate_pass.html', 
                              divisions=divisions, 
                              departments=departments,
-                             form_data=request.form)
+                             form_data=form_data)
     
     # GET request - show form
     print("📄 GET request - showing form")
@@ -501,21 +595,8 @@ def gate_pass_detail(gate_pass_id):
             flash('Gate pass not found!', 'error')
             return redirect(url_for('gate_pass.gate_pass_list'))
         
-        # Check permissions for store manager (can view all)
-        if session['role'] == 'store_manager':
-            # Store managers can view any gate pass
-            pass
-        
-        # Check permissions for department head
-        elif session['role'] == 'department_head':
-            cursor.execute('SELECT department_id FROM users WHERE id = %s', (session['user_id'],))
-            dept = cursor.fetchone()
-            if not dept or dept[0] != gate_pass['department_id']:
-                flash('Access denied! You can only view gate passes from your department.', 'error')
-                return redirect(url_for('gate_pass.gate_pass_list'))
-        
-        # Check for regular users
-        elif session['role'] not in ['system_admin', 'security']:
+        # Check permissions - FIXED VERSION
+        if session['role'] not in ['system_admin', 'department_head', 'store_manager', 'security']:
             if gate_pass['created_by'] != session['user_id']:
                 flash('Access denied!', 'error')
                 return redirect(url_for('gate_pass.gate_pass_list'))
@@ -533,13 +614,18 @@ def gate_pass_detail(gate_pass_id):
         if gate_pass['qr_code_sticker']:
             gate_pass['qr_sticker_img'] = generate_qr_code(gate_pass['qr_code_sticker'])
         
-        # Get approval history
-        cursor.execute('''
-            SELECT * FROM gate_pass_approvals 
-            WHERE gate_pass_id = %s 
-            ORDER BY created_at DESC
-        ''', (gate_pass_id,))
-        approvals = dict_fetchall(cursor)
+        # Get approval history (FIXED - Check if table exists)
+        approvals = []
+        try:
+            cursor.execute('''
+                SELECT * FROM gate_pass_approvals 
+                WHERE gate_pass_id = %s 
+                ORDER BY created_at DESC
+            ''', (gate_pass_id,))
+            approvals = dict_fetchall(cursor)
+        except Exception as table_error:
+            print(f"Note: gate_pass_approvals table error: {table_error}")
+            # Table might not exist yet, that's okay
         
     except Exception as e:
         print(f"Gate pass detail error: {e}")

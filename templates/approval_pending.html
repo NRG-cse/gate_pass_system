@@ -126,7 +126,7 @@
                             </thead>
                             <tbody>
                                 {% for user in pending_users %}
-                                <tr class="user-row hover-lift">
+                                <tr id="user-{{ user.id }}" class="user-row hover-lift">
                                     <td class="ps-4">
                                         <div class="d-flex align-items-center">
                                             <div class="avatar-circle bg-primary-gradient me-3">
@@ -165,12 +165,14 @@
                                         <div class="btn-group" role="group">
                                             <button onclick="approveUser({{ user.id }}, 'approve')" 
                                                     class="btn btn-success btn-sm rounded-start px-3 action-btn"
-                                                    title="Approve User">
+                                                    title="Approve User"
+                                                    data-user="{{ user.id }}">
                                                 <i class="fas fa-check me-1"></i>Approve
                                             </button>
                                             <button onclick="approveUser({{ user.id }}, 'reject')" 
                                                     class="btn btn-danger btn-sm rounded-end px-3 action-btn"
-                                                    title="Reject User">
+                                                    title="Reject User"
+                                                    data-user="{{ user.id }}">
                                                 <i class="fas fa-times me-1"></i>Reject
                                             </button>
                                         </div>
@@ -222,7 +224,7 @@
                             </thead>
                             <tbody>
                                 {% for pass in pending_passes %}
-                                <tr class="gatepass-row hover-lift">
+                                <tr id="gatepass-{{ pass.id }}" class="gatepass-row hover-lift">
                                     <td class="ps-4">
                                         <div>
                                             <h6 class="fw-bold mb-1 text-primary">
@@ -347,8 +349,8 @@
     </div>
 </div>
 
-<!-- Toast Notifications -->
-<div class="toast-container position-fixed top-0 end-0 p-3">
+<!-- Toast Container -->
+<div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3">
     <!-- Success Toast -->
     <div id="successToast" class="toast border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="toast-header bg-success text-white">
@@ -534,34 +536,44 @@
 
 {% block scripts %}
 <script>
-// User Approval Function
+// Handle user approval
 function approveUser(userId, action) {
     const actionText = action === 'approve' ? 'Approve' : 'Reject';
     const icon = action === 'approve' ? '✅' : '❌';
     
-    if (!confirm(`${icon} ${actionText} this user?`)) return;
-
-    showLoading('Processing request...');
+    if (!confirm(`${icon} Are you sure you want to ${actionText} this user?`)) {
+        return;
+    }
     
-    fetch(`/approve_user/${userId}/${action}`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast(data.message || 'User processed successfully!', 'success');
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            showToast(data.message || 'Error processing request', 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showToast('Error processing request', 'error');
-    });
+    const button = document.querySelector(`button[data-user="${userId}"]`);
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    
+    fetch(`/approve_user/${userId}/${action}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message || `User ${actionText.toLowerCase()}d successfully!`, 'success');
+                // Remove the user row from table
+                const userRow = document.getElementById(`user-${userId}`);
+                if (userRow) {
+                    userRow.remove();
+                }
+                // Update stats count
+                updateStatsCount();
+            } else {
+                showToast(data.message || `Error ${actionText.toLowerCase()}ing user`, 'error');
+                button.disabled = false;
+                button.innerHTML = originalText;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Network error. Please try again.', 'error');
+            button.disabled = false;
+            button.innerHTML = originalText;
+        });
 }
 
 // Gate Pass Approval Function for Department Head
@@ -578,9 +590,11 @@ function approveGatePass(passId, action) {
         icon = '❓';
     }
     
-    if (!confirm(`${icon} ${actionText} this gate pass?`)) return;
+    if (!confirm(`${icon} Are you sure you want to ${actionText} this gate pass?`)) return;
 
-    showLoading('Processing request...');
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.disabled = true;
     
     fetch(`/gate_pass/approve_gate_pass/${passId}/${action}`, {
         method: 'GET',
@@ -591,15 +605,25 @@ function approveGatePass(passId, action) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showToast(data.message || 'Gate pass processed successfully!', 'success');
-            setTimeout(() => location.reload(), 1500);
+            showToast(data.message || `Gate pass ${actionText.toLowerCase()}d successfully!`, 'success');
+            // Remove the gate pass row from table
+            const gatepassRow = document.getElementById(`gatepass-${passId}`);
+            if (gatepassRow) {
+                gatepassRow.remove();
+            }
+            // Update stats count
+            updateStatsCount();
         } else {
-            showToast(data.message || 'Error processing request', 'error');
+            showToast(data.message || `Error ${actionText.toLowerCase()}ing gate pass`, 'error');
+            button.disabled = false;
+            button.innerHTML = originalText;
         }
     })
     .catch(error => {
         console.error('Error:', error);
         showToast('Error processing request', 'error');
+        button.disabled = false;
+        button.innerHTML = originalText;
     });
 }
 
@@ -607,7 +631,9 @@ function approveGatePass(passId, action) {
 function approveGatePassAdmin(passId) {
     if (!confirm('✅ Approve this gate pass as System Administrator?')) return;
 
-    showLoading('Processing approval...');
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.disabled = true;
     
     fetch(`/admin/approve_gate_pass/${passId}`, {
         method: 'POST',
@@ -620,41 +646,44 @@ function approveGatePassAdmin(passId) {
     .then(data => {
         if (data.success) {
             showToast(data.message || 'Gate pass approved successfully!', 'success');
-            setTimeout(() => location.reload(), 1500);
+            // Remove the gate pass row from table
+            const gatepassRow = document.getElementById(`gatepass-${passId}`);
+            if (gatepassRow) {
+                gatepassRow.remove();
+            }
+            // Update stats count
+            updateStatsCount();
         } else {
-            showToast(data.message || 'Error processing request', 'error');
+            showToast(data.message || 'Error approving gate pass', 'error');
+            button.disabled = false;
+            button.innerHTML = originalText;
         }
     })
     .catch(error => {
         console.error('Error:', error);
         showToast('Error processing request', 'error');
+        button.disabled = false;
+        button.innerHTML = originalText;
     });
 }
 
-// Show loading indicator
-function showLoading(message) {
-    // You can add a loading spinner here if needed
-    console.log('Loading:', message);
-}
-
-// Toast notification function
+// Toast notification function - FIXED VERSION
 function showToast(message, type = 'success') {
     let toastElement, toastMessage;
     
     if (type === 'error') {
         toastElement = document.getElementById('errorToast');
         toastMessage = document.getElementById('errorMessage');
-        
-        // Update header
-        toastElement.querySelector('.toast-header').className = 'toast-header bg-danger text-white';
-        toastElement.querySelector('.fa-check-circle')?.classList.replace('fa-check-circle', 'fa-exclamation-circle');
     } else {
         toastElement = document.getElementById('successToast');
         toastMessage = document.getElementById('toastMessage');
-        
-        // Update header
-        toastElement.querySelector('.toast-header').className = 'toast-header bg-success text-white';
-        toastElement.querySelector('.fa-exclamation-circle')?.classList.replace('fa-exclamation-circle', 'fa-check-circle');
+    }
+    
+    if (!toastElement || !toastMessage) {
+        console.error('Toast elements not found');
+        // Fallback alert
+        alert(message);
+        return;
     }
     
     // Update message and timestamp
@@ -670,15 +699,64 @@ function showToast(message, type = 'success') {
     bsToast.show();
 }
 
-// Auto-hide toasts after 5 seconds
-document.addEventListener('DOMContentLoaded', function() {
-    const toasts = document.querySelectorAll('.toast');
-    toasts.forEach(toast => {
-        const bsToast = new bootstrap.Toast(toast, { delay: 5000 });
-        // Show on page load for demonstration (remove in production)
-        // bsToast.show();
-    });
-});
+// Update stats count after approval
+function updateStatsCount() {
+    // Get current counts
+    const userRows = document.querySelectorAll('.user-row');
+    const gatepassRows = document.querySelectorAll('.gatepass-row');
+    
+    // Update pending users count
+    const pendingUsersElement = document.querySelector('.stat-card:nth-child(1) h2');
+    if (pendingUsersElement) {
+        pendingUsersElement.textContent = userRows.length;
+    }
+    
+    // Update pending gate passes count
+    const pendingPassesElement = document.querySelector('.stat-card:nth-child(2) h2');
+    if (pendingPassesElement) {
+        pendingPassesElement.textContent = gatepassRows.length;
+    }
+    
+    // Update ready to approve count
+    const readyToApproveElement = document.querySelector('.stat-card:nth-child(3) h2');
+    if (readyToApproveElement) {
+        readyToApproveElement.textContent = userRows.length + gatepassRows.length;
+    }
+    
+    // Update badges
+    const userBadge = document.querySelector('.card:nth-child(1) .badge.bg-warning');
+    if (userBadge) {
+        userBadge.textContent = `${userRows.length} pending`;
+    }
+    
+    const passBadge = document.querySelector('.card:nth-child(2) .badge.bg-info');
+    if (passBadge) {
+        passBadge.textContent = `${gatepassRows.length} pending`;
+    }
+    
+    // If no pending items, show empty state
+    if (userRows.length === 0) {
+        showEmptyState('users');
+    }
+    if (gatepassRows.length === 0) {
+        showEmptyState('gatepasses');
+    }
+}
+
+function showEmptyState(type) {
+    const cardBody = document.querySelector(`.card:nth-child(${type === 'users' ? 1 : 2}) .card-body`);
+    if (cardBody && !cardBody.querySelector('.empty-state-icon')) {
+        cardBody.innerHTML = `
+            <div class="text-center py-5">
+                <div class="empty-state-icon mb-3">
+                    <i class="fas fa-${type === 'users' ? 'user-check' : 'check-circle'} fa-4x text-success opacity-25"></i>
+                </div>
+                <h5 class="fw-bold text-muted mb-2">No Pending ${type === 'users' ? 'Users' : 'Gate Passes'}</h5>
+                <p class="text-muted mb-0">All ${type === 'users' ? 'user registrations' : 'gate pass requests'} have been processed</p>
+            </div>
+        `;
+    }
+}
 
 // Add animation to table rows
 document.addEventListener('DOMContentLoaded', function() {
@@ -692,6 +770,12 @@ document.addEventListener('DOMContentLoaded', function() {
             row.style.opacity = '1';
             row.style.transform = 'translateY(0)';
         }, index * 100);
+    });
+    
+    // Auto-hide toasts after 5 seconds
+    const toasts = document.querySelectorAll('.toast');
+    toasts.forEach(toast => {
+        const bsToast = new bootstrap.Toast(toast, { delay: 5000 });
     });
 });
 </script>
