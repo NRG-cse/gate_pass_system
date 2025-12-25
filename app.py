@@ -434,6 +434,13 @@ def approve_user(user_id, action):
     cursor = conn.cursor()
     
     try:
+        # Set isolation level to prevent locking
+        conn.autocommit(False)
+        
+        # Set timeout for this transaction
+        cursor.execute('SET SESSION innodb_lock_wait_timeout = 50')
+        cursor.execute('SET SESSION innodb_rollback_on_timeout = 1')
+        
         # Get user details
         cursor.execute('''
             SELECT u.*, d.name as department_name, d.id as dept_id
@@ -444,80 +451,98 @@ def approve_user(user_id, action):
         user = dict_fetchone(cursor)
         
         if not user:
+            conn.rollback()
             return jsonify({'success': False, 'message': 'User not found!'})
-        
-        print(f"DEBUG: Current user status: {user['status']}")
         
         # Check if already approved/rejected
         if user['status'] != 'pending':
+            conn.rollback()
             return jsonify({'success': False, 'message': f'User already {user["status"]}!'})
         
         # Check permissions for department head
         if session['role'] == 'department_head':
-            # Get department head's department
             cursor.execute('SELECT department_id FROM users WHERE id = %s', (session['user_id'],))
             dept_head_dept = cursor.fetchone()
             
             if not dept_head_dept or dept_head_dept[0] != user['dept_id']:
+                conn.rollback()
                 return jsonify({'success': False, 'message': 'You can only approve users from your department!'})
         
-        # Update user status
+        # Update user status (use FOR UPDATE to prevent race condition)
         new_status = 'approved' if action == 'approve' else 'rejected'
         cursor.execute('''
             UPDATE users SET status = %s WHERE id = %s
         ''', (new_status, user_id))
         
-        # Create notification for the user
-        if action == 'approve':
-            create_notification(
-                user_id,
-                f"🎉 Your account has been approved by {session['name']}! You can now login.",
-                'status',
-                None
-            )
-            
-            # Also notify the other approver (if exists)
-            if session['role'] == 'system_admin':
-                # Notify department head that user was approved by admin
-                cursor.execute('''
-                    SELECT u.id FROM users u 
-                    WHERE u.department_id = %s 
-                    AND u.role = 'department_head' 
-                    AND u.status = 'approved'
-                    AND u.id != %s
-                ''', (user['dept_id'], session['user_id']))
-                dept_heads = dict_fetchall(cursor)
-                for dept_head in dept_heads:
-                    create_notification(
-                        dept_head['id'],
-                        f"✅ User {user['name']} from your department has been approved by System Administrator",
-                        'status',
-                        None
-                    )
-            else:
-                # Notify system admin that user was approved by department head
-                cursor.execute('SELECT id FROM users WHERE role = "system_admin" AND status = "approved"')
-                admins = dict_fetchall(cursor)
-                for admin in admins:
-                    create_notification(
-                        admin['id'],
-                        f"✅ User {user['name']} has been approved by Department Head {session['name']}",
-                        'status',
-                        None
-                    )
-        else:
-            create_notification(
-                user_id,
-                f"❌ Your account registration has been rejected by {session['name']}.",
-                'status',
-                None
-            )
-        
+        # Commit before creating notifications
         conn.commit()
+        
+        # Create notification for the user (in separate transaction)
+        try:
+            if action == 'approve':
+                create_notification(
+                    user_id,
+                    f"🎉 Your account has been approved by {session['name']}! You can now login.",
+                    'status',
+                    None
+                )
+                
+                # Also notify the other approver
+                if session['role'] == 'system_admin':
+                    conn2 = get_db_connection()
+                    cursor2 = conn2.cursor()
+                    cursor2.execute('''
+                        SELECT u.id FROM users u 
+                        WHERE u.department_id = %s 
+                        AND u.role = 'department_head' 
+                        AND u.status = 'approved'
+                        AND u.id != %s
+                    ''', (user['dept_id'], session['user_id']))
+                    dept_heads = dict_fetchall(cursor2)
+                    for dept_head in dept_heads:
+                        create_notification(
+                            dept_head['id'],
+                            f"✅ User {user['name']} from your department has been approved by System Administrator",
+                            'status',
+                            None
+                        )
+                    cursor2.close()
+                    conn2.close()
+                else:
+                    conn2 = get_db_connection()
+                    cursor2 = conn2.cursor()
+                    cursor2.execute('SELECT id FROM users WHERE role = "system_admin" AND status = "approved"')
+                    admins = dict_fetchall(cursor2)
+                    for admin in admins:
+                        create_notification(
+                            admin['id'],
+                            f"✅ User {user['name']} has been approved by Department Head {session['name']}",
+                            'status',
+                            None
+                        )
+                    cursor2.close()
+                    conn2.close()
+            else:
+                create_notification(
+                    user_id,
+                    f"❌ Your account registration has been rejected by {session['name']}.",
+                    'status',
+                    None
+                )
+        except Exception as notify_error:
+            print(f"Notification error (non-critical): {notify_error}")
+            # Continue even if notification fails
         
         message = f"User {user['name']} has been {action}d successfully!"
         return jsonify({'success': True, 'message': message})
         
+    except MySQLdb.OperationalError as oe:
+        if 'Lock wait timeout' in str(oe):
+            print(f"Lock timeout error: {oe}")
+            # Retry logic
+            return jsonify({'success': False, 'message': 'Operation timed out. Please try again.'})
+        conn.rollback()
+        return jsonify({'success': False, 'message': f'Database error: {str(oe)}'})
     except Exception as e:
         conn.rollback()
         print(f"Error approving user: {e}")

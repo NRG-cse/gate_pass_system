@@ -576,25 +576,38 @@ function approveUser(userId, action) {
         });
 }
 
-// Gate Pass Approval Function for Department Head
+// Gate Pass Approval Function for Department Head - IMPROVED
 function approveGatePass(passId, action) {
-    let actionText, icon;
+    let actionText, icon, confirmText;
     if (action === 'approve') {
         actionText = 'Approve';
         icon = '✅';
+        confirmText = 'approve this gate pass and send it to store?';
     } else if (action === 'reject') {
         actionText = 'Reject';
         icon = '❌';
+        confirmText = 'reject this gate pass?';
     } else {
         actionText = 'Mark for Inquiry';
         icon = '❓';
+        confirmText = 'mark this gate pass for inquiry?';
     }
     
-    if (!confirm(`${icon} Are you sure you want to ${actionText} this gate pass?`)) return;
+    if (!confirm(`${icon} Are you sure you want to ${confirmText}`)) return;
 
     const button = event.target;
     const originalText = button.innerHTML;
+    const originalClass = button.className;
+    
     button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    button.className = originalClass + ' disabled';
+    
+    // Show loading state on the row
+    const gatepassRow = document.getElementById(`gatepass-${passId}`);
+    if (gatepassRow) {
+        gatepassRow.style.opacity = '0.7';
+    }
     
     fetch(`/gate_pass/approve_gate_pass/${passId}/${action}`, {
         method: 'GET',
@@ -606,24 +619,45 @@ function approveGatePass(passId, action) {
     .then(data => {
         if (data.success) {
             showToast(data.message || `Gate pass ${actionText.toLowerCase()}d successfully!`, 'success');
-            // Remove the gate pass row from table
-            const gatepassRow = document.getElementById(`gatepass-${passId}`);
+            
+            // Remove row with animation
             if (gatepassRow) {
-                gatepassRow.remove();
+                gatepassRow.style.transition = 'all 0.3s ease';
+                gatepassRow.style.transform = 'translateX(100%)';
+                gatepassRow.style.opacity = '0';
+                
+                setTimeout(() => {
+                    gatepassRow.remove();
+                    updateStatsCount();
+                    
+                    // Check if table is empty
+                    const tableBody = document.querySelector('.card:nth-child(2) tbody');
+                    if (tableBody && tableBody.children.length === 0) {
+                        showEmptyState('gatepasses');
+                    }
+                }, 300);
             }
-            // Update stats count
-            updateStatsCount();
         } else {
             showToast(data.message || `Error ${actionText.toLowerCase()}ing gate pass`, 'error');
             button.disabled = false;
             button.innerHTML = originalText;
+            button.className = originalClass;
+            
+            if (gatepassRow) {
+                gatepassRow.style.opacity = '1';
+            }
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showToast('Error processing request', 'error');
+        showToast('Network error. Please try again.', 'error');
         button.disabled = false;
         button.innerHTML = originalText;
+        button.className = originalClass;
+        
+        if (gatepassRow) {
+            gatepassRow.style.opacity = '1';
+        }
     });
 }
 

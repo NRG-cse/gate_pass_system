@@ -196,6 +196,13 @@
                                     <p class="mb-0 text-muted small">
                                         <i class="fas fa-user me-1"></i>By {{ pass.creator_name }}
                                     </p>
+                                    
+                                    <!-- Store Manager এর জন্য Department Head Approval তথ্য -->
+                                    {% if user_role == 'store_manager' and pass.department_approval == 'approved' and pass.department_approval_date %}
+                                    <p class="mb-0 text-success small mt-1">
+                                        <i class="fas fa-user-tie me-1"></i>Dept Approved: {{ pass.department_approval_date.strftime('%d/%m %H:%M') }}
+                                    </p>
+                                    {% endif %}
                                 </div>
                             </td>
                             <td>
@@ -212,34 +219,64 @@
                                 </div>
                             </td>
                             <td>
-                                {% if pass.status == 'approved' %}
-                                <span class="badge bg-success py-2 px-3">
-                                    <i class="fas fa-check me-1"></i>Approved
+                                <!-- Department Approval Status -->
+                                {% if pass.department_approval == 'approved' %}
+                                <span class="badge bg-success py-1 px-2 mb-1 d-block">
+                                    <i class="fas fa-user-tie me-1"></i>Dept Approved
                                 </span>
-                                {% elif pass.status == 'pending_dept' %}
-                                <span class="badge bg-warning py-2 px-3">
+                                {% elif pass.department_approval == 'pending' %}
+                                <span class="badge bg-warning py-1 px-2 mb-1 d-block">
                                     <i class="fas fa-clock me-1"></i>Pending Dept
                                 </span>
-                                {% elif pass.status == 'pending_store' %}
-                                <span class="badge bg-info py-2 px-3">
-                                    <i class="fas fa-store me-1"></i>Pending Store
-                                </span>
-                                {% elif pass.status == 'pending_security' %}
-                                <span class="badge bg-primary py-2 px-3">
-                                    <i class="fas fa-shield-alt me-1"></i>Pending Security
-                                </span>
-                                {% elif pass.status == 'in_transit' %}
-                                <span class="badge bg-secondary py-2 px-3">
-                                    <i class="fas fa-truck me-1"></i>In Transit
-                                </span>
-                                {% elif pass.status == 'rejected' %}
-                                <span class="badge bg-danger py-2 px-3">
-                                    <i class="fas fa-times me-1"></i>Rejected
-                                </span>
+                                {% endif %}
+                                
+                                <!-- Main Status - Store Manager এর জন্য শুধুমাত্র Approved এবং In Transit দেখানো হবে -->
+                                {% if user_role == 'store_manager' %}
+                                    {% if pass.status == 'approved' %}
+                                    <span class="badge bg-success py-2 px-3">
+                                        <i class="fas fa-check me-1"></i>Approved
+                                    </span>
+                                    {% elif pass.status == 'in_transit' %}
+                                    <span class="badge bg-secondary py-2 px-3">
+                                        <i class="fas fa-truck me-1"></i>In Transit
+                                    </span>
+                                    {% elif pass.status == 'pending_store' %}
+                                    <!-- Store Manager এর জন্য Pending Store দেখানো হবে না -->
+                                    <span class="badge bg-info py-2 px-3 d-none">
+                                        <i class="fas fa-store me-1"></i>Pending Store
+                                    </span>
+                                    {% endif %}
                                 {% else %}
-                                <span class="badge bg-secondary py-2 px-3">
-                                    {{ pass.status|replace('_', ' ')|title }}
-                                </span>
+                                    <!-- অন্যান্য ইউজারদের জন্য সব স্ট্যাটাস দেখানো হবে -->
+                                    {% if pass.status == 'approved' %}
+                                    <span class="badge bg-success py-2 px-3">
+                                        <i class="fas fa-check me-1"></i>Approved
+                                    </span>
+                                    {% elif pass.status == 'pending_dept' %}
+                                    <span class="badge bg-warning py-2 px-3">
+                                        <i class="fas fa-clock me-1"></i>Pending Dept
+                                    </span>
+                                    {% elif pass.status == 'pending_store' %}
+                                    <span class="badge bg-info py-2 px-3">
+                                        <i class="fas fa-store me-1"></i>Pending Store
+                                    </span>
+                                    {% elif pass.status == 'pending_security' %}
+                                    <span class="badge bg-primary py-2 px-3">
+                                        <i class="fas fa-shield-alt me-1"></i>Pending Security
+                                    </span>
+                                    {% elif pass.status == 'in_transit' %}
+                                    <span class="badge bg-secondary py-2 px-3">
+                                        <i class="fas fa-truck me-1"></i>In Transit
+                                    </span>
+                                    {% elif pass.status == 'rejected' %}
+                                    <span class="badge bg-danger py-2 px-3">
+                                        <i class="fas fa-times me-1"></i>Rejected
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-secondary py-2 px-3">
+                                        {{ pass.status|replace('_', ' ')|title }}
+                                    </span>
+                                    {% endif %}
                                 {% endif %}
                                 
                                 {% if pass.urgent %}

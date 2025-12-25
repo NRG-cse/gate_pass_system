@@ -1088,40 +1088,54 @@ window.addEventListener('load', function() {
     updatePhotoProgress();
 });
 
-// Handle form submission - SIMPLE WORKING VERSION
-document.getElementById('gatePassForm').addEventListener('submit', function(e) {
-    console.log("🚀 Form submission started...");
+document.getElementById('photoUpload').addEventListener('change', () => {
+    if (document.getElementById('photoUpload').files.length >= minPhotos) {
+        enableSubmitButton();
+    }
+});
+
+// Form submission handler - FASTER VERSION
+document.getElementById('gatePassForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    console.log("🚀 Fast form submission...");
     
     // Basic validation
-    if (capturedPhotos.length < minPhotos) {
-        showToast(`❌ Minimum ${minPhotos} photos required! You have ${capturedPhotos.length}.`, 'error');
-        e.preventDefault();
+    if (capturedPhotos.length < 4) {
+        showToast(`❌ Minimum 4 photos required!`, 'error');
         return;
     }
     
-    if (!this.checkValidity()) {
-        this.classList.add('was-validated');
-        showToast('❌ Please fill all required fields correctly!', 'error');
-        e.preventDefault();
-        return;
-    }
-    
-    console.log("✅ All validations passed");
-    console.log(`📸 Total photos: ${capturedPhotos.length}`);
-    
-    // Show loading state
+    // Show loading
     const submitBtn = document.getElementById('submitBtn');
-    const originalText = submitBtn.innerHTML;
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating Gate Pass...';
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating...';
     
-    // Allow form to submit normally
-    console.log("🔄 Submitting form normally...");
-    
-    // Hide camera if open
-    if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
+    try {
+        // Submit form
+        const formData = new FormData(this);
+        
+        // Add photos
+        capturedPhotos.forEach(photo => {
+            if (photo.data) {
+                formData.append('captured_images[]', photo.data);
+            }
+        });
+        
+        // Send request
+        const response = await fetch(this.action, {
+            method: 'POST',
+            body: formData
+        });
+        
+        // Redirect will be handled by server
+        window.location.href = "{{ url_for('gate_pass.gate_pass_list') }}";
+        
+    } catch (error) {
+        console.error('Submission error:', error);
+        showToast('❌ Error submitting form', 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Submit Gate Pass';
     }
 });
 

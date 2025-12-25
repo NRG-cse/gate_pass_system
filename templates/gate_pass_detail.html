@@ -405,7 +405,21 @@
                                     </div>
                                     {% endif %}
                                     
-                                    {% if session.role in ['hr_admin', 'department_head'] and gate_pass.status in ['pending_dept', 'pending_hr', 'inquiry'] %}
+                                    <!-- Department Head এর জন্য সরাসরি Approve/Reject বাটন -->
+                                    {% if session.role == 'department_head' and gate_pass.status == 'pending_dept' %}
+                                    <div class="col-md-4">
+                                        <div class="btn-group w-100" role="group">
+                                            <button onclick="approveGatePass({{ gate_pass.id }}, 'approve')" 
+                                                    class="btn btn-success py-3 fs-5">
+                                                <i class="fas fa-check"></i> APPROVE
+                                            </button>
+                                            <button onclick="approveGatePass({{ gate_pass.id }}, 'reject')" 
+                                                    class="btn btn-danger py-3 fs-5">
+                                                <i class="fas fa-times"></i> REJECT
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% elif session.role in ['hr_admin', 'department_head'] and gate_pass.status in ['pending_dept', 'pending_hr', 'inquiry'] %}
                                     <div class="col-md-4">
                                         <a href="{{ url_for('approval_pending') }}" class="btn btn-warning w-100 py-3 fs-5">
                                             <i class="fas fa-check-circle"></i> PROCESS APPROVAL
@@ -500,6 +514,36 @@ var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggl
 var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
     return new bootstrap.Tooltip(tooltipTriggerEl)
 })
+
+// Gate Pass Detail পেইজের জন্য Approve/Reject ফাংশন
+function approveGatePass(passId, action) {
+    const actionText = action === 'approve' ? 'Approve' : 'Reject';
+    const icon = action === 'approve' ? '✅' : '❌';
+    
+    if (!confirm(`${icon} ${actionText} this gate pass?`)) return;
+    
+    showToast('Processing request...', 'info');
+    
+    fetch(`/gate_pass/approve_gate_pass/${passId}/${action}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || 'Gate pass processed successfully!', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast(data.message || 'Error processing request', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error processing request', 'error');
+    });
+}
 
 // QR Verification with Mobile Blocking
 function verifyQRMatch() {

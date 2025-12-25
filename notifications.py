@@ -7,25 +7,54 @@ import threading
 from models import get_db_connection, dict_fetchall
 
 def create_notification(user_id, message, notification_type, gate_pass_id=None):
+    """Create notification with better error handling"""
     conn = get_db_connection()
     if conn is None:
+        print("Failed to get database connection for notification")
         return
     
     cursor = conn.cursor()
     
     try:
+        # Use simple INSERT without transactions to avoid locks
         cursor.execute('''
-            INSERT INTO notifications (user_id, gate_pass_id, message, type)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO notifications (user_id, gate_pass_id, message, type, created_at)
+            VALUES (%s, %s, %s, %s, NOW())
         ''', (user_id, gate_pass_id, message, notification_type))
         
         conn.commit()
+        print(f"✅ Notification created for user {user_id}: {message[:50]}...")
+        
+    except MySQLdb.OperationalError as oe:
+        if 'Lock wait timeout' in str(oe):
+            print(f"⚠️ Lock timeout when creating notification, retrying...")
+            try:
+                # Try with a new connection
+                cursor.close()
+                conn.close()
+                
+                conn2 = get_db_connection()
+                cursor2 = conn2.cursor()
+                cursor2.execute('''
+                    INSERT INTO notifications (user_id, gate_pass_id, message, type, created_at)
+                    VALUES (%s, %s, %s, %s, NOW())
+                ''', (user_id, gate_pass_id, message, notification_type))
+                conn2.commit()
+                cursor2.close()
+                conn2.close()
+                print(f"✅ Notification created on retry for user {user_id}")
+            except Exception as e2:
+                print(f"❌ Failed to create notification even on retry: {e2}")
+        else:
+            print(f"❌ MySQL error creating notification: {oe}")
     except Exception as e:
-        print(f"Error creating notification: {e}")
-        conn.rollback()
+        print(f"❌ Error creating notification: {e}")
     finally:
-        cursor.close()
-        conn.close()
+        try:
+            cursor.close()
+            conn.close()
+        except:
+            pass
 
 def get_user_notifications(user_id, limit=10):
     conn = get_db_connection()
