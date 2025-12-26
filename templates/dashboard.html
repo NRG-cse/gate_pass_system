@@ -112,45 +112,45 @@
                 <div class="card-body">
                     <div class="row g-3">
                         {% if session.role != 'security' and session.role != 'store_manager' %}
-                        <div class="col-md-4">
-                            <a href="{{ url_for('gate_pass.create_gate_pass') }}" class="btn btn-primary btn-lg w-100 py-3 text-start">
+                        <div class="col-xl-4 col-md-6 col-sm-12 mb-3">
+                            <a href="{{ url_for('gate_pass.create_gate_pass') }}" class="btn btn-primary btn-lg w-100 py-3 text-start action-button">
                                 <div class="d-flex align-items-center">
                                     <div class="action-icon me-3">
                                         <i class="fas fa-plus-circle fa-2x"></i>
                                     </div>
-                                    <div>
-                                        <h6 class="fw-bold mb-1">Create Gate Pass</h6>
-                                        <small class="opacity-75">New material transfer</small>
+                                    <div class="action-content">
+                                        <h6 class="fw-bold mb-1 text-truncate">Create Gate Pass</h6>
+                                        <small class="opacity-75 text-truncate-2">New material transfer</small>
                                     </div>
                                 </div>
                             </a>
                         </div>
                         {% endif %}
                         
-                        <div class="col-md-4">
-                            <a href="{{ url_for('gate_pass.gate_pass_list') }}" class="btn btn-info btn-lg w-100 py-3 text-start">
+                        <div class="col-xl-4 col-md-6 col-sm-12 mb-3">
+                            <a href="{{ url_for('gate_pass.gate_pass_list') }}" class="btn btn-info btn-lg w-100 py-3 text-start action-button">
                                 <div class="d-flex align-items-center">
                                     <div class="action-icon me-3">
                                         <i class="fas fa-list fa-2x"></i>
                                     </div>
-                                    <div>
-                                        <h6 class="fw-bold mb-1">View Passes</h6>
-                                        <small class="opacity-75">All gate passes</small>
+                                    <div class="action-content">
+                                        <h6 class="fw-bold mb-1 text-truncate">View Passes</h6>
+                                        <small class="opacity-75 text-truncate-2">All gate passes</small>
                                     </div>
                                 </div>
                             </a>
                         </div>
                         
                         {% if session.role in ['system_admin', 'department_head'] %}
-                        <div class="col-md-4">
-                            <a href="{{ url_for('approval_pending') }}" class="btn btn-warning btn-lg w-100 py-3 text-start">
+                        <div class="col-xl-4 col-md-6 col-sm-12 mb-3">
+                            <a href="{{ url_for('approval_pending') }}" class="btn btn-warning btn-lg w-100 py-3 text-start action-button">
                                 <div class="d-flex align-items-center">
                                     <div class="action-icon me-3">
                                         <i class="fas fa-check-circle fa-2x"></i>
                                     </div>
-                                    <div>
-                                        <h6 class="fw-bold mb-1">Pending Approvals</h6>
-                                        <small class="opacity-75">{{ pending_approvals }} waiting</small>
+                                    <div class="action-content">
+                                        <h6 class="fw-bold mb-1 text-truncate">Pending Approvals</h6>
+                                        <small class="opacity-75 text-truncate-2">{{ pending_approvals }} waiting</small>
                                     </div>
                                 </div>
                             </a>
@@ -158,43 +158,43 @@
                         {% endif %}
                         
                         {% if session.role == 'system_admin' %}
-                        <div class="col-md-4">
-                            <a href="{{ url_for('admin.all_users') }}" class="btn btn-secondary btn-lg w-100 py-3 text-start">
+                        <div class="col-xl-4 col-md-6 col-sm-12 mb-3">
+                            <a href="{{ url_for('admin.all_users') }}" class="btn btn-secondary btn-lg w-100 py-3 text-start action-button">
                                 <div class="d-flex align-items-center">
                                     <div class="action-icon me-3">
                                         <i class="fas fa-users-cog fa-2x"></i>
                                     </div>
-                                    <div>
-                                        <h6 class="fw-bold mb-1">User Management</h6>
-                                        <small class="opacity-75">Manage all users</small>
+                                    <div class="action-content">
+                                        <h6 class="fw-bold mb-1 text-truncate">User Management</h6>
+                                        <small class="opacity-75 text-truncate-2">Manage all users</small>
                                     </div>
                                 </div>
                             </a>
                         </div>
                         
-                        <div class="col-md-4">
-                            <a href="{{ url_for('admin.manage_divisions') }}" class="btn btn-success btn-lg w-100 py-3 text-start">
+                        <div class="col-xl-4 col-md-6 col-sm-12 mb-3">
+                            <a href="{{ url_for('admin.manage_divisions') }}" class="btn btn-success btn-lg w-100 py-3 text-start action-button">
                                 <div class="d-flex align-items-center">
                                     <div class="action-icon me-3">
                                         <i class="fas fa-sitemap fa-2x"></i>
                                     </div>
-                                    <div>
-                                        <h6 class="fw-bold mb-1">Manage Divisions</h6>
-                                        <small class="opacity-75">Setup organization</small>
+                                    <div class="action-content">
+                                        <h6 class="fw-bold mb-1 text-truncate">Manage Divisions</h6>
+                                        <small class="opacity-75 text-truncate-2">Setup organization</small>
                                     </div>
                                 </div>
                             </a>
                         </div>
                         
-                        <div class="col-md-4">
-                            <a href="{{ url_for('admin.all_gate_passes') }}" class="btn btn-dark btn-lg w-100 py-3 text-start">
+                        <div class="col-xl-4 col-md-6 col-sm-12 mb-3">
+                            <a href="{{ url_for('admin.all_gate_passes') }}" class="btn btn-dark btn-lg w-100 py-3 text-start action-button">
                                 <div class="d-flex align-items-center">
                                     <div class="action-icon me-3">
                                         <i class="fas fa-passport fa-2x"></i>
                                     </div>
-                                    <div>
-                                        <h6 class="fw-bold mb-1">All Gate Passes</h6>
-                                        <small class="opacity-75">System-wide view</small>
+                                    <div class="action-content">
+                                        <h6 class="fw-bold mb-1 text-truncate">All Gate Passes</h6>
+                                        <small class="opacity-75 text-truncate-2">System-wide view</small>
                                     </div>
                                 </div>
                             </a>
@@ -236,7 +236,7 @@
                                         <strong class="text-primary">{{ pass.pass_number }}</strong>
                                     </td>
                                     <td>
-                                        <small>{{ pass.material_description[:50] }}{% if pass.material_description|length > 50 %}...{% endif %}</small>
+                                        <small class="text-truncate d-inline-block" style="max-width: 200px;">{{ pass.material_description[:50] }}{% if pass.material_description|length > 50 %}...{% endif %}</small>
                                     </td>
                                     <td>
                                         {% if pass.status == 'approved' %}
@@ -287,7 +287,7 @@
                         <h5 class="fw-bold mb-0 text-primary">
                             <i class="fas fa-bell me-2"></i>Notifications
                             {% if unread_notifications > 0 %}
-                            <span class="badge bg-danger ms-2">{{ unread_notifications }}</span>
+                            <span class="badge bg-danger ms-2 notification-badge">{{ unread_notifications }}</span>
                             {% endif %}
                         </h5>
                         <form method="POST" action="{{ url_for('mark_all_notifications_read') }}" style="display: inline;">
@@ -311,7 +311,7 @@
                                     </button>
                                 </form>
                             </div>
-                            <p class="mb-1">{{ notification.message }}</p>
+                            <p class="mb-1 text-break">{{ notification.message }}</p>
                             {% if notification.gate_pass_id %}
                             <small>
                                 <a href="{{ url_for('gate_pass.gate_pass_detail', gate_pass_id=notification.gate_pass_id) }}"
@@ -431,15 +431,40 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
-.btn.text-start {
+.action-content {
+    min-width: 0; /* This is crucial for text truncation to work */
+    flex: 1;
+}
+
+.action-button {
     transition: all 0.3s ease;
+    white-space: normal;
+    height: 100%;
+    display: flex;
+    align-items: center;
 }
 
-.btn.text-start:hover {
+.action-button:hover {
     transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+}
+
+.action-button .d-flex {
+    width: 100%;
+}
+
+/* Text truncation for small text in buttons */
+.text-truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+    line-height: 1.3;
 }
 
 .card {
@@ -478,7 +503,59 @@
     backdrop-filter: blur(10px);
 }
 
-@media (max-width: 768px) {
+/* Responsive adjustments */
+@media (max-width: 1399.98px) {
+    /* XXL to XL */
+}
+
+@media (max-width: 1199.98px) {
+    /* XL to LG */
+    .action-icon {
+        width: 45px;
+        height: 45px;
+    }
+    
+    .action-icon i {
+        font-size: 1.5rem !important;
+    }
+    
+    .action-button h6 {
+        font-size: 0.9rem;
+    }
+    
+    .action-button small {
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 991.98px) {
+    /* LG to MD */
+    .col-lg-8, .col-lg-4 {
+        width: 100%;
+    }
+    
+    .action-button {
+        padding: 0.75rem 0.5rem !important;
+    }
+    
+    .action-icon {
+        width: 40px;
+        height: 40px;
+        margin-right: 0.75rem !important;
+    }
+    
+    .action-icon i {
+        font-size: 1.25rem !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    /* MD to SM */
+    .container-fluid {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    
     .stat-card .stat-icon-container {
         width: 50px;
         height: 50px;
@@ -489,8 +566,117 @@
     }
     
     .btn-lg {
-        padding: 0.75rem 1rem;
+        padding: 0.75rem 0.5rem !important;
     }
+    
+    .action-button {
+        height: auto;
+        min-height: 80px;
+    }
+    
+    .text-truncate-2 {
+        -webkit-line-clamp: 1;
+    }
+    
+    .action-icon {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .action-icon i {
+        font-size: 1.1rem !important;
+    }
+}
+
+@media (max-width: 575.98px) {
+    /* SM to XS */
+    .row.g-4 {
+        margin-left: -0.5rem;
+        margin-right: -0.5rem;
+    }
+    
+    .col-sm-12 {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+    
+    .action-button {
+        padding: 0.5rem !important;
+    }
+    
+    .action-button h6 {
+        font-size: 0.8rem;
+    }
+    
+    .action-button small {
+        font-size: 0.7rem;
+    }
+    
+    .action-icon {
+        width: 30px;
+        height: 30px;
+        margin-right: 0.5rem !important;
+    }
+    
+    .action-icon i {
+        font-size: 1rem !important;
+    }
+}
+
+/* Extra small devices (phones, less than 360px) */
+@media (max-width: 359.98px) {
+    .action-content {
+        min-width: 120px;
+    }
+    
+    .text-truncate-2 {
+        display: none; /* Hide description on very small screens */
+    }
+    
+    .action-button h6 {
+        font-size: 0.75rem;
+    }
+}
+
+/* Large desktop screens (1920px and above) */
+@media (min-width: 1920px) {
+    .container-fluid {
+        max-width: 1800px;
+        margin: 0 auto;
+    }
+    
+    .action-button {
+        padding: 1.5rem 1rem !important;
+    }
+    
+    .action-icon {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .action-icon i {
+        font-size: 2.5rem !important;
+    }
+}
+
+/* Fix for text wrapping in table cells */
+.table td small {
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+}
+
+/* Ensure buttons maintain proper height on all screens */
+.action-button .d-flex {
+    min-height: 50px;
+}
+
+/* Break long words in notifications */
+.text-break {
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 </style>
 
@@ -548,6 +734,45 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
     }, 30000);
+    
+    // Add responsive behavior for action buttons
+    function adjustButtonLayout() {
+        const buttons = document.querySelectorAll('.action-button');
+        const screenWidth = window.innerWidth;
+        
+        buttons.forEach(button => {
+            const contentDiv = button.querySelector('.action-content');
+            if (contentDiv) {
+                if (screenWidth < 360) {
+                    // On very small screens, hide description
+                    const smallText = contentDiv.querySelector('small');
+                    if (smallText) {
+                        smallText.style.display = 'none';
+                    }
+                } else if (screenWidth < 768) {
+                    // On mobile, show 1 line description
+                    const smallText = contentDiv.querySelector('small');
+                    if (smallText) {
+                        smallText.style.display = '-webkit-box';
+                        smallText.style.webkitLineClamp = '1';
+                    }
+                } else {
+                    // On larger screens, show 2 lines description
+                    const smallText = contentDiv.querySelector('small');
+                    if (smallText) {
+                        smallText.style.display = '-webkit-box';
+                        smallText.style.webkitLineClamp = '2';
+                    }
+                }
+            }
+        });
+    }
+    
+    // Initial adjustment
+    adjustButtonLayout();
+    
+    // Adjust on window resize
+    window.addEventListener('resize', adjustButtonLayout);
 });
 </script>
 {% endblock %}

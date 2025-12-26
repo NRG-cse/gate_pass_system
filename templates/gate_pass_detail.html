@@ -49,9 +49,13 @@
                                 <span class="badge bg-warning px-3 py-2 fs-6">
                                     <i class="fas fa-clock"></i> PENDING DEPARTMENT
                                 </span>
-                            {% elif gate_pass.status == 'pending_hr' %}
+                            {% elif gate_pass.status == 'pending_store' %}
                                 <span class="badge bg-warning px-3 py-2 fs-6">
-                                    <i class="fas fa-clock"></i> PENDING HR
+                                    <i class="fas fa-clock"></i> PENDING STORE
+                                </span>
+                            {% elif gate_pass.status == 'pending_security' %}
+                                <span class="badge bg-primary px-3 py-2 fs-6">
+                                    <i class="fas fa-clock"></i> PENDING SECURITY
                                 </span>
                             {% elif gate_pass.status == 'rejected' %}
                                 <span class="badge bg-danger px-3 py-2 fs-6">
@@ -69,6 +73,10 @@
                                 <span class="badge bg-danger px-3 py-2 fs-6">
                                     <i class="fas fa-exclamation-triangle"></i> OVERDUE
                                 </span>
+                            {% elif gate_pass.status == 'in_transit' %}
+                                <span class="badge bg-primary px-3 py-2 fs-6">
+                                    <i class="fas fa-truck"></i> IN TRANSIT
+                                </span>
                             {% endif %}
                         </div>
                     </div>
@@ -78,16 +86,28 @@
                 <div class="card-body p-0" style="overflow-y: auto; height: calc(100vh - 130px);">
                     <!-- Printable Section - Single Page Design -->
                     <div class="print-section m-4">
+                        <!-- Company Header for Print -->
+                        <div class="company-header text-center mb-3">
+                            <h1 class="text-dark fw-bold mb-1">NR GROUP</h1>
+                            <p class="text-muted mb-2">
+                                Squre Masterbari, Jamirdia, Bhaluka, Mymensingh
+                            </p>
+                            <hr class="border-dark mx-auto" style="width: 80%;">
+                        </div>
+
                         <!-- Pass Header for Print -->
-                        <div class="text-center mb-4 py-3 border-bottom">
-                            <h1 class="text-primary fw-bold mb-2">GATE PASS</h1>
-                            <h2 class="text-dark mb-3">{{ gate_pass.pass_number }}</h2>
-                            <div class="d-flex justify-content-center gap-3 mb-2">
-                                <span class="badge bg-primary px-3 py-2 fs-6">
-                                    <i class="fas fa-building"></i> {{ gate_pass.division_department }}
+                        <div class="text-center mb-3">
+                            <h2 class="text-primary fw-bold mb-1">GATE PASS</h2>
+                            <h3 class="text-dark mb-2">{{ gate_pass.pass_number }}</h3>
+                            <div class="d-flex justify-content-center gap-2 mb-1">
+                                <span class="badge bg-primary px-2 py-1 fs-6">
+                                    <i class="fas fa-building"></i> {{ gate_pass.division_name }}
                                 </span>
-                                <span class="badge bg-{{ 'info' if gate_pass.material_type == 'returnable' else 'secondary' }} px-3 py-2 fs-6">
+                                <span class="badge bg-{{ 'info' if gate_pass.material_type == 'returnable' else 'secondary' }} px-2 py-1 fs-6">
                                     <i class="fas fa-box"></i> {{ gate_pass.material_type|upper }}
+                                </span>
+                                <span class="badge bg-success px-2 py-1 fs-6">
+                                    <i class="fas fa-building"></i> {{ gate_pass.department_name }}
                                 </span>
                             </div>
                             <p class="text-muted mb-0">
@@ -95,16 +115,16 @@
                             </p>
                         </div>
 
-                        <div class="row">
+                        <div class="row mb-3">
                             <!-- Left Column -->
                             <div class="col-md-6">
                                 <!-- Material Information Card -->
-                                <div class="card border-0 shadow-sm mb-4">
-                                    <div class="card-header bg-primary text-white">
+                                <div class="card border-0 shadow-sm mb-3">
+                                    <div class="card-header bg-light text-dark">
                                         <h5 class="mb-0"><i class="fas fa-box-open"></i> MATERIAL INFORMATION</h5>
                                     </div>
-                                    <div class="card-body">
-                                        <table class="table table-borderless">
+                                    <div class="card-body p-2">
+                                        <table class="table table-borderless mb-0">
                                             <tr>
                                                 <td class="fw-bold" width="40%">Description:</td>
                                                 <td>{{ gate_pass.material_description }}</td>
@@ -138,12 +158,12 @@
                                 </div>
 
                                 <!-- Transfer Information Card -->
-                                <div class="card border-0 shadow-sm mb-4">
-                                    <div class="card-header bg-info text-white">
+                                <div class="card border-0 shadow-sm mb-3">
+                                    <div class="card-header bg-light text-dark">
                                         <h5 class="mb-0"><i class="fas fa-truck"></i> TRANSFER INFORMATION</h5>
                                     </div>
-                                    <div class="card-body">
-                                        <table class="table table-borderless">
+                                    <div class="card-body p-2">
+                                        <table class="table table-borderless mb-0">
                                             <tr>
                                                 <td class="fw-bold" width="40%">Destination:</td>
                                                 <td>{{ gate_pass.destination }}</td>
@@ -158,13 +178,6 @@
                                                     {{ gate_pass.send_date.strftime('%d %B, %Y %I:%M %p') }}
                                                 </td>
                                             </tr>
-                                            <tr>
-                                                <td class="fw-bold">Created By:</td>
-                                                <td>
-                                                    {{ gate_pass.creator_name }} 
-                                                    <br><small class="text-muted">{{ gate_pass.creator_designation }}</small>
-                                                </td>
-                                            </tr>
                                         </table>
                                     </div>
                                 </div>
@@ -173,12 +186,12 @@
                             <!-- Right Column -->
                             <div class="col-md-6">
                                 <!-- Receiver Information Card -->
-                                <div class="card border-0 shadow-sm mb-4">
-                                    <div class="card-header bg-success text-white">
+                                <div class="card border-0 shadow-sm mb-3">
+                                    <div class="card-header bg-light text-dark">
                                         <h5 class="mb-0"><i class="fas fa-user-check"></i> RECEIVER INFORMATION</h5>
                                     </div>
-                                    <div class="card-body">
-                                        <table class="table table-borderless">
+                                    <div class="card-body p-2">
+                                        <table class="table table-borderless mb-0">
                                             <tr>
                                                 <td class="fw-bold" width="40%">Receiver Name:</td>
                                                 <td class="fw-bold">{{ gate_pass.receiver_name }}</td>
@@ -193,175 +206,203 @@
                                     </div>
                                 </div>
 
-                                <!-- Approval Status Card -->
-                                <div class="card border-0 shadow-sm mb-4">
-                                    <div class="card-header bg-warning text-dark">
-                                        <h5 class="mb-0"><i class="fas fa-clipboard-check"></i> APPROVAL STATUS</h5>
+                                <!-- Created By Information -->
+                                <div class="card border-0 shadow-sm mb-3">
+                                    <div class="card-header bg-light text-dark">
+                                        <h5 class="mb-0"><i class="fas fa-user-edit"></i> CREATED BY</h5>
                                     </div>
-                                    <div class="card-body">
+                                    <div class="card-body p-2">
+                                        <table class="table table-borderless mb-0">
+                                            <tr>
+                                                <td class="fw-bold" width="40%">Name:</td>
+                                                <td>{{ gate_pass.creator_name }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">Designation:</td>
+                                                <td>{{ gate_pass.creator_designation }}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- QR Codes Section (ALWAYS SHOW IN PRINT) -->
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-header bg-light text-dark">
+                                        <h5 class="mb-0"><i class="fas fa-qrcode"></i> QR CODES FOR RETURN VERIFICATION</h5>
+                                    </div>
+                                    <div class="card-body p-2">
                                         <div class="row text-center">
-                                            <div class="col-md-4 mb-3">
-                                                <h6 class="text-muted">Department</h6>
-                                                {% if gate_pass.department_approval == 'approved' %}
-                                                    <div class="status-approved">
-                                                        <i class="fas fa-check-circle"></i> Approved
-                                                        <br><small>{{ gate_pass.department_approval_date.strftime('%d/%m %H:%M') }}</small>
-                                                    </div>
-                                                {% elif gate_pass.department_approval == 'rejected' %}
-                                                    <div class="status-rejected">
-                                                        <i class="fas fa-times-circle"></i> Rejected
-                                                    </div>
-                                                {% elif gate_pass.department_approval == 'inquiry' %}
-                                                    <div class="status-pending">
-                                                        <i class="fas fa-question-circle"></i> Inquiry
-                                                    </div>
-                                                {% else %}
-                                                    <div class="status-pending">
-                                                        <i class="fas fa-clock"></i> Pending
-                                                    </div>
+                                            <div class="col-md-6 mb-2">
+                                                <div class="qr-image-container mb-1">
+                                                    {% if gate_pass.qr_form_img %}
+                                                        <img src="{{ gate_pass.qr_form_img }}" class="qr-image img-fluid" 
+                                                             alt="Form QR Code">
+                                                    {% else %}
+                                                        <div class="text-danger">QR Code not generated</div>
+                                                    {% endif %}
+                                                </div>
+                                                <p class="small text-muted mb-0">Form QR Code</p>
+                                                {% if gate_pass.qr_code_form %}
+                                                <input type="text" class="form-control form-control-sm mt-1 border-0 bg-light text-center" 
+                                                       value="{{ gate_pass.qr_code_form[:30] }}..." readonly style="font-size: 9px;">
                                                 {% endif %}
                                             </div>
-                                            
-                                            <div class="col-md-4 mb-3">
-                                                <h6 class="text-muted">HR/Admin</h6>
-                                                {% if gate_pass.hr_approval == 'approved' %}
-                                                    <div class="status-approved">
-                                                        <i class="fas fa-check-circle"></i> Approved
-                                                        <br><small>{{ gate_pass.hr_approval_date.strftime('%d/%m %H:%M') }}</small>
-                                                    </div>
-                                                {% elif gate_pass.hr_approval == 'rejected' %}
-                                                    <div class="status-rejected">
-                                                        <i class="fas fa-times-circle"></i> Rejected
-                                                    </div>
-                                                {% else %}
-                                                    <div class="status-pending">
-                                                        <i class="fas fa-clock"></i> Pending
-                                                    </div>
+                                            <div class="col-md-6 mb-2">
+                                                <div class="qr-image-container mb-1">
+                                                    {% if gate_pass.qr_sticker_img %}
+                                                        <img src="{{ gate_pass.qr_sticker_img }}" class="qr-image img-fluid" 
+                                                             alt="Sticker QR Code">
+                                                    {% else %}
+                                                        <div class="text-danger">QR Code not generated</div>
+                                                    {% endif %}
+                                                </div>
+                                                <p class="small text-muted mb-0">Sticker QR Code</p>
+                                                {% if gate_pass.qr_code_sticker %}
+                                                <input type="text" class="form-control form-control-sm mt-1 border-0 bg-light text-center" 
+                                                       value="{{ gate_pass.qr_code_sticker[:30] }}..." readonly style="font-size: 9px;">
                                                 {% endif %}
                                             </div>
-                                            
-                                            <div class="col-md-4 mb-3">
-                                                <h6 class="text-muted">Current Status</h6>
-                                                {% if gate_pass.status == 'approved' %}
-                                                    <div class="status-approved">
-                                                        <i class="fas fa-check-circle"></i> Approved
-                                                    </div>
-                                                {% elif gate_pass.status == 'pending_dept' %}
-                                                    <div class="status-pending">
-                                                        <i class="fas fa-clock"></i> Pending Dept
-                                                    </div>
-                                                {% elif gate_pass.status == 'pending_hr' %}
-                                                    <div class="status-pending">
-                                                        <i class="fas fa-clock"></i> Pending HR
-                                                    </div>
-                                                {% elif gate_pass.status == 'rejected' %}
-                                                    <div class="status-rejected">
-                                                        <i class="fas fa-times-circle"></i> Rejected
-                                                    </div>
-                                                {% elif gate_pass.status == 'inquiry' %}
-                                                    <div class="status-pending">
-                                                        <i class="fas fa-question-circle"></i> Under Inquiry
-                                                    </div>
-                                                {% elif gate_pass.status == 'returned' %}
-                                                    <div class="status-approved">
-                                                        <i class="fas fa-undo"></i> Returned
-                                                        <br><small>{{ gate_pass.actual_return_date.strftime('%d/%m %H:%M') }}</small>
-                                                    </div>
-                                                {% elif gate_pass.status == 'overdue' %}
-                                                    <div class="status-rejected">
-                                                        <i class="fas fa-exclamation-triangle"></i> Overdue
-                                                    </div>
-                                                {% endif %}
-                                            </div>
+                                        </div>
+                                        <div class="text-center mt-2">
+                                            <small class="text-danger fw-bold">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                                IMPORTANT: Keep this copy for return verification. Both QR codes must match for material return.
+                                            </small>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- QR Codes and Photos Row -->
-                        <div class="row">
-                            <!-- QR Codes Card -->
-                            {% if gate_pass.qr_form_img and gate_pass.qr_sticker_img %}
-                            <div class="col-md-6">
-                                <div class="card border-0 shadow-sm mb-4">
-                                    <div class="card-header bg-dark text-white">
-                                        <h5 class="mb-0"><i class="fas fa-qrcode"></i> QR CODES</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row text-center">
-                                            <div class="col-md-6 mb-3">
-                                                <div class="qr-image-container mb-2">
-                                                    <img src="{{ gate_pass.qr_form_img }}" class="qr-image img-fluid" 
-                                                         alt="Form QR Code">
-                                                </div>
-                                                <p class="small text-muted mb-1">Form QR Code</p>
-                                                <input type="text" class="form-control form-control-sm mt-1" 
-                                                       value="{{ gate_pass.qr_code_form }}" readonly>
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <div class="qr-image-container mb-2">
-                                                    <img src="{{ gate_pass.qr_sticker_img }}" class="qr-image img-fluid" 
-                                                         alt="Sticker QR Code">
-                                                </div>
-                                                <p class="small text-muted mb-1">Sticker QR Code</p>
-                                                <input type="text" class="form-control form-control-sm mt-1" 
-                                                       value="{{ gate_pass.qr_code_sticker }}" readonly>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                        <!-- Approval Status Card -->
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-header bg-light text-dark">
+                                <h5 class="mb-0"><i class="fas fa-clipboard-check"></i> APPROVAL STATUS</h5>
                             </div>
-                            {% endif %}
-
-                            <!-- QR Verification Section -->
-                            <div class="col-md-6">
-                                {% if gate_pass.material_type == 'returnable' and gate_pass.status == 'approved' %}
-                                <div class="card border-0 shadow-sm mb-4 border-warning">
-                                    <div class="card-header bg-warning text-dark">
-                                        <h5 class="mb-0">
-                                            <i class="fas fa-shield-alt"></i> SECURITY VERIFICATION
-                                        </h5>
+                            <div class="card-body p-2">
+                                <div class="row text-center">
+                                    <div class="col-md-3 mb-2">
+                                        <h6 class="text-muted mb-1">Department</h6>
+                                        {% if gate_pass.department_approval == 'approved' %}
+                                            <div class="status-approved">
+                                                <i class="fas fa-check-circle"></i> Approved
+                                                {% if gate_pass.department_approval_date %}
+                                                <br><small>{{ gate_pass.department_approval_date.strftime('%d/%m %H:%M') }}</small>
+                                                {% endif %}
+                                            </div>
+                                        {% elif gate_pass.department_approval == 'rejected' %}
+                                            <div class="status-rejected">
+                                                <i class="fas fa-times-circle"></i> Rejected
+                                            </div>
+                                        {% elif gate_pass.department_approval == 'inquiry' %}
+                                            <div class="status-pending">
+                                                <i class="fas fa-question-circle"></i> Inquiry
+                                            </div>
+                                        {% else %}
+                                            <div class="status-pending">
+                                                <i class="fas fa-clock"></i> Pending
+                                            </div>
+                                        {% endif %}
                                     </div>
-                                    <div class="card-body">
-                                        <div class="alert alert-danger small mb-3">
-                                            <i class="fas fa-exclamation-triangle"></i>
-                                            <strong>SECURITY ALERT:</strong> Mobile QR scanning is BLOCKED. Use physical scanner at gate only.
-                                        </div>
-                                        
-                                        <div class="row g-2">
-                                            <div class="col-md-6">
-                                                <div class="input-group input-group-sm">
-                                                    <span class="input-group-text bg-primary text-white">
-                                                        <i class="fas fa-qrcode"></i>
-                                                    </span>
-                                                    <input type="text" class="form-control" id="formQR" 
-                                                           value="{{ gate_pass.qr_code_form }}" readonly>
-                                                </div>
+                                    
+                                    <div class="col-md-3 mb-2">
+                                        <h6 class="text-muted mb-1">Store</h6>
+                                        {% if gate_pass.store_approval == 'approved' %}
+                                            <div class="status-approved">
+                                                <i class="fas fa-check-circle"></i> Approved
+                                                {% if gate_pass.store_approval_date %}
+                                                <br><small>{{ gate_pass.store_approval_date.strftime('%d/%m %H:%M') }}</small>
+                                                {% endif %}
                                             </div>
-                                            <div class="col-md-6">
-                                                <div class="input-group input-group-sm">
-                                                    <span class="input-group-text bg-success text-white">
-                                                        <i class="fas fa-sticky-note"></i>
-                                                    </span>
-                                                    <input type="text" class="form-control" id="stickerQR" 
-                                                           value="{{ gate_pass.qr_code_sticker }}" readonly>
-                                                </div>
+                                        {% elif gate_pass.store_approval == 'rejected' %}
+                                            <div class="status-rejected">
+                                                <i class="fas fa-times-circle"></i> Rejected
                                             </div>
-                                        </div>
+                                        {% else %}
+                                            <div class="status-pending">
+                                                <i class="fas fa-clock"></i> Pending
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="col-md-3 mb-2">
+                                        <h6 class="text-muted mb-1">Security</h6>
+                                        {% if gate_pass.security_approval == 'approved' %}
+                                            <div class="status-approved">
+                                                <i class="fas fa-check-circle"></i> Approved
+                                                {% if gate_pass.security_approval_date %}
+                                                <br><small>{{ gate_pass.security_approval_date.strftime('%d/%m %H:%M') }}</small>
+                                                {% endif %}
+                                            </div>
+                                        {% elif gate_pass.security_approval == 'rejected' %}
+                                            <div class="status-rejected">
+                                                <i class="fas fa-times-circle"></i> Rejected
+                                            </div>
+                                        {% else %}
+                                            <div class="status-pending">
+                                                <i class="fas fa-clock"></i> Pending
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="col-md-3 mb-2">
+                                        <h6 class="text-muted mb-1">Current Status</h6>
+                                        {% if gate_pass.status == 'approved' %}
+                                            <div class="status-approved">
+                                                <i class="fas fa-check-circle"></i> Approved
+                                            </div>
+                                        {% elif gate_pass.status == 'pending_dept' %}
+                                            <div class="status-pending">
+                                                <i class="fas fa-clock"></i> Pending Dept
+                                            </div>
+                                        {% elif gate_pass.status == 'pending_store' %}
+                                            <div class="status-pending">
+                                                <i class="fas fa-clock"></i> Pending Store
+                                            </div>
+                                        {% elif gate_pass.status == 'pending_security' %}
+                                            <div class="status-pending">
+                                                <i class="fas fa-clock"></i> Pending Security
+                                            </div>
+                                        {% elif gate_pass.status == 'rejected' %}
+                                            <div class="status-rejected">
+                                                <i class="fas fa-times-circle"></i> Rejected
+                                            </div>
+                                        {% elif gate_pass.status == 'inquiry' %}
+                                            <div class="status-pending">
+                                                <i class="fas fa-question-circle"></i> Under Inquiry
+                                            </div>
+                                        {% elif gate_pass.status == 'returned' %}
+                                            <div class="status-approved">
+                                                <i class="fas fa-undo"></i> Returned
+                                                {% if gate_pass.actual_return_date %}
+                                                <br><small>{{ gate_pass.actual_return_date.strftime('%d/%m %H:%M') }}</small>
+                                                {% endif %}
+                                            </div>
+                                        {% elif gate_pass.status == 'overdue' %}
+                                            <div class="status-rejected">
+                                                <i class="fas fa-exclamation-triangle"></i> Overdue
+                                            </div>
+                                        {% elif gate_pass.status == 'in_transit' %}
+                                            <div class="status-pending">
+                                                <i class="fas fa-truck"></i> In Transit
+                                            </div>
+                                        {% endif %}
                                     </div>
                                 </div>
-                                {% endif %}
                             </div>
                         </div>
 
                         <!-- Material Photos Section -->
                         {% if gate_pass.images_list %}
-                        <div class="card border-0 shadow-sm mb-4">
-                            <div class="card-header bg-secondary text-white">
-                                <h5 class="mb-0"><i class="fas fa-camera"></i> MATERIAL PHOTOS</h5>
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-header bg-light text-dark">
+                                <h5 class="mb-0"><i class="fas fa-camera"></i> MATERIAL PHOTOS ({{ gate_pass.images_list|length }})</h5>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body p-2">
                                 <div class="photo-grid">
                                     {% for image_path in gate_pass.images_list %}
                                     <div class="photo-item">
@@ -375,14 +416,34 @@
                         </div>
                         {% endif %}
 
-                        <!-- Footer -->
-                        <div class="text-center mt-4 pt-3 border-top">
-                            <p class="text-muted mb-0">
-                                <i class="fas fa-print"></i> Print Date: {{ now.strftime('%d %B, %Y %I:%M %p') }}
-                            </p>
-                            <p class="text-muted small">
-                                This is an official gate pass document. Unauthorized duplication is prohibited.
-                            </p>
+                        <!-- Instructions and Footer -->
+                        <div class="row mt-3 pt-2 border-top">
+                            <div class="col-md-6">
+                                <div class="card border-0">
+                                    <div class="card-body p-2">
+                                        <h6 class="fw-bold mb-2"><i class="fas fa-info-circle"></i> IMPORTANT NOTES:</h6>
+                                        <ul class="small mb-0 ps-3">
+                                            <li>This gate pass must accompany the material</li>
+                                            <li>Security will verify both QR codes</li>
+                                            <li>Returnable materials must be returned by due date</li>
+                                            <li>Keep this copy for return verification</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="text-end">
+                                    <p class="text-muted mb-1">
+                                        <i class="fas fa-print"></i> Print Date: {{ now.strftime('%d %B, %Y %I:%M %p') }}
+                                    </p>
+                                    <p class="text-muted small mb-0">
+                                        NR Group - Squre Masterbari, Jamirdia, Bhaluka, Mymensingh
+                                    </p>
+                                    <p class="text-muted small">
+                                        This is an official gate pass document. Unauthorized duplication is prohibited.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -419,11 +480,31 @@
                                             </button>
                                         </div>
                                     </div>
-                                    {% elif session.role in ['hr_admin', 'department_head'] and gate_pass.status in ['pending_dept', 'pending_hr', 'inquiry'] %}
+                                    {% elif session.role == 'store_manager' and gate_pass.status == 'pending_store' %}
                                     <div class="col-md-4">
-                                        <a href="{{ url_for('approval_pending') }}" class="btn btn-warning w-100 py-3 fs-5">
-                                            <i class="fas fa-check-circle"></i> PROCESS APPROVAL
-                                        </a>
+                                        <div class="btn-group w-100" role="group">
+                                            <button onclick="storeApproveGatePass({{ gate_pass.id }}, 'approve')" 
+                                                    class="btn btn-success py-3 fs-5">
+                                                <i class="fas fa-check"></i> APPROVE
+                                            </button>
+                                            <button onclick="storeApproveGatePass({{ gate_pass.id }}, 'reject')" 
+                                                    class="btn btn-danger py-3 fs-5">
+                                                <i class="fas fa-times"></i> REJECT
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% elif session.role == 'security' and gate_pass.status == 'pending_security' %}
+                                    <div class="col-md-4">
+                                        <div class="btn-group w-100" role="group">
+                                            <button onclick="securityApproveGatePass({{ gate_pass.id }}, 'approve')" 
+                                                    class="btn btn-success py-3 fs-5">
+                                                <i class="fas fa-check"></i> APPROVE
+                                            </button>
+                                            <button onclick="securityApproveGatePass({{ gate_pass.id }}, 'reject')" 
+                                                    class="btn btn-danger py-3 fs-5">
+                                                <i class="fas fa-times"></i> REJECT
+                                            </button>
+                                        </div>
                                     </div>
                                     {% endif %}
                                 </div>
@@ -468,7 +549,7 @@
                                 <i class="fas fa-qrcode"></i> Form QR Data
                             </div>
                             <div class="card-body">
-                                <code class="text-wrap">{{ gate_pass.qr_code_form }}</code>
+                                <code class="text-wrap">{{ gate_pass.qr_code_form if gate_pass.qr_code_form else 'Not available' }}</code>
                             </div>
                         </div>
                     </div>
@@ -478,7 +559,7 @@
                                 <i class="fas fa-sticky-note"></i> Sticker QR Data
                             </div>
                             <div class="card-body">
-                                <code class="text-wrap">{{ gate_pass.qr_code_sticker }}</code>
+                                <code class="text-wrap">{{ gate_pass.qr_code_sticker if gate_pass.qr_code_sticker else 'Not available' }}</code>
                             </div>
                         </div>
                     </div>
@@ -545,57 +626,66 @@ function approveGatePass(passId, action) {
     });
 }
 
-// QR Verification with Mobile Blocking
-function verifyQRMatch() {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+// Store Manager Approval
+function storeApproveGatePass(passId, action) {
+    const actionText = action === 'approve' ? 'Approve' : 'Reject';
+    const icon = action === 'approve' ? '✅' : '❌';
     
-    if (isMobile) {
-        showToast('❌ MOBILE SCANNING BLOCKED! Use physical scanner at gate.', 'error');
-        return;
-    }
+    if (!confirm(`${icon} ${actionText} this gate pass?`)) return;
     
-    const formQR = document.getElementById('formQR');
-    const stickerQR = document.getElementById('stickerQR');
-    const verifyBtn = document.getElementById('verifyBtn');
+    showToast('Processing request...', 'info');
     
-    if (!formQR.value || !stickerQR.value) {
-        showToast('Please ensure both QR codes are scanned!', 'warning');
-        return;
-    }
-    
-    const originalHTML = verifyBtn.innerHTML;
-    verifyBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Verifying...';
-    verifyBtn.disabled = true;
-    
-    setTimeout(() => {
-        if (formQR.value === '{{ gate_pass.qr_code_form }}' && 
-            stickerQR.value === '{{ gate_pass.qr_code_sticker }}') {
-            
-            showToast('✅ QR CODES MATCH - Verification Successful!', 'success');
-            
-            document.getElementById('matchResult').innerHTML = `
-                <div class="alert alert-success">
-                    <h5><i class="fas fa-check-circle"></i> VERIFICATION PASSED</h5>
-                    <p>Gate Pass: {{ gate_pass.pass_number }}</p>
-                    <p>Material can proceed through security gate.</p>
-                </div>
-            `;
-            
-        } else {
-            showToast('❌ QR CODES DO NOT MATCH - Security Alert!', 'error');
-            
-            document.getElementById('matchResult').innerHTML = `
-                <div class="alert alert-danger">
-                    <h5><i class="fas fa-exclamation-triangle"></i> SECURITY BREACH DETECTED</h5>
-                    <p>QR codes do not match. Material cannot leave premises.</p>
-                    <p class="mb-0"><strong>Security has been notified.</strong></p>
-                </div>
-            `;
+    // You need to create a store approval endpoint
+    fetch(`/gate_pass/store_approve/${passId}/${action}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
         }
-        
-        verifyBtn.innerHTML = originalHTML;
-        verifyBtn.disabled = false;
-    }, 1500);
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || 'Gate pass processed successfully!', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast(data.message || 'Error processing request', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error processing request', 'error');
+    });
+}
+
+// Security Approval
+function securityApproveGatePass(passId, action) {
+    const actionText = action === 'approve' ? 'Approve' : 'Reject';
+    const icon = action === 'approve' ? '✅' : '❌';
+    
+    if (!confirm(`${icon} ${actionText} this gate pass?`)) return;
+    
+    showToast('Processing request...', 'info');
+    
+    fetch(`/admin/approve_gate_pass/${passId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=${action}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || 'Gate pass processed successfully!', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast(data.message || 'Error processing request', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error processing request', 'error');
+    });
 }
 
 // Show Return Modal
@@ -669,12 +759,19 @@ function optimizeForPrint() {
     
     // Force QR codes and images to load for print
     document.querySelectorAll('.qr-image, .material-photo').forEach(img => {
-        img.style.display = 'block';
-        img.style.visibility = 'visible';
+        if (img.tagName === 'IMG') {
+            img.style.display = 'block';
+            img.style.visibility = 'visible';
+            img.style.opacity = '1';
+        }
     });
     
     // Add print-specific class
     document.body.classList.add('print-mode');
+    
+    // Remove any max-height restrictions
+    document.querySelector('.print-section').style.maxHeight = 'none';
+    document.querySelector('.print-section').style.overflow = 'visible';
 }
 
 // Restore after print
@@ -710,12 +807,33 @@ body {
     background: white;
 }
 
+.company-header {
+    text-align: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #333;
+}
+
+.company-header h1 {
+    font-size: 28px;
+    font-weight: bold;
+    color: #000;
+    margin-bottom: 5px;
+}
+
+.company-header p {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 10px;
+}
+
 /* QR Code styles for screen */
 .qr-image-container {
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 120px;
+    margin-bottom: 10px;
 }
 
 .qr-image {
@@ -728,53 +846,70 @@ body {
 .photo-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 15px;
-    margin-top: 15px;
+    gap: 10px;
+    margin-top: 10px;
 }
 
 .photo-item {
     position: relative;
     border: 1px solid #ddd;
-    border-radius: 8px;
+    border-radius: 4px;
     overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    transition: transform 0.2s;
-}
-
-.photo-item:hover {
-    transform: translateY(-2px);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .photo-item img {
     width: 100%;
-    height: 150px;
+    height: 120px;
     object-fit: cover;
     display: block;
 }
 
 .photo-number {
     text-align: center;
-    padding: 8px;
+    padding: 5px;
     background: #f8f9fa;
     font-weight: bold;
     border-top: 1px solid #ddd;
-    font-size: 14px;
+    font-size: 12px;
 }
 
 /* Status colors */
 .status-approved {
     color: #198754;
     font-weight: bold;
+    font-size: 12px;
 }
 
 .status-rejected {
     color: #dc3545;
     font-weight: bold;
+    font-size: 12px;
 }
 
 .status-pending {
     color: #fd7e14;
     font-weight: bold;
+    font-size: 12px;
+}
+
+/* Compact styles for print */
+.card {
+    margin-bottom: 8px !important;
+}
+
+.card-header {
+    padding: 6px 10px !important;
+    font-size: 14px !important;
+}
+
+.card-body {
+    padding: 8px !important;
+}
+
+.table-borderless td {
+    padding: 3px 5px !important;
+    font-size: 12px !important;
 }
 
 /* ========== PRINT SPECIFIC STYLES ========== */
@@ -803,19 +938,37 @@ body {
         background: white !important;
         box-shadow: none !important;
         border: none !important;
-        overflow: hidden !important;
-        font-size: 11pt !important;
+        overflow: visible !important;
+        font-size: 10pt !important;
+        min-height: 27.7cm !important;
+        max-height: 27.7cm !important;
     }
     
-    /* Print header */
-    .print-section .text-center h1 {
-        font-size: 24pt !important;
+    /* Company Header for print */
+    .company-header {
+        margin-bottom: 0.3cm !important;
+        padding-bottom: 0.2cm !important;
+    }
+    
+    .company-header h1 {
+        font-size: 20pt !important;
+        margin-bottom: 0.1cm !important;
+    }
+    
+    .company-header p {
+        font-size: 10pt !important;
         margin-bottom: 0.2cm !important;
     }
     
+    /* Pass header */
     .print-section .text-center h2 {
-        font-size: 18pt !important;
-        margin-bottom: 0.3cm !important;
+        font-size: 16pt !important;
+        margin-bottom: 0.2cm !important;
+    }
+    
+    .print-section .text-center h3 {
+        font-size: 14pt !important;
+        margin-bottom: 0.2cm !important;
     }
     
     /* Cards for print */
@@ -824,6 +977,7 @@ body {
         border: 1px solid #ccc !important;
         margin-bottom: 0.3cm !important;
         page-break-inside: avoid !important;
+        break-inside: avoid !important;
     }
     
     .card-header {
@@ -834,37 +988,48 @@ body {
     }
     
     .card-header h5 {
-        font-size: 12pt !important;
+        font-size: 10pt !important;
         margin: 0 !important;
     }
     
     .card-body {
-        padding: 0.3cm !important;
+        padding: 0.2cm !important;
     }
     
     /* Tables for print */
     .table-borderless td {
-        padding: 0.1cm 0.2cm !important;
-        font-size: 10pt !important;
+        padding: 0.05cm 0.1cm !important;
+        font-size: 9pt !important;
     }
     
     .table-borderless .fw-bold {
         font-weight: bold !important;
     }
     
-    /* QR Codes for print */
+    /* QR Codes for print - ALWAYS VISIBLE */
     .qr-image-container {
-        min-height: 100px !important;
-        margin-bottom: 0.2cm !important;
+        min-height: 80px !important;
+        margin-bottom: 0.1cm !important;
     }
     
     .qr-image {
-        max-width: 100px !important;
-        max-height: 100px !important;
+        max-width: 80px !important;
+        max-height: 80px !important;
         display: block !important;
         visibility: visible !important;
+        opacity: 1 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
     
+    /* QR Code text */
+    .form-control-sm {
+        font-size: 7pt !important;
+        padding: 0.05cm !important;
+        background: #f9f9f9 !important;
+    }
+    
+    /* Photo grid for print */
     .photo-grid {
         display: grid !important;
         grid-template-columns: repeat(4, 1fr) !important;
@@ -882,30 +1047,34 @@ body {
     
     .photo-item img {
         width: 100% !important;
-        height: 80px !important;
+        height: 60px !important;
         object-fit: cover !important;
         display: block !important;
         visibility: visible !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
     
     .photo-number {
-        font-size: 8pt !important;
-        padding: 0.1cm !important;
+        font-size: 7pt !important;
+        padding: 0.05cm !important;
         text-align: center !important;
         background: #f5f5f5 !important;
     }
     
     /* Badges for print */
     .badge {
-        padding: 0.1cm 0.2cm !important;
-        font-size: 9pt !important;
+        padding: 0.05cm 0.1cm !important;
+        font-size: 8pt !important;
+        border: 1px solid #ccc !important;
     }
     
-    /* Input fields for print */
-    .form-control {
-        background: #f9f9f9 !important;
-        border: 1px solid #ccc !important;
+    /* Status boxes */
+    .col-md-3 {
         padding: 0.1cm !important;
+    }
+    
+    .status-approved, .status-rejected, .status-pending {
         font-size: 9pt !important;
     }
     
@@ -915,6 +1084,9 @@ body {
     .navbar, .sidebar, header, footer {
         display: none !important;
         visibility: hidden !important;
+        height: 0 !important;
+        width: 0 !important;
+        opacity: 0 !important;
     }
     
     /* Force single page */
@@ -922,42 +1094,76 @@ body {
         width: 210mm !important;
         height: 297mm !important;
         overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     
     /* Page margins */
     @page {
         margin: 0.5cm;
+        size: A4 portrait;
     }
     
-    /* Status colors for print */
-    .text-primary { color: #000 !important; }
-    .text-success { color: #000 !important; }
-    .text-danger { color: #000 !important; }
-    .text-warning { color: #000 !important; }
-    
-    /* Background colors for print */
-    .bg-primary { background-color: #e9ecef !important; }
-    .bg-success { background-color: #e9ecef !important; }
-    .bg-warning { background-color: #e9ecef !important; }
-    .bg-info { background-color: #e9ecef !important; }
-    .bg-secondary { background-color: #e9ecef !important; }
-    .bg-dark { background-color: #e9ecef !important; }
-    
-    /* Ensure all text is black for better print */
-    .card-body, .card-header, table, td, th, p, h1, h2, h3, h4, h5, h6 {
+    /* Remove all colors for black and white printing */
+    .text-primary, .text-success, .text-danger, .text-warning, 
+    .text-info, .text-dark, .text-muted {
         color: #000 !important;
     }
     
-    /* Remove all gradients and shadows */
-    .card-header[style*="gradient"],
-    .card-header[style*="background:"] {
-        background: #f5f5f5 !important;
+    /* Remove background colors */
+    .bg-primary, .bg-success, .bg-warning, .bg-info,
+    .bg-secondary, .bg-dark, .bg-light,
+    .bg-gradient-primary, [style*="gradient"] {
+        background-color: #fff !important;
+        background-image: none !important;
+    }
+    
+    /* Ensure all borders are visible */
+    .card, .photo-item, .badge {
+        border-color: #000 !important;
     }
     
     /* Make sure QR codes and images print */
     img {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
+        filter: none !important;
+    }
+    
+    /* Force all text to black */
+    h1, h2, h3, h4, h5, h6, p, span, div, td, th {
+        color: #000 !important;
+    }
+    
+    /* Compact layout */
+    .row {
+        margin-left: -0.1cm !important;
+        margin-right: -0.1cm !important;
+    }
+    
+    .col-md-6, .col-md-12, .col-md-3 {
+        padding-left: 0.1cm !important;
+        padding-right: 0.1cm !important;
+    }
+    
+    /* Footer */
+    .border-top {
+        border-top: 1px solid #000 !important;
+        padding-top: 0.2cm !important;
+        margin-top: 0.2cm !important;
+    }
+    
+    /* Important notes */
+    .small {
+        font-size: 8pt !important;
+    }
+    
+    ul.small {
+        margin-bottom: 0.1cm !important;
+    }
+    
+    ul.small li {
+        margin-bottom: 0.05cm !important;
     }
 }
 
@@ -967,8 +1173,19 @@ body.print-mode {
 }
 
 body.print-mode .print-section {
-    max-height: 27.7cm !important;
-    overflow: hidden !important;
+    overflow: visible !important;
+}
+
+/* Ensure proper printing of QR codes */
+@page {
+    size: A4;
+    margin: 0.5cm;
+}
+
+@media print and (color) {
+    .qr-image {
+        filter: none !important;
+    }
 }
 </style>
 {% endblock %}

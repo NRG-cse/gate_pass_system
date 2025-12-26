@@ -1,4 +1,4 @@
-# admin.py - UPDATED WITH SUPER ADMIN ROLE ASSIGNMENT
+# admin.py - UPDATED WITH SUPER ADMIN ROLE ASSIGNMENT AND SECURITY VALIDATION + DIRECT APPROVAL AFTER DEPARTMENT HEAD
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from models import get_db_connection, dict_fetchall, dict_fetchone, hash_password
 from notifications import create_notification
@@ -242,8 +242,6 @@ def all_users():
     
     return render_template('admin/all_users.html', users=users, divisions=divisions, departments=departments)
 
-# Add this route to your admin.py file
-
 @admin_bp.route('/get_user/<int:user_id>')
 def get_user(user_id):
     """Get user details for editing (AJAX endpoint)"""
@@ -274,7 +272,6 @@ def get_user(user_id):
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error fetching user: {str(e)}'})
 
-
 @admin_bp.route('/create_user', methods=['POST'])
 def create_user():
     if 'user_id' not in session or session['role'] != 'system_admin':
@@ -289,7 +286,7 @@ def create_user():
     phone = request.form.get('phone')
     email = request.form.get('email')
     
-    # NEW: Allow Super Admin to assign any role including department_head
+    # ✅ UPDATED: Allow Super Admin to assign any role including department_head
     allowed_roles = ['user', 'department_head', 'store_manager', 'security', 'system_admin']
     if role not in allowed_roles:
         return jsonify({'success': False, 'message': 'Invalid role selected!'})
@@ -301,6 +298,23 @@ def create_user():
     cursor = conn.cursor()
     
     try:
+        # ✅ NEW: Validate security role assignment
+        if role == 'security':
+            # Check if department belongs to Security division
+            cursor.execute('''
+                SELECT dv.name as division_name 
+                FROM departments d 
+                JOIN divisions dv ON d.division_id = dv.id 
+                WHERE d.id = %s
+            ''', (department_id,))
+            dept_info = cursor.fetchone()
+            
+            if not dept_info or dept_info[0] != 'Security':
+                return jsonify({
+                    'success': False, 
+                    'message': 'Security users must be assigned to Security Division departments only!'
+                })
+        
         # Get division_id from department
         cursor.execute('SELECT division_id FROM departments WHERE id = %s', (department_id,))
         division = cursor.fetchone()
@@ -316,9 +330,8 @@ def create_user():
         
         hashed_password = hash_password(password)
         
-        # If role is system_admin, status is approved immediately
-        # For other roles, status depends on if department_head exists
-        status = 'approved' if role == 'system_admin' else 'pending'
+        # ✅ UPDATED: If role is system_admin or security, status is approved immediately
+        status = 'approved' if role in ['system_admin', 'security'] else 'pending'
         
         cursor.execute('''
             INSERT INTO users (username, password, name, designation, division_id, department_id, 
@@ -329,7 +342,7 @@ def create_user():
         
         user_id = cursor.lastrowid
         
-        # NEW: Send notification to both Super Admin and Department Head (if applicable)
+        # ✅ UPDATED: Send notification to both Super Admin and Department Head (if applicable)
         if role != 'system_admin':
             # Notify Super Admin about new user
             cursor.execute('SELECT id FROM users WHERE role = "system_admin" AND status = "approved"')
@@ -381,7 +394,7 @@ def update_user(user_id):
     phone = request.form.get('phone')
     email = request.form.get('email')
     
-    # NEW: Allow Super Admin to assign any role
+    # ✅ UPDATED: Allow Super Admin to assign any role
     allowed_roles = ['user', 'department_head', 'store_manager', 'security', 'system_admin']
     if role not in allowed_roles:
         return jsonify({'success': False, 'message': 'Invalid role selected!'})
@@ -393,6 +406,23 @@ def update_user(user_id):
     cursor = conn.cursor()
     
     try:
+        # ✅ NEW: Validate security role assignment
+        if role == 'security':
+            # Check if department belongs to Security division
+            cursor.execute('''
+                SELECT dv.name as division_name 
+                FROM departments d 
+                JOIN divisions dv ON d.division_id = dv.id 
+                WHERE d.id = %s
+            ''', (department_id,))
+            dept_info = cursor.fetchone()
+            
+            if not dept_info or dept_info[0] != 'Security':
+                return jsonify({
+                    'success': False, 
+                    'message': 'Security users must be assigned to Security Division departments only!'
+                })
+        
         # Get division_id from department
         cursor.execute('SELECT division_id FROM departments WHERE id = %s', (department_id,))
         division = cursor.fetchone()
@@ -510,6 +540,7 @@ def all_gate_passes():
 
 @admin_bp.route('/approve_gate_pass/<int:gate_pass_id>', methods=['POST'])
 def approve_gate_pass_admin(gate_pass_id):
+    """System Admin can approve/reject/edit gate passes - DIRECT APPROVAL AFTER DEPARTMENT HEAD"""
     if 'user_id' not in session or session['role'] != 'system_admin':
         return jsonify({'success': False, 'message': 'Access denied!'})
     

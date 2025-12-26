@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gate Pass System</title>
+    <title>Gate Pass</title>
     
     <!-- PWA Meta Tags -->
     <meta name="application-name" content="Gate Pass Pro">
@@ -56,6 +56,31 @@
             margin: 0;
             padding: 0;
             overflow-x: hidden;
+        }
+
+        /* Logo styling */
+        .company-logo {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            border-radius: 6px;
+            margin-right: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            background: white;
+            padding: 2px;
+        }
+        
+        .company-logo-large {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+            border-radius: 8px;
+            margin-right: 12px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            background: white;
+            padding: 3px;
         }
 
         /* Add these gradient classes to your base.css or in base.html */
@@ -113,11 +138,29 @@
             font-size: 1.5rem;
             margin: 0;
             color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .sidebar-header .logo {
             color: #3498db;
             margin-right: 10px;
+        }
+        
+        /* Company Address Styling */
+        .company-address {
+            color: rgba(255, 255, 255, 0.9) !important;
+            font-size: 0.8rem;
+            margin-top: 8px;
+            line-height: 1.3;
+            font-weight: 400;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            display: block;
         }
         
         .sidebar-menu {
@@ -247,6 +290,9 @@
             margin: 0;
             font-weight: 600;
             color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         
         /* Mobile Toggle */
@@ -286,6 +332,26 @@
             .top-bar h4 {
                 font-size: 1.2rem;
             }
+            
+            .sidebar-header h3 {
+                font-size: 1.3rem;
+            }
+            
+            .company-address {
+                font-size: 0.75rem;
+                white-space: normal;
+                line-height: 1.2;
+            }
+            
+            .company-logo {
+                width: 35px;
+                height: 35px;
+            }
+            
+            .company-logo-large {
+                width: 40px;
+                height: 40px;
+            }
         }
         
         /* Desktop */
@@ -322,6 +388,10 @@
             .container-fluid {
                 padding: 10px !important;
             }
+            
+            .company-address {
+                font-size: 0.7rem;
+            }
         }
         
         /* Extra Small */
@@ -341,6 +411,21 @@
             .btn {
                 padding: 0.5rem 1rem;
                 font-size: 0.9rem;
+            }
+            
+            .sidebar-header h3 {
+                font-size: 1.2rem;
+            }
+            
+            .company-address {
+                font-size: 0.65rem;
+                line-height: 1.1;
+            }
+            
+            .company-logo {
+                width: 30px;
+                height: 30px;
+                margin-right: 8px;
             }
         }
         
@@ -439,8 +524,23 @@
     <!-- Sidebar Navigation -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <h3><i class="fas fa-passport logo"></i>NR GATE PASS</h3>
-            <p class="text-muted small mt-2">NR Group</p>
+            <h3>
+                <!-- Company Logo -->
+                <img src="{{ url_for('static', filename='images/company-logo.png') }}" 
+                     alt="Company Logo" 
+                     class="company-logo-large"
+                     onerror="this.onerror=null; this.style.display='none'; document.getElementById('fallbackIcon').style.display='inline';">
+                <i class="fas fa-passport logo" id="fallbackIcon" style="display: none;"></i>
+                
+                <!-- Application Name -->
+                <span>GATE PASS</span>
+            </h3>
+            
+            <!-- Company Address -->
+            <div class="company-address">
+                NR Group, Bhaluka, Mymensingh
+            </div>
+            
             <button class="btn btn-sm btn-outline-light d-lg-none mt-2" onclick="closeSidebar()">
                 <i class="fas fa-times"></i> Close
             </button>
@@ -470,6 +570,16 @@
                         <span>Gate Pass List</span>
                     </a>
                 </li>
+                
+                <!-- ✅ ADDED: Security QR Scan Menu Item -->
+                {% if session.role == 'security' %}
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'security_scan_page' %}active{% endif %}" href="{{ url_for('security_scan_page') }}" onclick="handleNavClick()">
+                        <i class="fas fa-qrcode"></i>
+                        <span>Scan QR</span>
+                    </a>
+                </li>
+                {% endif %}
                 
                 <!-- In the sidebar section, update the Pending Approvals link to show correct badge -->
                 {% if session.role in ['system_admin', 'department_head'] %}
@@ -596,7 +706,14 @@
                 <button class="sidebar-toggle" onclick="toggleSidebar()">
                     <i class="fas fa-bars"></i>
                 </button>
-                <h4>{% block page_title %}{% endblock %}</h4>
+                <h4>
+                    <!-- Small logo in top bar -->
+                    <img src="{{ url_for('static', filename='images/company-logo-small.png') }}" 
+                         alt="NR Logo" 
+                         class="company-logo"
+                         onerror="this.onerror=null; this.style.display='none';">
+                    {% block page_title %}{% endblock %}
+                </h4>
             </div>
             
             <div class="d-flex align-items-center gap-4">

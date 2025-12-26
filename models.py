@@ -1,4 +1,4 @@
-# models.py - COMPLETELY FIXED WITH PROPER INITIALIZATION
+# models.py - COMPLETELY FIXED WITH PROPER INITIALIZATION INCLUDING SECURITY
 import MySQLdb
 from config import config
 import hashlib
@@ -265,7 +265,7 @@ def init_db():
         except Exception as e:
             print(f"⚠️ Could not add admin_response_by column: {e}")
         
-        # Create default divisions FIRST (Important!)
+        # ✅ ADDED: Create default divisions including Security Division
         cursor.execute("SELECT COUNT(*) FROM divisions")
         if cursor.fetchone()[0] == 0:
             print("Creating default divisions...")
@@ -274,7 +274,8 @@ def init_db():
                 ('Yarn Dyeing', 'Yarn Dyeing Division'),
                 ('Fabric Dyeing', 'Fabric Dyeing Division'),
                 ('Spinning', 'Spinning Division'),
-                ('Store', 'Store Division')
+                ('Store', 'Store Division'),
+                ('Security', 'Security Division')  # ✅ ADDED SECURITY DIVISION
             ]
             
             for div_name, div_desc in divisions:
@@ -283,9 +284,9 @@ def init_db():
                 except:
                     pass
             
-            print("✅ Created default divisions")
+            print("✅ Created default divisions including Security")
         
-        # Create default departments
+        # ✅ ADDED: Create default departments including Security Departments
         cursor.execute("SELECT COUNT(*) FROM departments")
         if cursor.fetchone()[0] == 0:
             print("Creating default departments...")
@@ -301,6 +302,8 @@ def init_db():
             departments = [
                 ('Admin', 'Administration', 'Administration Office'),
                 ('Accounts', 'Administration', 'Accounts Department'),
+                ('HR', 'Administration', 'Human Resources'),
+                ('IT', 'Administration', 'Information Technology'),
                 ('Production', 'Yarn Dyeing', 'Production Department'),
                 ('Maintenance', 'Yarn Dyeing', 'Maintenance Department'),
                 ('Production', 'Fabric Dyeing', 'Production Department'),
@@ -308,7 +311,9 @@ def init_db():
                 ('Production', 'Spinning', 'Production Department'),
                 ('Maintenance', 'Spinning', 'Maintenance Department'),
                 ('Store 1', 'Store', 'Main Store'),
-                ('Store 2', 'Store', 'Secondary Store')
+                ('Store 2', 'Store', 'Secondary Store'),
+                ('Main Gate Security', 'Security', 'Main Gate Security Team'),  # ✅ ADDED SECURITY DEPARTMENTS
+                ('Factory Security', 'Security', 'Factory Security Team')
             ]
             
             for dept_name, div_name, dept_desc in departments:
@@ -321,9 +326,9 @@ def init_db():
                     except:
                         pass
             
-            print("✅ Created default departments")
+            print("✅ Created default departments including Security")
         
-        # FIX: Create default System Administrator with proper department mapping
+        # ✅ ADDED: Create default System Administrator with proper department mapping
         cursor.execute("SELECT COUNT(*) FROM users WHERE username = 'sysadmin'")
         if cursor.fetchone()[0] == 0:
             print("Creating System Administrator...")
@@ -350,7 +355,7 @@ def init_db():
                     ''', (admin_password, division_result[0], admin_dept_id))
                     print("✅ Created System Administrator: sysadmin / admin123")
         
-        # Create default Store Managers
+        # ✅ ADDED: Create default Store Managers
         cursor.execute("SELECT COUNT(*) FROM users WHERE username IN ('store1', 'store2')")
         if cursor.fetchone()[0] == 0:
             print("Creating Store Managers...")
@@ -380,7 +385,7 @@ def init_db():
                 
                 print("✅ Created Store Managers: store1/store2 / store123")
         
-        # Create default Department Head
+        # ✅ ADDED: Create default Department Head
         cursor.execute("SELECT COUNT(*) FROM users WHERE username = 'depthead'")
         if cursor.fetchone()[0] == 0:
             print("Creating Department Head...")
@@ -401,7 +406,38 @@ def init_db():
                     ''', (dept_password, div[0], dept_id))
                     print("✅ Created Department Head: depthead / dept123")
         
-        # Create test regular user
+        # ✅ ADDED: Create default Security Users
+        cursor.execute("SELECT COUNT(*) FROM users WHERE username IN ('security1', 'security2')")
+        if cursor.fetchone()[0] == 0:
+            print("Creating Security Users...")
+            # Get security departments
+            cursor.execute("SELECT id FROM departments WHERE name LIKE '%Security%' ORDER BY name")
+            security_depts = cursor.fetchall()
+            
+            if len(security_depts) >= 2:
+                security_password = hash_password('security123')
+                
+                # Security User 1 (Main Gate)
+                cursor.execute('SELECT division_id FROM departments WHERE id = %s', (security_depts[0][0],))
+                div1 = cursor.fetchone()
+                if div1:
+                    cursor.execute('''
+                        INSERT INTO users (username, password, name, designation, division_id, department_id, role, status) 
+                        VALUES ('security1', %s, 'Security Officer 1', 'Security', %s, %s, 'security', 'approved')
+                    ''', (security_password, div1[0], security_depts[0][0]))
+                
+                # Security User 2 (Factory Security)
+                cursor.execute('SELECT division_id FROM departments WHERE id = %s', (security_depts[1][0],))
+                div2 = cursor.fetchone()
+                if div2:
+                    cursor.execute('''
+                        INSERT INTO users (username, password, name, designation, division_id, department_id, role, status) 
+                        VALUES ('security2', %s, 'Security Officer 2', 'Security', %s, %s, 'security', 'approved')
+                    ''', (security_password, div2[0], security_depts[1][0]))
+                
+                print("✅ Created Security Users: security1/security2 / security123")
+        
+        # ✅ ADDED: Create test regular user
         cursor.execute("SELECT COUNT(*) FROM users WHERE username = 'akib'")
         if cursor.fetchone()[0] == 0:
             print("Creating test user...")
@@ -497,9 +533,28 @@ def init_db():
             count = cursor.fetchone()[0]
             print(f"  📈 {table_name}: {count} rows")
         
+        # ✅ ADDED: Print all default users for verification
+        print("\n" + "="*60)
+        print("👥 DEFAULT USERS VERIFICATION")
+        print("="*60)
+        
+        cursor.execute("SELECT username, name, role, status FROM users ORDER BY role, username")
+        users = cursor.fetchall()
+        for user in users:
+            print(f"  👤 {user[0]} - {user[1]} ({user[2]}) - {user[3]}")
+        
         conn.commit()
         print("\n" + "="*60)
         print("✅ Database initialized successfully with ALL default users!")
+        print("="*60)
+        print("\n📋 DEFAULT LOGIN CREDENTIALS:")
+        print("   System Admin: sysadmin / admin123")
+        print("   Store Manager 1: store1 / store123")
+        print("   Store Manager 2: store2 / store123")
+        print("   Department Head: depthead / dept123")
+        print("   Security Officer 1: security1 / security123")
+        print("   Security Officer 2: security2 / security123")
+        print("   Regular User: akib / akib123")
         print("="*60)
         return True
         

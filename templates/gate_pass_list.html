@@ -2,7 +2,9 @@
 
 {% block page_title %}
     {% if user_role == 'store_manager' %}
-        All Gate Passes & Store Requests
+        All Approved Gate Passes & Store Requests (View Only)
+    {% elif session.role == 'security' %}
+        Security - Approved Gate Passes (View Only)
     {% else %}
         Gate Pass List
     {% endif %}
@@ -17,11 +19,11 @@
                 <div>
                     <h3 class="fw-bold text-primary">
                         {% if user_role == 'store_manager' %}
-                            <i class="fas fa-passport me-2"></i>All Gate Passes
+                            <i class="fas fa-passport me-2"></i>All Approved Gate Passes (View Only)
                         {% elif session.role == 'department_head' %}
                             <i class="fas fa-passport me-2"></i>My Department Gate Passes
                         {% elif session.role == 'security' %}
-                            <i class="fas fa-passport me-2"></i>Security Pending Approvals
+                            <i class="fas fa-passport me-2"></i>Security - Approved Gate Passes (View Only)
                         {% elif session.role == 'system_admin' %}
                             <i class="fas fa-passport me-2"></i>All Gate Passes (System)
                         {% else %}
@@ -31,10 +33,19 @@
                     <p class="text-muted mb-0">
                         {% if user_role == 'store_manager' %}
                             <i class="fas fa-info-circle me-2"></i>
-                            View all gate passes and manage your store requests
+                            View all approved gate passes from all departments (No approval required)
+                        {% elif session.role == 'security' %}
+                            <i class="fas fa-info-circle me-2"></i>
+                            View all approved gate passes from all departments (No approval required)
+                        {% elif session.role == 'department_head' %}
+                            <i class="fas fa-info-circle me-2"></i>
+                            View and manage gate passes from your department
+                        {% elif session.role == 'system_admin' %}
+                            <i class="fas fa-info-circle me-2"></i>
+                            View and manage all gate passes in the system
                         {% else %}
                             <i class="fas fa-info-circle me-2"></i>
-                            List of all gate passes in the system
+                            View your gate passes
                         {% endif %}
                     </p>
                 </div>
@@ -51,6 +62,12 @@
                     </a>
                     <a href="{{ url_for('gate_pass.store_material_log') }}" class="btn btn-info btn-lg ms-2">
                         <i class="fas fa-exchange-alt me-2"></i>Material Log
+                    </a>
+                    {% endif %}
+                    
+                    {% if session.role == 'security' %}
+                    <a href="{{ url_for('security_scan_page') }}" class="btn btn-success btn-lg ms-2">
+                        <i class="fas fa-qrcode me-2"></i>Scan QR Code
                     </a>
                     {% endif %}
                 </div>
@@ -152,9 +169,18 @@
         <div class="card-header bg-white border-0 py-3">
             <div class="d-flex justify-content-between align-items-center">
                 <h5 class="fw-bold mb-0 text-primary">
-                    <i class="fas fa-list me-2"></i>Gate Passes 
+                    <i class="fas fa-list me-2"></i>
                     {% if user_role == 'store_manager' %}
-                    (All Departments)
+                        Approved Gate Passes (View Only)
+                    {% elif session.role == 'security' %}
+                        Approved Gate Passes (View Only)
+                    {% else %}
+                        Gate Passes
+                    {% endif %}
+                    {% if user_role == 'store_manager' %}
+                        (All Departments)
+                    {% elif session.role == 'security' %}
+                        (All Departments)
                     {% endif %}
                 </h5>
                 <div>
@@ -177,6 +203,7 @@
                             <th class="ps-4">Gate Pass Details</th>
                             <th>Department</th>
                             <th>Status</th>
+                            <th>Approved By</th>
                             <th>Created</th>
                             <th class="text-center">Actions</th>
                         </tr>
@@ -196,13 +223,6 @@
                                     <p class="mb-0 text-muted small">
                                         <i class="fas fa-user me-1"></i>By {{ pass.creator_name }}
                                     </p>
-                                    
-                                    <!-- Store Manager এর জন্য Department Head Approval তথ্য -->
-                                    {% if user_role == 'store_manager' and pass.department_approval == 'approved' and pass.department_approval_date %}
-                                    <p class="mb-0 text-success small mt-1">
-                                        <i class="fas fa-user-tie me-1"></i>Dept Approved: {{ pass.department_approval_date.strftime('%d/%m %H:%M') }}
-                                    </p>
-                                    {% endif %}
                                 </div>
                             </td>
                             <td>
@@ -219,71 +239,49 @@
                                 </div>
                             </td>
                             <td>
-                                <!-- Department Approval Status -->
-                                {% if pass.department_approval == 'approved' %}
-                                <span class="badge bg-success py-1 px-2 mb-1 d-block">
-                                    <i class="fas fa-user-tie me-1"></i>Dept Approved
+                                {% if pass.status == 'approved' %}
+                                <span class="badge bg-success py-2 px-3">
+                                    <i class="fas fa-check-circle me-1"></i>Approved
                                 </span>
-                                {% elif pass.department_approval == 'pending' %}
-                                <span class="badge bg-warning py-1 px-2 mb-1 d-block">
+                                {% if pass.department_approval_date %}
+                                <br>
+                                <small class="text-success mt-1 d-block">
+                                    <i class="fas fa-calendar-check me-1"></i>{{ pass.department_approval_date.strftime('%d/%m %H:%M') }}
+                                </small>
+                                {% endif %}
+                                {% elif pass.status == 'pending_dept' %}
+                                <span class="badge bg-warning py-2 px-3">
                                     <i class="fas fa-clock me-1"></i>Pending Dept
                                 </span>
-                                {% endif %}
-                                
-                                <!-- Main Status - Store Manager এর জন্য শুধুমাত্র Approved এবং In Transit দেখানো হবে -->
-                                {% if user_role == 'store_manager' %}
-                                    {% if pass.status == 'approved' %}
-                                    <span class="badge bg-success py-2 px-3">
-                                        <i class="fas fa-check me-1"></i>Approved
-                                    </span>
-                                    {% elif pass.status == 'in_transit' %}
-                                    <span class="badge bg-secondary py-2 px-3">
-                                        <i class="fas fa-truck me-1"></i>In Transit
-                                    </span>
-                                    {% elif pass.status == 'pending_store' %}
-                                    <!-- Store Manager এর জন্য Pending Store দেখানো হবে না -->
-                                    <span class="badge bg-info py-2 px-3 d-none">
-                                        <i class="fas fa-store me-1"></i>Pending Store
-                                    </span>
-                                    {% endif %}
+                                {% elif pass.status == 'rejected' %}
+                                <span class="badge bg-danger py-2 px-3">
+                                    <i class="fas fa-times me-1"></i>Rejected
+                                </span>
+                                {% elif pass.status == 'inquiry' %}
+                                <span class="badge bg-info py-2 px-3">
+                                    <i class="fas fa-question-circle me-1"></i>Inquiry
+                                </span>
                                 {% else %}
-                                    <!-- অন্যান্য ইউজারদের জন্য সব স্ট্যাটাস দেখানো হবে -->
-                                    {% if pass.status == 'approved' %}
-                                    <span class="badge bg-success py-2 px-3">
-                                        <i class="fas fa-check me-1"></i>Approved
-                                    </span>
-                                    {% elif pass.status == 'pending_dept' %}
-                                    <span class="badge bg-warning py-2 px-3">
-                                        <i class="fas fa-clock me-1"></i>Pending Dept
-                                    </span>
-                                    {% elif pass.status == 'pending_store' %}
-                                    <span class="badge bg-info py-2 px-3">
-                                        <i class="fas fa-store me-1"></i>Pending Store
-                                    </span>
-                                    {% elif pass.status == 'pending_security' %}
-                                    <span class="badge bg-primary py-2 px-3">
-                                        <i class="fas fa-shield-alt me-1"></i>Pending Security
-                                    </span>
-                                    {% elif pass.status == 'in_transit' %}
-                                    <span class="badge bg-secondary py-2 px-3">
-                                        <i class="fas fa-truck me-1"></i>In Transit
-                                    </span>
-                                    {% elif pass.status == 'rejected' %}
-                                    <span class="badge bg-danger py-2 px-3">
-                                        <i class="fas fa-times me-1"></i>Rejected
-                                    </span>
-                                    {% else %}
-                                    <span class="badge bg-secondary py-2 px-3">
-                                        {{ pass.status|replace('_', ' ')|title }}
-                                    </span>
-                                    {% endif %}
+                                <span class="badge bg-secondary py-2 px-3">
+                                    <i class="fas fa-clock me-1"></i>{{ pass.status|replace('_', ' ')|title }}
+                                </span>
                                 {% endif %}
                                 
+                                <!-- Urgent status -->
                                 {% if pass.urgent %}
                                 <br>
-                                <small class="text-danger mt-1 d-block">
+                                <span class="badge bg-danger mt-1">
                                     <i class="fas fa-exclamation-triangle me-1"></i>Urgent
-                                </small>
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if pass.department_approval == 'approved' %}
+                                <small class="text-muted">Department Head</small>
+                                <br>
+                                <small class="text-muted">{{ pass.department_approval_date.strftime('%d/%m %H:%M') if pass.department_approval_date else '' }}</small>
+                                {% else %}
+                                <small class="text-muted">Not approved yet</small>
                                 {% endif %}
                             </td>
                             <td>
@@ -299,6 +297,17 @@
                                         <i class="fas fa-eye"></i>
                                     </a>
                                     
+                                    <!-- ✅ Security Print Button -->
+                                    {% if session.role == 'security' and pass.status == 'approved' %}
+                                    <a href="{{ url_for('security_print_gate_pass', gate_pass_id=pass.id) }}" 
+                                       class="btn btn-outline-info px-3"
+                                       title="Print Security Copy"
+                                       target="_blank">
+                                        <i class="fas fa-print"></i>
+                                    </a>
+                                    {% endif %}
+                                    
+                                    <!-- Store Manager: Mark as Dispatched -->
                                     {% if user_role == 'store_manager' and pass.status == 'approved' %}
                                     <button onclick="markDispatched({{ pass.id }})" 
                                             class="btn btn-outline-success px-3"
@@ -307,7 +316,8 @@
                                     </button>
                                     {% endif %}
                                     
-                                    {% if session.role == 'department_head' and pass.status == 'pending_dept' %}
+                                    <!-- Department Head: Approve/Reject -->
+                                    {% if session.role == 'department_head' and pass.department_approval == 'pending' %}
                                     <button onclick="approveGatePass({{ pass.id }}, 'approve')" 
                                             class="btn btn-outline-success px-3"
                                             title="Approve">
@@ -320,12 +330,29 @@
                                     </button>
                                     {% endif %}
                                     
+                                    <!-- System Admin: Approve Gate Pass -->
                                     {% if session.role == 'system_admin' and pass.status == 'pending_security' %}
                                     <button onclick="approveGatePassAdmin({{ pass.id }})" 
                                             class="btn btn-success px-3"
                                             title="Approve as Admin">
                                         <i class="fas fa-shield-alt me-1"></i>Approve
                                     </button>
+                                    {% endif %}
+                                    
+                                    <!-- Security: Mark as Returned -->
+                                    {% if session.role == 'security' and pass.status == 'approved' and pass.material_type == 'returnable' and not pass.actual_return_date %}
+                                    <button onclick="markReturned({{ pass.id }})" 
+                                            class="btn btn-warning px-3"
+                                            title="Mark as Returned">
+                                        <i class="fas fa-undo"></i>
+                                    </button>
+                                    {% endif %}
+                                    
+                                    <!-- Store Manager and Security: View Only Info -->
+                                    {% if (user_role == 'store_manager' or session.role == 'security') and pass.status == 'approved' %}
+                                    <a href="#" class="btn btn-outline-secondary px-3" title="View Only - No Approval Required">
+                                        <i class="fas fa-info-circle"></i>
+                                    </a>
                                     {% endif %}
                                 </div>
                             </td>
@@ -341,8 +368,16 @@
                 </div>
                 <h5 class="fw-bold text-muted mb-2">No Gate Passes Found</h5>
                 <p class="text-muted mb-0">
-                    {% if session.role != 'security' and session.role != 'store_manager' %}
+                    {% if session.role != 'security' and session.role != 'store_manager' and session.role != 'system_admin' and session.role != 'department_head' %}
                     Create your first gate pass to get started
+                    {% elif session.role == 'security' %}
+                    No approved gate passes available at the moment
+                    {% elif user_role == 'store_manager' %}
+                    No approved gate passes available at the moment
+                    {% elif session.role == 'department_head' %}
+                    No gate passes from your department
+                    {% elif session.role == 'system_admin' %}
+                    No gate passes in the system
                     {% else %}
                     No gate passes available at the moment
                     {% endif %}
@@ -396,6 +431,10 @@
     font-weight: 600;
     color: #495057;
     border-bottom: 2px solid #dee2e6;
+}
+
+.table th:nth-child(3) {
+    min-width: 150px;
 }
 
 .table td {
@@ -517,6 +556,33 @@ function approveGatePassAdmin(passId) {
             setTimeout(() => location.reload(), 1500);
         } else {
             showToast(data.message || 'Error processing request', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error processing request', 'error');
+    });
+}
+
+// Security: Mark as Returned
+function markReturned(passId) {
+    if (!confirm('📦 Mark this returnable material as returned?')) return;
+    
+    showLoading('Marking as returned...');
+    
+    fetch(`/mark_returned/${passId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || 'Material marked as returned!', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast(data.message || 'Error marking as returned', 'error');
         }
     })
     .catch(error => {
