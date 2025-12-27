@@ -1,4 +1,4 @@
-# app.py - COMPLETELY FIXED APPROVAL_PENDING WITH SECURITY QR SCAN, RETURN MARKING, PRINT AND TODAY'S RETURNS API
+# app.py - COMPLETE VERSION WITH SECURITY PRINT NOTIFICATIONS
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from models import get_db_connection, init_db, dict_fetchall, dict_fetchone
 from notifications import start_notification_scheduler, create_notification
@@ -82,53 +82,11 @@ def dashboard():
     try:
         # Get statistics based on role
         if session['role'] == 'system_admin':
-            # System Admin - All statistics
+            # System Admin - All statistics (NO PENDING APPROVALS)
             cursor.execute('SELECT COUNT(*) FROM gate_passes')
             total_passes = cursor.fetchone()[0]
             
-            cursor.execute('SELECT COUNT(*) FROM gate_passes WHERE status IN ("pending_dept", "pending_store", "pending_security")')
-            pending_passes = cursor.fetchone()[0]
-            
-            cursor.execute('''SELECT COUNT(*) FROM gate_passes 
-                           WHERE material_type = 'returnable' 
-                           AND expected_return_date < NOW() 
-                           AND actual_return_date IS NULL 
-                           AND status = 'approved' ''')
-            overdue_passes = cursor.fetchone()[0]
-            
-            # Pending user approvals for System Admin
-            cursor.execute('SELECT COUNT(*) FROM users WHERE status = "pending"')
-            pending_user_approvals = cursor.fetchone()[0]
-            
-            # Pending gate pass approvals for System Admin
-            cursor.execute('SELECT COUNT(*) FROM gate_passes WHERE status = "pending_security"')
-            pending_gatepass_approvals = cursor.fetchone()[0]
-            
-            pending_approvals = pending_user_approvals + pending_gatepass_approvals
-            
-            # Approved today
-            cursor.execute('''SELECT COUNT(*) FROM gate_passes 
-                           WHERE DATE(created_at) = CURDATE() 
-                           AND status = 'approved' ''')
-            approved_today = cursor.fetchone()[0]
-            
-            # Recent passes for admin (all)
-            cursor.execute('''
-                SELECT * FROM gate_passes 
-                ORDER BY created_at DESC 
-                LIMIT 5
-            ''')
-            recent_passes = dict_fetchall(cursor)
-            
-        elif session['role'] == 'store_manager':
-            # Store Manager - Statistics for their store (NEW FLOW - VIEW ONLY)
-            store_location = 'store_1' if 'store1' in session['username'] else 'store_2'
-            
-            # Store managers only see approved passes in new flow
-            cursor.execute('SELECT COUNT(*) FROM gate_passes WHERE status = "approved"')
-            total_passes = cursor.fetchone()[0]
-            
-            # Store managers don't have pending approvals in new flow
+            # System Admin doesn't need pending approvals count
             pending_passes = 0
             
             cursor.execute('''SELECT COUNT(*) FROM gate_passes 
@@ -138,7 +96,8 @@ def dashboard():
                            AND status = 'approved' ''')
             overdue_passes = cursor.fetchone()[0]
             
-            pending_approvals = 0  # No approval required
+            # System Admin doesn't have pending approvals
+            pending_approvals = 0
             
             # Approved today
             cursor.execute('''SELECT COUNT(*) FROM gate_passes 
@@ -146,17 +105,75 @@ def dashboard():
                            AND status = 'approved' ''')
             approved_today = cursor.fetchone()[0]
             
-            # Recent passes for store manager (approved only)
+            # ✅ FIXED: Recent passes for admin (all)
             cursor.execute('''
-                SELECT * FROM gate_passes 
-                WHERE status = 'approved'
-                ORDER BY created_at DESC 
+                SELECT gp.*, u.name as creator_name, d.name as department_name, dv.name as division_name
+                FROM gate_passes gp 
+                JOIN users u ON gp.created_by = u.id 
+                JOIN departments d ON gp.department_id = d.id 
+                JOIN divisions dv ON gp.division_id = dv.id 
+                ORDER BY gp.created_at DESC 
                 LIMIT 5
             ''')
             recent_passes = dict_fetchall(cursor)
             
+            # ✅ ADDED: Get pending users count for System Admin badge in sidebar
+            cursor.execute('''SELECT COUNT(*) FROM users WHERE status = "pending"''')
+            pending_users_count = cursor.fetchone()[0]
+            
+            # Add to session for sidebar badge
+            session['pending_users_count'] = pending_users_count
+            
+        elif session['role'] == 'store_manager':
+            # Store Manager - Statistics for store approvals
+            store_location = 'store_1' if 'store1' in session['username'] else 'store_2'
+            
+            # ✅ FIXED: Total passes for store manager's store location
+            cursor.execute('''SELECT COUNT(*) FROM gate_passes 
+                           WHERE store_location = %s OR status = 'pending_store' ''', (store_location,))
+            total_passes = cursor.fetchone()[0]
+            
+            # Pending store approvals
+            cursor.execute('''SELECT COUNT(*) FROM gate_passes 
+                           WHERE status = 'pending_store' ''')
+            pending_passes = cursor.fetchone()[0]
+            
+            cursor.execute('''SELECT COUNT(*) FROM gate_passes 
+                           WHERE material_type = 'returnable' 
+                           AND expected_return_date < NOW() 
+                           AND actual_return_date IS NULL 
+                           AND status = 'approved' 
+                           AND store_location = %s''', (store_location,))
+            overdue_passes = cursor.fetchone()[0]
+            
+            # Store managers don't have user approvals
+            pending_user_approvals = 0
+            
+            # Pending approvals = pending store approvals
+            pending_approvals = pending_passes
+            
+            # Approved today for this store
+            cursor.execute('''SELECT COUNT(*) FROM gate_passes 
+                           WHERE DATE(created_at) = CURDATE() 
+                           AND status = 'approved' 
+                           AND store_location = %s''', (store_location,))
+            approved_today = cursor.fetchone()[0]
+            
+            # ✅ FIXED: Recent passes for store manager (ALL gate passes, not just pending/approved)
+            cursor.execute('''
+                SELECT gp.*, u.name as creator_name, d.name as department_name, dv.name as division_name
+                FROM gate_passes gp 
+                JOIN users u ON gp.created_by = u.id 
+                JOIN departments d ON gp.department_id = d.id 
+                JOIN divisions dv ON gp.division_id = dv.id 
+                WHERE (gp.store_location = %s OR gp.status = 'pending_store')
+                ORDER BY gp.created_at DESC 
+                LIMIT 5
+            ''', (store_location,))
+            recent_passes = dict_fetchall(cursor)
+            
         elif session['role'] == 'department_head':
-            # Department Head - Only their department statistics
+            # Department Head - Statistics for their department
             # Get department ID first
             cursor.execute('SELECT department_id FROM users WHERE id = %s', (session['user_id'],))
             user_dept = cursor.fetchone()
@@ -189,18 +206,22 @@ def dashboard():
                 
                 pending_approvals = pending_user_approvals + pending_passes
                 
-                # Approved today
+                # Approved today for this department
                 cursor.execute('''SELECT COUNT(*) FROM gate_passes 
                                WHERE department_id = %s 
                                AND DATE(created_at) = CURDATE() 
                                AND status = 'approved' ''', (department_id,))
                 approved_today = cursor.fetchone()[0]
                 
-                # Recent passes for department
+                # ✅ FIXED: Recent passes for department (ALL passes from department)
                 cursor.execute('''
-                    SELECT * FROM gate_passes 
-                    WHERE department_id = %s
-                    ORDER BY created_at DESC 
+                    SELECT gp.*, u.name as creator_name, d.name as department_name, dv.name as division_name
+                    FROM gate_passes gp 
+                    JOIN users u ON gp.created_by = u.id 
+                    JOIN departments d ON gp.department_id = d.id 
+                    JOIN divisions dv ON gp.division_id = dv.id 
+                    WHERE gp.department_id = %s
+                    ORDER BY gp.created_at DESC 
                     LIMIT 5
                 ''', (department_id,))
                 recent_passes = dict_fetchall(cursor)
@@ -209,10 +230,16 @@ def dashboard():
                 recent_passes = []
             
         elif session['role'] == 'security':
-            # Security - Statistics for security approvals (NEW FLOW - VIEW ONLY)
-            # Security don't have pending approvals in new flow
-            cursor.execute('SELECT COUNT(*) FROM gate_passes WHERE status = "approved"')
+            # Security - Statistics for security view
+            # ✅ FIXED: Security can see ALL gate passes (not just approved)
+            cursor.execute('''SELECT COUNT(*) FROM gate_passes 
+                           WHERE department_approval = 'approved' ''')
             total_passes = cursor.fetchone()[0]
+            
+            # Pending security approvals (just for info)
+            cursor.execute('''SELECT COUNT(*) FROM gate_passes 
+                           WHERE status = 'pending_security' ''')
+            pending_passes = cursor.fetchone()[0]
             
             cursor.execute('''SELECT COUNT(*) FROM gate_passes 
                            WHERE material_type = 'returnable' 
@@ -221,8 +248,11 @@ def dashboard():
                            AND status = 'approved' ''')
             overdue_passes = cursor.fetchone()[0]
             
-            pending_passes = 0  # No pending passes in new flow
-            pending_approvals = 0  # No approval required
+            # Security doesn't approve users
+            pending_user_approvals = 0
+            
+            # Security doesn't need to approve gate passes (view only)
+            pending_approvals = 0
             
             # Approved today
             cursor.execute('''SELECT COUNT(*) FROM gate_passes 
@@ -230,11 +260,15 @@ def dashboard():
                            AND status = 'approved' ''')
             approved_today = cursor.fetchone()[0]
             
-            # Recent passes for security (approved only)
+            # ✅ FIXED: Recent passes for security (ALL department approved gate passes)
             cursor.execute('''
-                SELECT * FROM gate_passes 
-                WHERE status = 'approved'
-                ORDER BY created_at DESC 
+                SELECT gp.*, u.name as creator_name, d.name as department_name, dv.name as division_name
+                FROM gate_passes gp 
+                JOIN users u ON gp.created_by = u.id 
+                JOIN departments d ON gp.department_id = d.id 
+                JOIN divisions dv ON gp.division_id = dv.id 
+                WHERE gp.department_approval = 'approved'
+                ORDER BY gp.created_at DESC 
                 LIMIT 5
             ''')
             recent_passes = dict_fetchall(cursor)
@@ -259,18 +293,22 @@ def dashboard():
             
             pending_approvals = 0
             
-            # Approved today
+            # Approved today for this user
             cursor.execute('''SELECT COUNT(*) FROM gate_passes 
                            WHERE created_by = %s 
                            AND DATE(created_at) = CURDATE() 
                            AND status = 'approved' ''', (session['user_id'],))
             approved_today = cursor.fetchone()[0]
             
-            # Recent passes for user
+            # ✅ FIXED: Recent passes for user (their own passes)
             cursor.execute('''
-                SELECT * FROM gate_passes 
-                WHERE created_by = %s
-                ORDER BY created_at DESC 
+                SELECT gp.*, u.name as creator_name, d.name as department_name, dv.name as division_name
+                FROM gate_passes gp 
+                JOIN users u ON gp.created_by = u.id 
+                JOIN departments d ON gp.department_id = d.id 
+                JOIN divisions dv ON gp.division_id = dv.id 
+                WHERE gp.created_by = %s
+                ORDER BY gp.created_at DESC 
                 LIMIT 5
             ''', (session['user_id'],))
             recent_passes = dict_fetchall(cursor)
@@ -315,12 +353,17 @@ def dashboard():
 
 @app.route('/approval_pending')
 def approval_pending():
-    """Show pending approvals for department heads and system admins"""
+    """Show pending approvals for department heads and store managers ONLY"""
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
     
-    if session['role'] not in ['system_admin', 'department_head']:
-        flash('Access denied! Only Department Heads and System Admins can view approvals.', 'error')
+    # ✅ UPDATED: System Admin should be redirected to admin user approvals
+    if session['role'] == 'system_admin':
+        flash('System Administrator: Use Admin Panel → User Approvals for user approvals.', 'info')
+        return redirect(url_for('admin.user_approvals'))
+    
+    if session['role'] not in ['department_head', 'store_manager']:
+        flash('Access denied! Only Department Heads and Store Managers can view approvals.', 'error')
         return redirect(url_for('dashboard'))
     
     conn = get_db_connection()
@@ -335,31 +378,7 @@ def approval_pending():
         pending_passes = []
         
         # Get pending users based on role
-        if session['role'] == 'system_admin':
-            # System Admin can see ALL pending users
-            cursor.execute('''
-                SELECT u.*, d.name as department_name, dv.name as division_name
-                FROM users u 
-                LEFT JOIN departments d ON u.department_id = d.id 
-                LEFT JOIN divisions dv ON u.division_id = dv.id 
-                WHERE u.status = 'pending' 
-                ORDER BY u.created_at DESC
-            ''')
-            pending_users = dict_fetchall(cursor)
-            
-            # System Admin can also see pending gate passes for security approval
-            cursor.execute('''
-                SELECT gp.*, u.name as creator_name, d.name as department_name, dv.name as division_name
-                FROM gate_passes gp 
-                JOIN users u ON gp.created_by = u.id 
-                JOIN departments d ON gp.department_id = d.id 
-                JOIN divisions dv ON gp.division_id = dv.id 
-                WHERE gp.status = 'pending_security'
-                ORDER BY gp.created_at DESC
-            ''')
-            pending_passes = dict_fetchall(cursor)
-            
-        elif session['role'] == 'department_head':
+        if session['role'] == 'department_head':
             # Department Head can only see users from their OWN department
             # First, get the department_id of the department head
             cursor.execute('SELECT department_id FROM users WHERE id = %s', (session['user_id'],))
@@ -385,7 +404,7 @@ def approval_pending():
                 ''', (department_id,))
                 pending_users = dict_fetchall(cursor)
                 
-                # Department Head can see gate passes from their department
+                # Department Head can see gate passes from their department that are pending
                 cursor.execute('''
                     SELECT gp.*, u.name as creator_name, d.name as department_name, dv.name as division_name
                     FROM gate_passes gp 
@@ -397,10 +416,24 @@ def approval_pending():
                     ORDER BY gp.created_at DESC
                 ''', (department_id,))
                 pending_passes = dict_fetchall(cursor)
-        
-        print(f"DEBUG: Found {len(pending_users)} pending users for {session['role']}")
-        for user in pending_users:
-            print(f"  - {user['username']} ({user['name']}) in {user.get('department_name', 'Unknown')}")
+                
+        elif session['role'] == 'store_manager':
+            # Store Manager can see gate passes pending store approval
+            store_location = 'store_1' if 'store1' in session['username'] else 'store_2'
+            
+            cursor.execute('''
+                SELECT gp.*, u.name as creator_name, d.name as department_name, dv.name as division_name
+                FROM gate_passes gp 
+                JOIN users u ON gp.created_by = u.id 
+                JOIN departments d ON gp.department_id = d.id 
+                JOIN divisions dv ON gp.division_id = dv.id 
+                WHERE gp.status = 'pending_store'
+                ORDER BY gp.created_at DESC
+            ''')
+            pending_passes = dict_fetchall(cursor)
+            
+            # Store managers don't approve users
+            pending_users = []
         
     except Exception as e:
         print(f"Approval pending error: {e}")
@@ -528,6 +561,102 @@ def approve_user(user_id, action):
         print(f"Error approving user: {e}")
         conn.rollback()
         return jsonify({'success': False, 'message': f'Error processing user: {str(e)}'})
+    finally:
+        cursor.close()
+        conn.close()
+
+def notify_gate_pass_printed(gate_pass_id, printed_by_user_id, printed_by_name):
+    """Send notifications to all parties when security prints a gate pass"""
+    conn = get_db_connection()
+    if conn is None:
+        return False
+    
+    cursor = conn.cursor()
+    
+    try:
+        # Get gate pass details
+        cursor.execute('''
+            SELECT gp.*, u.id as creator_id, u.name as creator_name,
+                   d.name as department_name, d.id as department_id,
+                   dh.id as dept_head_id, dh.name as dept_head_name,
+                   sm.id as store_manager_id, sm.name as store_manager_name
+            FROM gate_passes gp 
+            JOIN users u ON gp.created_by = u.id 
+            JOIN departments d ON gp.department_id = d.id 
+            LEFT JOIN users dh ON d.id = dh.department_id AND dh.role = 'department_head' AND dh.status = 'approved'
+            LEFT JOIN users sm ON gp.store_location = CASE 
+                WHEN sm.username = 'store1' THEN 'store_1'
+                WHEN sm.username = 'store2' THEN 'store_2'
+                ELSE NULL 
+            END AND sm.role = 'store_manager' AND sm.status = 'approved'
+            WHERE gp.id = %s
+        ''', (gate_pass_id,))
+        
+        gate_pass = dict_fetchone(cursor)
+        
+        if not gate_pass:
+            return False
+        
+        pass_number = gate_pass['pass_number']
+        
+        # 1. Notify CREATOR (user who created the gate pass)
+        create_notification(
+            gate_pass['creator_id'],
+            f"🖨️ Gate Pass {pass_number} has been printed by Security ({printed_by_name}) and is ready for dispatch",
+            'status',
+            gate_pass_id
+        )
+        
+        # 2. Notify DEPARTMENT HEAD (if exists)
+        if gate_pass['dept_head_id']:
+            create_notification(
+                gate_pass['dept_head_id'],
+                f"🖨️ Gate Pass {pass_number} from your department has been printed by Security",
+                'status',
+                gate_pass_id
+            )
+        
+        # 3. Notify STORE MANAGER (if store was involved)
+        if gate_pass['store_manager_id']:
+            create_notification(
+                gate_pass['store_manager_id'],
+                f"🖨️ Gate Pass {pass_number} that you approved has been printed by Security",
+                'status',
+                gate_pass_id
+            )
+        
+        # 4. Notify ALL SYSTEM ADMINS
+        cursor.execute('SELECT id FROM users WHERE role = "system_admin" AND status = "approved"')
+        admins = dict_fetchall(cursor)
+        for admin in admins:
+            create_notification(
+                admin['id'],
+                f"🖨️ Gate Pass {pass_number} has been printed by Security ({printed_by_name})",
+                'alert',
+                gate_pass_id
+            )
+        
+        # 5. Log the printing event in security logs
+        cursor.execute('''
+            INSERT INTO security_logs (gate_pass_id, user_id, alert_type, details)
+            VALUES (%s, %s, 'printed_for_dispatch', %s)
+        ''', (gate_pass_id, printed_by_user_id, 
+              f'Gate pass printed by security for dispatch. Printed by: {printed_by_name}'))
+        
+        # 6. Update gate pass status to indicate it's ready for dispatch
+        cursor.execute('''
+            UPDATE gate_passes 
+            SET status = 'ready_for_dispatch'
+            WHERE id = %s AND status = 'pending_security'
+        ''', (gate_pass_id,))
+        
+        conn.commit()
+        return True
+        
+    except Exception as e:
+        print(f"Error sending print notifications: {e}")
+        conn.rollback()
+        return False
     finally:
         cursor.close()
         conn.close()
@@ -718,6 +847,9 @@ def security_print_gate_pass(gate_pass_id):
         
         if gate_pass['qr_code_sticker']:
             gate_pass['qr_sticker_img'] = generate_qr_code(gate_pass['qr_code_sticker'])
+        
+        # ✅ SEND NOTIFICATIONS TO ALL PARTIES
+        notify_gate_pass_printed(gate_pass_id, session['user_id'], session['name'])
         
         # Create security log for printing
         cursor.execute('''
@@ -990,6 +1122,70 @@ def check_photo_count():
         })
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/notify_gate_pass_printing', methods=['POST'])
+def api_notify_gate_pass_printing():
+    """API endpoint to notify that gate pass is being printed"""
+    if 'user_id' not in session or session['role'] != 'security':
+        return jsonify({'success': False, 'message': 'Access denied!'})
+    
+    data = request.get_json()
+    gate_pass_id = data.get('gate_pass_id')
+    printed_by = data.get('printed_by')
+    printed_by_name = data.get('printed_by_name')
+    
+    if not gate_pass_id:
+        return jsonify({'success': False, 'message': 'Gate pass ID required!'})
+    
+    # Log the printing start
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''
+                INSERT INTO security_logs (gate_pass_id, user_id, alert_type, details)
+                VALUES (%s, %s, 'printing_started', %s)
+            ''', (gate_pass_id, printed_by, 
+                  f'Printing started by security: {printed_by_name}'))
+            conn.commit()
+        except Exception as e:
+            print(f"Error logging print start: {e}")
+        finally:
+            cursor.close()
+            conn.close()
+    
+    return jsonify({'success': True, 'message': 'Print notification logged'})
+
+@app.route('/api/notify_gate_pass_print_complete', methods=['POST'])
+def api_notify_gate_pass_print_complete():
+    """API endpoint to notify that gate pass printing is complete"""
+    if 'user_id' not in session or session['role'] != 'security':
+        return jsonify({'success': False, 'message': 'Access denied!'})
+    
+    data = request.get_json()
+    gate_pass_id = data.get('gate_pass_id')
+    printed_by = data.get('printed_by')
+    
+    if not gate_pass_id:
+        return jsonify({'success': False, 'message': 'Gate pass ID required!'})
+    
+    # Log the printing completion
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''
+                INSERT INTO security_logs (gate_pass_id, user_id, alert_type, details)
+                VALUES (%s, %s, 'printing_complete', 'Gate pass printed successfully')
+            ''', (gate_pass_id, printed_by))
+            conn.commit()
+        except Exception as e:
+            print(f"Error logging print completion: {e}")
+        finally:
+            cursor.close()
+            conn.close()
+    
+    return jsonify({'success': True, 'message': 'Print completion logged'})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

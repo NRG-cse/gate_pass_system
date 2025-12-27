@@ -506,6 +506,58 @@ def delete_user(user_id):
         cursor.close()
         conn.close()
 
+@admin_bp.route('/user_approvals')
+def user_approvals():
+    """System Admin can approve pending users - SEPARATE from gate pass approvals"""
+    if 'user_id' not in session or session['role'] != 'system_admin':
+        flash('Access denied! Only System Admin can approve users.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    conn = get_db_connection()
+    if conn is None:
+        flash('Database connection failed!', 'error')
+        return render_template('admin/user_approvals.html', pending_users=[])
+    
+    cursor = conn.cursor()
+    
+    try:
+        # Get ALL pending users across all departments
+        cursor.execute('''
+            SELECT u.*, d.name as department_name, dv.name as division_name
+            FROM users u 
+            LEFT JOIN departments d ON u.department_id = d.id 
+            LEFT JOIN divisions dv ON u.division_id = dv.id 
+            WHERE u.status = 'pending' 
+            AND u.role != 'system_admin'  -- Don't show other system admins
+            ORDER BY u.created_at DESC
+        ''')
+        pending_users = dict_fetchall(cursor)
+        
+        # Get statistics
+        cursor.execute('SELECT COUNT(*) FROM users WHERE status = "pending"')
+        total_pending = cursor.fetchone()[0]
+        
+        cursor.execute('SELECT COUNT(*) FROM users WHERE status = "approved"')
+        total_approved = cursor.fetchone()[0]
+        
+        cursor.execute('SELECT COUNT(*) FROM users')
+        total_users = cursor.fetchone()[0]
+        
+    except Exception as e:
+        print(f"Error fetching pending users: {e}")
+        pending_users = []
+        total_pending = total_approved = total_users = 0
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return render_template('admin/user_approvals.html', 
+                         pending_users=pending_users,
+                         total_pending=total_pending,
+                         total_approved=total_approved,
+                         total_users=total_users,
+                         now=datetime.now())
+
 @admin_bp.route('/all_gate_passes')
 def all_gate_passes():
     if 'user_id' not in session or session['role'] != 'system_admin':

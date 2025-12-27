@@ -11,11 +11,11 @@
                 <i class="fas fa-clipboard-check me-2"></i>Pending Approvals
             </h3>
             <p class="text-muted mb-0">
-                {% if session.role == 'system_admin' %}
-                <span class="badge bg-primary-gradient fs-6 px-3 py-2">
-                    <i class="fas fa-user-shield me-1"></i>System Administrator
+                {% if session.role == 'store_manager' %}
+                <span class="badge bg-warning-gradient fs-6 px-3 py-2">
+                    <i class="fas fa-store me-1"></i>Store Manager
                 </span>
-                <span class="ms-2">You can approve users from any department</span>
+                <span class="ms-2">You can approve gate passes for your store</span>
                 {% else %}
                 <span class="badge bg-info-gradient fs-6 px-3 py-2">
                     <i class="fas fa-user-tie me-1"></i>Department Head
@@ -97,7 +97,8 @@
 
     <!-- Main Content -->
     <div class="row g-4">
-        <!-- Pending Users Section -->
+        <!-- Pending Users Section (Only for Department Head) -->
+        {% if session.role == 'department_head' %}
         <div class="col-lg-6">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-header bg-white border-0 py-3">
@@ -194,9 +195,10 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
-        <!-- Pending Gate Passes Section -->
-        <div class="col-lg-6">
+        <!-- Pending Gate Passes Section (For Store Manager and Department Head) -->
+        <div class="{% if session.role == 'department_head' %}col-lg-6{% else %}col-12{% endif %}">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-header bg-white border-0 py-3">
                     <div class="d-flex justify-content-between align-items-center">
@@ -276,17 +278,25 @@
                                                     title="Reject">
                                                 <i class="fas fa-times"></i>
                                             </button>
-                                            <button onclick="approveGatePass({{ pass.id }}, 'inquiry')" 
+                                            <button type="button" 
                                                     class="btn btn-outline-warning px-3"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#inquiryModal"
+                                                    onclick="setInquiryGatePassId({{ pass.id }})"
                                                     title="Mark for Inquiry">
                                                 <i class="fas fa-question-circle"></i>
                                             </button>
                                             
-                                            {% elif session.role == 'system_admin' and pass.status == 'pending_security' %}
-                                            <button onclick="approveGatePassAdmin({{ pass.id }})" 
-                                                    class="btn btn-success px-3"
-                                                    title="Approve as Admin">
-                                                <i class="fas fa-shield-alt me-1"></i>Approve
+                                            {% elif session.role == 'store_manager' and pass.status == 'pending_store' %}
+                                            <button onclick="storeApproveGatePass({{ pass.id }}, 'approve')" 
+                                                    class="btn btn-outline-success px-3"
+                                                    title="Approve">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button onclick="storeApproveGatePass({{ pass.id }}, 'reject')" 
+                                                    class="btn btn-outline-danger px-3"
+                                                    title="Reject">
+                                                <i class="fas fa-times"></i>
                                             </button>
                                             {% endif %}
                                         </div>
@@ -309,6 +319,95 @@
             </div>
         </div>
     </div>
+
+    <!-- For Store Managers: Additional Store Requests Section -->
+    {% if session.role == 'store_manager' and store_requests and store_requests|length > 0 %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-warning text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-store me-2"></i>My Store Requests
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Request Details</th>
+                                    <th>Status</th>
+                                    <th>Urgency</th>
+                                    <th>Admin Response</th>
+                                    <th>Created</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for request in store_requests %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <h6 class="fw-bold mb-1">{{ request.material_description[:80] }}{% if request.material_description|length > 80 %}...{% endif %}</h6>
+                                        <small class="text-muted">To: {{ request.destination }}</small>
+                                        <br>
+                                        <small class="text-muted">Purpose: {{ request.purpose[:60] }}</small>
+                                    </td>
+                                    <td>
+                                        {% if request.status == 'pending' %}
+                                        <span class="badge bg-warning py-2 px-3">
+                                            <i class="fas fa-clock me-1"></i>Pending
+                                        </span>
+                                        {% elif request.status == 'approved' %}
+                                        <span class="badge bg-success py-2 px-3">
+                                            <i class="fas fa-check me-1"></i>Approved
+                                        </span>
+                                        {% elif request.status == 'rejected' %}
+                                        <span class="badge bg-danger py-2 px-3">
+                                            <i class="fas fa-times me-1"></i>Rejected
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-info py-2 px-3">
+                                            <i class="fas fa-cog me-1"></i>Processing
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if request.urgency == 'urgent' %}
+                                        <span class="badge bg-danger py-2 px-3">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>Urgent
+                                        </span>
+                                        {% elif request.urgency == 'emergency' %}
+                                        <span class="badge bg-danger py-2 px-3">
+                                            <i class="fas fa-skull-crossbones me-1"></i>Emergency
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-secondary py-2 px-3">
+                                            <i class="fas fa-check me-1"></i>Normal
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if request.admin_response %}
+                                        <small class="text-muted">{{ request.admin_response[:80] }}</small>
+                                        {% if request.admin_response|length > 80 %}...{% endif %}
+                                        {% else %}
+                                        <small class="text-muted">Waiting for response...</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ request.created_at.strftime('%d/%m/%Y') }}</small>
+                                        <br>
+                                        <small class="text-muted">{{ request.created_at.strftime('%I:%M %p') }}</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Legend Section -->
     <div class="row mt-4">
@@ -344,6 +443,38 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Inquiry Modal -->
+<div class="modal fade" id="inquiryModal" tabindex="-1" aria-labelledby="inquiryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="inquiryModalLabel">
+                    <i class="fas fa-question-circle me-2"></i>Mark for Inquiry
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="inquiryForm">
+                    <input type="hidden" id="inquiryGatePassId">
+                    <div class="mb-3">
+                        <label for="inquiryPurpose" class="form-label">
+                            <i class="fas fa-comment-alt me-1"></i>Purpose of Inquiry
+                        </label>
+                        <textarea class="form-control" id="inquiryPurpose" rows="3" 
+                                  placeholder="Explain why you are marking this for inquiry..." required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitInquiry()">
+                    <i class="fas fa-paper-plane me-1"></i>Submit Inquiry
+                </button>
             </div>
         </div>
     </div>
@@ -576,7 +707,7 @@ function approveUser(userId, action) {
         });
 }
 
-// Gate Pass Approval Function for Department Head - IMPROVED
+// Gate Pass Approval Function for Department Head
 function approveGatePass(passId, action) {
     let actionText, icon, confirmText;
     if (action === 'approve') {
@@ -588,9 +719,8 @@ function approveGatePass(passId, action) {
         icon = '❌';
         confirmText = 'reject this gate pass?';
     } else {
-        actionText = 'Mark for Inquiry';
-        icon = '❓';
-        confirmText = 'mark this gate pass for inquiry?';
+        // Inquiry will be handled separately via modal
+        return;
     }
     
     if (!confirm(`${icon} Are you sure you want to ${confirmText}`)) return;
@@ -661,34 +791,49 @@ function approveGatePass(passId, action) {
     });
 }
 
-// Gate Pass Approval Function for System Admin (direct approval)
-function approveGatePassAdmin(passId) {
-    if (!confirm('✅ Approve this gate pass as System Administrator?')) return;
-
+// Store Manager: Approve/Reject Gate Pass
+function storeApproveGatePass(passId, action) {
+    const actionText = action === 'approve' ? 'Approve' : 'Reject';
+    const icon = action === 'approve' ? '✅' : '❌';
+    
+    if (!confirm(`${icon} ${actionText} this gate pass as Store Manager?`)) return;
+    
     const button = event.target;
     const originalText = button.innerHTML;
     button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
     
-    fetch(`/admin/approve_gate_pass/${passId}`, {
+    fetch(`/gate_pass/store/approve_gate_pass/${passId}/${action}`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: 'action=approve&store_location=store_1'
+            'Content-Type': 'application/json',
+        }
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showToast(data.message || 'Gate pass approved successfully!', 'success');
-            // Remove the gate pass row from table
+            showToast(data.message || `Gate pass ${actionText.toLowerCase()}d by store!`, 'success');
+            
+            // Remove row with animation
             const gatepassRow = document.getElementById(`gatepass-${passId}`);
             if (gatepassRow) {
-                gatepassRow.remove();
+                gatepassRow.style.transition = 'all 0.3s ease';
+                gatepassRow.style.transform = 'translateX(100%)';
+                gatepassRow.style.opacity = '0';
+                
+                setTimeout(() => {
+                    gatepassRow.remove();
+                    updateStatsCount();
+                    
+                    // Check if table is empty
+                    const tableBody = document.querySelector('.card:nth-child(2) tbody');
+                    if (tableBody && tableBody.children.length === 0) {
+                        showEmptyState('gatepasses');
+                    }
+                }, 300);
             }
-            // Update stats count
-            updateStatsCount();
         } else {
-            showToast(data.message || 'Error approving gate pass', 'error');
+            showToast(data.message || `Error ${actionText.toLowerCase()}ing gate pass`, 'error');
             button.disabled = false;
             button.innerHTML = originalText;
         }
@@ -701,7 +846,72 @@ function approveGatePassAdmin(passId) {
     });
 }
 
-// Toast notification function - FIXED VERSION
+// Department Head: Inquiry
+let currentInquiryGatePassId = null;
+
+function setInquiryGatePassId(passId) {
+    currentInquiryGatePassId = passId;
+    document.getElementById('inquiryPurpose').value = '';
+}
+
+function submitInquiry() {
+    const inquiryPurpose = document.getElementById('inquiryPurpose').value.trim();
+    
+    if (!inquiryPurpose) {
+        showToast('Please enter inquiry purpose', 'error');
+        return;
+    }
+    
+    if (!currentInquiryGatePassId) {
+        showToast('Gate pass ID not set', 'error');
+        return;
+    }
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('inquiryModal'));
+    modal.hide();
+    
+    showLoading('Submitting inquiry...');
+    
+    fetch(`/gate_pass/approve_gate_pass/${currentInquiryGatePassId}/inquiry?inquiry_purpose=${encodeURIComponent(inquiryPurpose)}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || 'Gate pass marked for inquiry!', 'success');
+            
+            // Remove row with animation
+            const gatepassRow = document.getElementById(`gatepass-${currentInquiryGatePassId}`);
+            if (gatepassRow) {
+                gatepassRow.style.transition = 'all 0.3s ease';
+                gatepassRow.style.transform = 'translateX(100%)';
+                gatepassRow.style.opacity = '0';
+                
+                setTimeout(() => {
+                    gatepassRow.remove();
+                    updateStatsCount();
+                    
+                    // Check if table is empty
+                    const tableBody = document.querySelector('.card:nth-child(2) tbody');
+                    if (tableBody && tableBody.children.length === 0) {
+                        showEmptyState('gatepasses');
+                    }
+                }, 300);
+            }
+        } else {
+            showToast(data.message || 'Error marking for inquiry', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error processing request', 'error');
+    });
+}
+
+// Toast notification function
 function showToast(message, type = 'success') {
     let toastElement, toastMessage;
     
@@ -812,5 +1022,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const bsToast = new bootstrap.Toast(toast, { delay: 5000 });
     });
 });
+
+// Helper function for loading state
+function showLoading(message) {
+    console.log('Loading:', message);
+}
 </script>
 {% endblock %}

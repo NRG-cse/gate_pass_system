@@ -121,7 +121,7 @@ def init_db():
                 images TEXT NOT NULL,  -- REQUIRED: No gate pass without images
                 qr_code_form VARCHAR(500),
                 qr_code_sticker VARCHAR(500),
-                status ENUM('draft', 'pending_dept', 'pending_store', 'pending_security', 'approved', 'rejected', 'inquiry', 'in_transit', 'returned', 'overdue') DEFAULT 'draft',
+                status ENUM('draft', 'pending_dept', 'pending_store', 'pending_security', 'ready_for_dispatch', 'approved', 'rejected', 'inquiry', 'in_transit', 'returned', 'overdue') DEFAULT 'draft',
                 department_approval ENUM('pending', 'approved', 'rejected', 'inquiry') DEFAULT 'pending',
                 store_approval ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
                 security_approval ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
@@ -130,6 +130,7 @@ def init_db():
                 store_approval_date DATETIME NULL,
                 security_approval_date DATETIME NULL,
                 actual_return_date DATETIME NULL,
+                urgent BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 session_token VARCHAR(32),

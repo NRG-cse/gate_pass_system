@@ -77,6 +77,10 @@
                                 <span class="badge bg-primary px-3 py-2 fs-6">
                                     <i class="fas fa-truck"></i> IN TRANSIT
                                 </span>
+                            {% elif gate_pass.status == 'ready_for_dispatch' %}
+                                <span class="badge bg-info px-3 py-2 fs-6">
+                                    <i class="fas fa-shipping-fast"></i> READY FOR DISPATCH
+                                </span>
                             {% endif %}
                         </div>
                     </div>
@@ -390,6 +394,10 @@
                                             <div class="status-pending">
                                                 <i class="fas fa-truck"></i> In Transit
                                             </div>
+                                        {% elif gate_pass.status == 'ready_for_dispatch' %}
+                                            <div class="status-approved">
+                                                <i class="fas fa-shipping-fast"></i> Ready for Dispatch
+                                            </div>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -493,25 +501,48 @@
                                             </button>
                                         </div>
                                     </div>
-                                    {% elif session.role == 'security' and gate_pass.status == 'pending_security' %}
-                                    <div class="col-md-4">
-                                        <div class="btn-group w-100" role="group">
-                                            <button onclick="securityApproveGatePass({{ gate_pass.id }}, 'approve')" 
-                                                    class="btn btn-success py-3 fs-5">
-                                                <i class="fas fa-check"></i> APPROVE
-                                            </button>
-                                            <button onclick="securityApproveGatePass({{ gate_pass.id }}, 'reject')" 
-                                                    class="btn btn-danger py-3 fs-5">
-                                                <i class="fas fa-times"></i> REJECT
-                                            </button>
-                                        </div>
-                                    </div>
                                     {% endif %}
+                                    <!-- SECURITY USERS এর জন্য কোনো APPROVE/RESJECT বাটন থাকবে না -->
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Print Confirmation Modal -->
+<div class="modal fade" id="printConfirmationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-print"></i> Print Confirmation</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-4">
+                    <i class="fas fa-print fa-4x text-primary mb-3"></i>
+                    <h4>Print Gate Pass {{ gate_pass.pass_number }}?</h4>
+                    <p class="text-muted">
+                        Printing this gate pass will notify:
+                        <br>• The creator ({{ gate_pass.creator_name }})
+                        <br>• Department Head
+                        <br>• Store Manager
+                        <br>• System Administrators
+                    </p>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Note:</strong> This action cannot be undone.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="confirmPrint()">
+                    <i class="fas fa-print"></i> Confirm & Print
+                </button>
             </div>
         </div>
     </div>
@@ -635,43 +666,11 @@ function storeApproveGatePass(passId, action) {
     
     showToast('Processing request...', 'info');
     
-    // You need to create a store approval endpoint
-    fetch(`/gate_pass/store_approve/${passId}/${action}`, {
+    fetch(`/gate_pass/store/approve_gate_pass/${passId}/${action}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast(data.message || 'Gate pass processed successfully!', 'success');
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            showToast(data.message || 'Error processing request', 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showToast('Error processing request', 'error');
-    });
-}
-
-// Security Approval
-function securityApproveGatePass(passId, action) {
-    const actionText = action === 'approve' ? 'Approve' : 'Reject';
-    const icon = action === 'approve' ? '✅' : '❌';
-    
-    if (!confirm(`${icon} ${actionText} this gate pass?`)) return;
-    
-    showToast('Processing request...', 'info');
-    
-    fetch(`/admin/approve_gate_pass/${passId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `action=${action}`
     })
     .then(response => response.json())
     .then(data => {
@@ -740,15 +739,71 @@ function showToast(message, type = 'success') {
     bsToast.show();
 }
 
-// Print Functionality
+// Print Functionality with Modal
 document.querySelectorAll('.print-btn').forEach(btn => {
     btn.addEventListener('click', function() {
-        optimizeForPrint();
-        setTimeout(() => {
-            window.print();
-        }, 500);
+        // Show confirmation modal instead of simple confirm
+        const modal = new bootstrap.Modal(document.getElementById('printConfirmationModal'));
+        modal.show();
     });
 });
+
+// Confirm print from modal
+function confirmPrint() {
+    // Close the modal
+    bootstrap.Modal.getInstance(document.getElementById('printConfirmationModal')).hide();
+    
+    // Send notification that printing has started
+    sendPrintNotification();
+    
+    // Optimize and print
+    optimizeForPrint();
+    setTimeout(() => {
+        window.print();
+    }, 500);
+}
+
+// Send print notification to server
+function sendPrintNotification() {
+    const gatePassId = {{ gate_pass.id }};
+    
+    fetch('/api/notify_gate_pass_printing', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            gate_pass_id: gatePassId,
+            printed_by: {{ session['user_id'] }},
+            printed_by_name: "{{ session['name'] }}"
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Print notification sent successfully');
+        }
+    })
+    .catch(error => {
+        console.error('Error sending print notification:', error);
+    });
+}
+
+// Send notification that printing is complete
+function sendPrintCompleteNotification() {
+    const gatePassId = {{ gate_pass.id }};
+    
+    fetch('/api/notify_gate_pass_print_complete', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            gate_pass_id: gatePassId,
+            printed_by: {{ session['user_id'] }}
+        })
+    });
+}
 
 // Optimize for print
 function optimizeForPrint() {
@@ -776,6 +831,9 @@ function optimizeForPrint() {
 
 // Restore after print
 window.addEventListener('afterprint', () => {
+    // Send final notification that printing is complete
+    sendPrintCompleteNotification();
+    
     document.body.classList.remove('print-mode');
     document.querySelectorAll('.no-print').forEach(el => {
         el.style.display = '';

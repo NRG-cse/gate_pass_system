@@ -141,7 +141,8 @@
                             </a>
                         </div>
                         
-                        {% if session.role in ['system_admin', 'department_head'] %}
+                        <!-- ✅ FIXED: Department Head এর জন্য Pending Approvals -->
+                        {% if session.role == 'department_head' %}
                         <div class="col-xl-4 col-md-6 col-sm-12 mb-3">
                             <a href="{{ url_for('approval_pending') }}" class="btn btn-warning btn-lg w-100 py-3 text-start action-button">
                                 <div class="d-flex align-items-center">
@@ -151,6 +152,40 @@
                                     <div class="action-content">
                                         <h6 class="fw-bold mb-1 text-truncate">Pending Approvals</h6>
                                         <small class="opacity-75 text-truncate-2">{{ pending_approvals }} waiting</small>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- ✅ FIXED: Store Manager এর জন্য Pending Approvals -->
+                        {% if session.role == 'store_manager' %}
+                        <div class="col-xl-4 col-md-6 col-sm-12 mb-3">
+                            <a href="{{ url_for('approval_pending') }}" class="btn btn-warning btn-lg w-100 py-3 text-start action-button">
+                                <div class="d-flex align-items-center">
+                                    <div class="action-icon me-3">
+                                        <i class="fas fa-store fa-2x"></i>
+                                    </div>
+                                    <div class="action-content">
+                                        <h6 class="fw-bold mb-1 text-truncate">Store Approvals</h6>
+                                        <small class="opacity-75 text-truncate-2">{{ pending_passes }} waiting</small>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- ✅ FIXED: Security এর জন্য QR Scan -->
+                        {% if session.role == 'security' %}
+                        <div class="col-xl-4 col-md-6 col-sm-12 mb-3">
+                            <a href="{{ url_for('security_scan_page') }}" class="btn btn-success btn-lg w-100 py-3 text-start action-button">
+                                <div class="d-flex align-items-center">
+                                    <div class="action-icon me-3">
+                                        <i class="fas fa-qrcode fa-2x"></i>
+                                    </div>
+                                    <div class="action-content">
+                                        <h6 class="fw-bold mb-1 text-truncate">Scan QR</h6>
+                                        <small class="opacity-75 text-truncate-2">Return material</small>
                                     </div>
                                 </div>
                             </a>
@@ -167,6 +202,21 @@
                                     <div class="action-content">
                                         <h6 class="fw-bold mb-1 text-truncate">User Management</h6>
                                         <small class="opacity-75 text-truncate-2">Manage all users</small>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        
+                        <!-- ✅ ADDED: System Admin এর জন্য User Approvals -->
+                        <div class="col-xl-4 col-md-6 col-sm-12 mb-3">
+                            <a href="{{ url_for('admin.user_approvals') }}" class="btn btn-danger btn-lg w-100 py-3 text-start action-button">
+                                <div class="d-flex align-items-center">
+                                    <div class="action-icon me-3">
+                                        <i class="fas fa-user-check fa-2x"></i>
+                                    </div>
+                                    <div class="action-content">
+                                        <h6 class="fw-bold mb-1 text-truncate">User Approvals</h6>
+                                        <small class="opacity-75 text-truncate-2">{{ session.pending_users_count if session.pending_users_count else 0 }} waiting</small>
                                     </div>
                                 </div>
                             </a>

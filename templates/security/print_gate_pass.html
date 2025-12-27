@@ -5,13 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Security Gate Pass - {{ gate_pass.pass_number }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @media print {
-            .no-print { display: none !important; }
+            .no-print { 
+                display: none !important; 
+            }
             body { 
                 padding: 0 !important; 
                 margin: 0 !important; 
                 font-size: 12px !important;
+                background: white !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
             .print-area { 
                 width: 100% !important; 
@@ -20,14 +26,52 @@
                 padding: 5mm !important;
                 border: none !important; 
                 box-shadow: none !important;
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
             }
-            .container { max-width: 100% !important; padding: 0 !important; }
-            .page-break { page-break-inside: avoid !important; }
+            .container { 
+                max-width: 100% !important; 
+                padding: 0 !important; 
+            }
+            .page-break { 
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+            
+            /* Ensure colors print correctly */
+            .gate-pass-header {
+                background: linear-gradient(135deg, #2c3e50, #34495e) !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            .security-stamp {
+                border: 3px solid #e74c3c !important;
+                background: rgba(231, 76, 60, 0.1) !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            /* Force images to print */
+            .qr-image, .material-image {
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+        
+        @page {
+            size: A4 portrait;
+            margin: 10mm;
         }
         
         body { 
             background: #f8f9fa; 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding-bottom: 20px;
         }
         
         .print-area {
@@ -181,6 +225,8 @@
             border: 1px solid #ddd;
             padding: 5px;
             background: white;
+            display: block;
+            margin: 0 auto;
         }
         
         .qr-notes {
@@ -252,9 +298,22 @@
             font-weight: bold;
         }
         
-        .status-approved { background: #d4edda; color: #155724; }
-        .status-pending { background: #fff3cd; color: #856404; }
-        .status-urgent { background: #f8d7da; color: #721c24; }
+        .status-approved { 
+            background: #d4edda !important; 
+            color: #155724 !important; 
+        }
+        .status-pending { 
+            background: #fff3cd !important; 
+            color: #856404 !important; 
+        }
+        .status-urgent { 
+            background: #f8d7da !important; 
+            color: #721c24 !important; 
+        }
+        .status-rejected {
+            background: #f8d7da !important;
+            color: #721c24 !important;
+        }
         
         /* Material Images */
         .material-images {
@@ -271,13 +330,60 @@
             border: 1px solid #ddd;
             border-radius: 5px;
         }
+        
+        /* Toast Notification */
+        .toast-container {
+            z-index: 9999;
+        }
+        
+        /* Print loading overlay */
+        .print-loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .print-loading.hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
+    <!-- Print Loading Overlay -->
+    <div id="printLoading" class="print-loading hidden">
+        <div class="spinner-border text-primary" style="width: 4rem; height: 4rem;" role="status">
+            <span class="visually-hidden">Printing...</span>
+        </div>
+        <h4 class="mt-3">Sending notifications and printing...</h4>
+        <p class="text-muted">Please wait while we notify all parties</p>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        <div id="printToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <i class="fas fa-print me-2"></i>
+                <strong class="me-auto">Print Status</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body" id="printToastMessage">
+                Print completed successfully!
+            </div>
+        </div>
+    </div>
+    
     <div class="container">
         <!-- Print Controls -->
         <div class="no-print text-center my-4">
-            <button onclick="window.print()" class="btn btn-primary btn-lg">
+            <button onclick="startPrintProcess()" class="btn btn-primary btn-lg">
                 <i class="fas fa-print me-2"></i>Print Security Copy
             </button>
             <a href="{{ url_for('gate_pass.gate_pass_list') }}" class="btn btn-secondary btn-lg ms-3">
@@ -286,6 +392,13 @@
             <button onclick="printWithHeader()" class="btn btn-success btn-lg ms-3">
                 <i class="fas fa-print me-2"></i>Print with Company Header
             </button>
+            
+            <div class="mt-3">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Note:</strong> Printing will notify all parties including creator, department head, store manager, and system admins.
+                </div>
+            </div>
         </div>
 
         <!-- Gate Pass Print Area -->
@@ -570,26 +683,117 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
     <script>
-        // Auto print after 1 second
+        // Initialize toast
+        const printToast = new bootstrap.Toast(document.getElementById('printToast'));
+        
+        // Auto print and send notification
         window.onload = function() {
-            // Uncomment for auto-print
+            // Check if auto-print is enabled (uncomment if needed)
             // setTimeout(function() {
-            //     window.print();
+            //     startPrintProcess();
             // }, 1000);
         };
+        
+        // Main print process function
+        function startPrintProcess() {
+            // Show loading overlay
+            document.getElementById('printLoading').classList.remove('hidden');
+            
+            // Step 1: Send notification that printing has started
+            sendPrintNotification();
+        }
+        
+        // Send notification to server that gate pass is being printed
+        function sendPrintNotification() {
+            const gatePassId = "{{ gate_pass.id }}";
+            const printedByName = "{{ security_name }}";
+            
+            fetch('/api/notify_gate_pass_printing', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    gate_pass_id: gatePassId,
+                    printed_by: "{{ session['user_id'] }}",
+                    printed_by_name: printedByName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Print notification sent successfully');
+                    
+                    // Step 2: Adjust for print
+                    adjustForPrint();
+                    
+                    // Step 3: Trigger actual print
+                    setTimeout(() => {
+                        window.print();
+                    }, 500);
+                } else {
+                    showToast('Error sending notification: ' + data.message, 'error');
+                    hideLoading();
+                }
+            })
+            .catch(error => {
+                console.error('Error sending print notification:', error);
+                showToast('Error sending notification', 'error');
+                hideLoading();
+            });
+        }
         
         // Return to list after print
         window.onafterprint = function() {
             setTimeout(function() {
-                window.location.href = "{{ url_for('gate_pass.gate_pass_list') }}";
-            }, 2000);
+                // Send final notification that printing is complete
+                sendPrintCompleteNotification();
+                
+                // Hide loading
+                hideLoading();
+                
+                // Show success toast
+                showToast('Gate pass printed successfully! All parties have been notified.', 'success');
+                
+                // Redirect after 2 seconds
+                setTimeout(function() {
+                    window.location.href = "{{ url_for('gate_pass.gate_pass_list') }}";
+                }, 2000);
+            }, 1000);
         };
+        
+        // Send notification that printing is complete
+        function sendPrintCompleteNotification() {
+            const gatePassId = "{{ gate_pass.id }}";
+            
+            fetch('/api/notify_gate_pass_print_complete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    gate_pass_id: gatePassId,
+                    printed_by: "{{ session['user_id'] }}",
+                    pass_number: "{{ gate_pass.pass_number }}",
+                    creator_name: "{{ gate_pass.creator_name }}",
+                    department_name: "{{ gate_pass.department_name }}"
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Print completion notification sent');
+                }
+            })
+            .catch(error => {
+                console.error('Error sending completion notification:', error);
+            });
+        }
         
         // Print with company header
         function printWithHeader() {
-            window.print();
+            startPrintProcess();
         }
         
         // Ensure everything fits on one page
@@ -608,11 +812,62 @@
                     img.style.width = '120px';
                     img.style.height = '120px';
                 });
+                
+                // Adjust material images
+                const materialImages = document.querySelectorAll('.material-image');
+                materialImages.forEach(img => {
+                    img.style.width = '60px';
+                    img.style.height = '60px';
+                });
             }
+            
+            // Ensure all images are visible for printing
+            document.querySelectorAll('.qr-image, .material-image').forEach(img => {
+                if (img.tagName === 'IMG') {
+                    img.style.display = 'block';
+                    img.style.visibility = 'visible';
+                    img.style.opacity = '1';
+                }
+            });
         }
         
         // Call adjust function before print
         window.addEventListener('beforeprint', adjustForPrint);
+        
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toastBody = document.getElementById('printToastMessage');
+            const toast = document.getElementById('printToast');
+            const toastHeader = toast.querySelector('.toast-header');
+            
+            toastBody.textContent = message;
+            
+            // Set color based on type
+            if (type === 'error') {
+                toastHeader.className = 'toast-header bg-danger text-white';
+            } else if (type === 'warning') {
+                toastHeader.className = 'toast-header bg-warning text-dark';
+            } else {
+                toastHeader.className = 'toast-header bg-success text-white';
+            }
+            
+            printToast.show();
+        }
+        
+        // Hide loading overlay
+        function hideLoading() {
+            document.getElementById('printLoading').classList.add('hidden');
+        }
+        
+        // Handle browser print dialog cancel
+        window.addEventListener('afterprint', function() {
+            // Check if print was actually completed
+            if (!document.body.classList.contains('print-mode')) {
+                // User likely cancelled the print
+                hideLoading();
+                showToast('Print was cancelled', 'warning');
+            }
+        });
     </script>
 </body>
 </html>
