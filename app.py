@@ -1,7 +1,7 @@
-# app.py - COMPLETE VERSION WITH SECURITY PRINT NOTIFICATIONS
+# app.py - COMPLETE VERSION WITH OVERDUE RETURNS FEATURE
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from models import get_db_connection, init_db, dict_fetchall, dict_fetchone
-from notifications import start_notification_scheduler, create_notification
+from notifications import start_notification_scheduler, start_overdue_alarm_scheduler, create_notification
 from auth import auth_bp
 from gate_pass import gate_pass_bp
 from admin import admin_bp
@@ -51,6 +51,7 @@ with app.app_context():
     else:
         print("❌ Database initialization failed!")
     start_notification_scheduler()
+    start_overdue_alarm_scheduler()  # ✅ THIS LINE WAS ADDED
 
 @app.route('/')
 def index():
@@ -329,6 +330,28 @@ def dashboard():
         ''', (session['user_id'],))
         unread_notifications = cursor.fetchone()[0]
         
+        # ✅ ADDED: Get overdue count for sidebar badge
+        cursor.execute('''
+            SELECT COUNT(*) FROM gate_passes 
+            WHERE material_type = 'returnable' 
+            AND expected_return_date < NOW() 
+            AND actual_return_date IS NULL 
+            AND status = 'approved'
+            AND (
+                (created_by = %s) OR
+                (department_id = %s AND %s IN ('department_head', 'system_admin', 'security')) OR
+                (%s = 'store_manager' AND store_location = %s) OR
+                (%s = 'system_admin') OR
+                (%s = 'security')
+            )
+        ''', (session['user_id'], 
+              session.get('department_id', 0), session['role'],
+              session['role'], 'store_1' if 'store1' in session.get('username', '') else 'store_2',
+              session['role'], session['role']))
+
+        overdue_count = cursor.fetchone()[0] or 0
+        session['overdue_count'] = overdue_count
+        
     except Exception as e:
         print(f"Dashboard error: {e}")
         total_passes = pending_passes = overdue_passes = pending_approvals = 0
@@ -336,6 +359,7 @@ def dashboard():
         notifications = []
         recent_passes = []
         unread_notifications = 0
+        session['overdue_count'] = 0
     finally:
         cursor.close()
         conn.close()
@@ -599,10 +623,12 @@ def notify_gate_pass_printed(gate_pass_id, printed_by_user_id, printed_by_name):
         
         pass_number = gate_pass['pass_number']
         
+        # Send notifications to all parties
+        
         # 1. Notify CREATOR (user who created the gate pass)
         create_notification(
             gate_pass['creator_id'],
-            f"🖨️ Gate Pass {pass_number} has been printed by Security ({printed_by_name}) and is ready for dispatch",
+            f"🖨️ Gate Pass {pass_number} has been printed and material has left the gate by Security ({printed_by_name})",
             'status',
             gate_pass_id
         )
@@ -611,7 +637,7 @@ def notify_gate_pass_printed(gate_pass_id, printed_by_user_id, printed_by_name):
         if gate_pass['dept_head_id']:
             create_notification(
                 gate_pass['dept_head_id'],
-                f"🖨️ Gate Pass {pass_number} from your department has been printed by Security",
+                f"🖨️ Gate Pass {pass_number} from your department has left the gate",
                 'status',
                 gate_pass_id
             )
@@ -620,7 +646,7 @@ def notify_gate_pass_printed(gate_pass_id, printed_by_user_id, printed_by_name):
         if gate_pass['store_manager_id']:
             create_notification(
                 gate_pass['store_manager_id'],
-                f"🖨️ Gate Pass {pass_number} that you approved has been printed by Security",
+                f"🖨️ Gate Pass {pass_number} has left the gate",
                 'status',
                 gate_pass_id
             )
@@ -631,7 +657,7 @@ def notify_gate_pass_printed(gate_pass_id, printed_by_user_id, printed_by_name):
         for admin in admins:
             create_notification(
                 admin['id'],
-                f"🖨️ Gate Pass {pass_number} has been printed by Security ({printed_by_name})",
+                f"🖨️ Gate Pass {pass_number} has left the gate (Printed by Security: {printed_by_name})",
                 'alert',
                 gate_pass_id
             )
@@ -639,16 +665,9 @@ def notify_gate_pass_printed(gate_pass_id, printed_by_user_id, printed_by_name):
         # 5. Log the printing event in security logs
         cursor.execute('''
             INSERT INTO security_logs (gate_pass_id, user_id, alert_type, details)
-            VALUES (%s, %s, 'printed_for_dispatch', %s)
+            VALUES (%s, %s, 'dispatched_from_gate', %s)
         ''', (gate_pass_id, printed_by_user_id, 
-              f'Gate pass printed by security for dispatch. Printed by: {printed_by_name}'))
-        
-        # 6. Update gate pass status to indicate it's ready for dispatch
-        cursor.execute('''
-            UPDATE gate_passes 
-            SET status = 'ready_for_dispatch'
-            WHERE id = %s AND status = 'pending_security'
-        ''', (gate_pass_id,))
+              f'Gate pass printed and material left the gate. Dispatched by: {printed_by_name}'))
         
         conn.commit()
         return True
@@ -790,7 +809,7 @@ def security_scan_qr():
                 'pass_number': pass_number,
                 'material_description': gate_pass['material_description'],
                 'department': gate_pass['department_name'],
-                'return_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                'return_time': datetime.now().strftime('%Y-%m-d %H:%M:%S')
             }
         })
         
@@ -848,17 +867,21 @@ def security_print_gate_pass(gate_pass_id):
         if gate_pass['qr_code_sticker']:
             gate_pass['qr_sticker_img'] = generate_qr_code(gate_pass['qr_code_sticker'])
         
-        # ✅ SEND NOTIFICATIONS TO ALL PARTIES
-        notify_gate_pass_printed(gate_pass_id, session['user_id'], session['name'])
-        
-        # Create security log for printing
+        # ✅ CRITICAL UPDATE: Update gate pass status to 'gone_from_gate' when security prints
         cursor.execute('''
-            INSERT INTO security_logs (gate_pass_id, user_id, alert_type, details)
-            VALUES (%s, %s, 'gate_pass_printed', %s)
-        ''', (gate_pass_id, session['user_id'], 
-              f'Gate pass printed by security: {session["name"]}'))
+            UPDATE gate_passes 
+            SET status = 'gone_from_gate',
+                security_approval = 'approved',
+                security_approval_date = %s,
+                approved_by_security = %s,
+                gate_exit_time = %s
+            WHERE id = %s
+        ''', (datetime.now(), session['name'], datetime.now(), gate_pass_id))
         
         conn.commit()
+        
+        # ✅ Now send notifications to all parties
+        notify_gate_pass_printed(gate_pass_id, session['user_id'], session['name'])
         
     except Exception as e:
         print(f"Print error: {e}")
@@ -968,6 +991,368 @@ def mark_returned(gate_pass_id):
     except Exception as e:
         conn.rollback()
         return jsonify({'success': False, 'message': str(e)})
+    finally:
+        cursor.close()
+        conn.close()
+
+# ✅ ADDED: Overdue Returns Page
+@app.route('/overdue_returns')
+def overdue_returns():
+    """View all overdue returnable gate passes"""
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    
+    conn = get_db_connection()
+    if conn is None:
+        flash('Database connection failed!', 'error')
+        return render_template('overdue_returns.html', overdue_passes=[], now=datetime.now())
+    
+    cursor = conn.cursor()
+    
+    try:
+        base_query = '''
+            SELECT gp.*, u.name as creator_name, u.id as creator_id,
+                   d.name as department_name, dv.name as division_name,
+                   u.department_id as creator_dept_id,
+                   TIMESTAMPDIFF(HOUR, gp.expected_return_date, NOW()) as overdue_hours,
+                   TIMESTAMPDIFF(DAY, gp.expected_return_date, NOW()) as overdue_days
+            FROM gate_passes gp
+            JOIN users u ON gp.created_by = u.id
+            JOIN departments d ON gp.department_id = d.id
+            JOIN divisions dv ON gp.division_id = dv.id
+            WHERE gp.material_type = 'returnable' 
+            AND gp.expected_return_date < NOW() 
+            AND gp.actual_return_date IS NULL
+            AND gp.status = 'approved'
+        '''
+        
+        if session['role'] == 'system_admin':
+            # System Admin sees ALL overdue returns
+            cursor.execute(f"{base_query} ORDER BY gp.expected_return_date ASC")
+            overdue_passes = dict_fetchall(cursor)
+            
+        elif session['role'] == 'store_manager':
+            # Store Managers see overdue passes from their store
+            store_location = 'store_1' if 'store1' in session['username'] else 'store_2'
+            cursor.execute(f'''
+                {base_query} AND gp.store_location = %s 
+                ORDER BY gp.expected_return_date ASC
+            ''', (store_location,))
+            overdue_passes = dict_fetchall(cursor)
+            
+        elif session['role'] == 'security':
+            # Security sees ALL overdue returns (similar to system admin)
+            cursor.execute(f"{base_query} ORDER BY gp.expected_return_date ASC")
+            overdue_passes = dict_fetchall(cursor)
+            
+        elif session['role'] == 'department_head':
+            # Department Head sees overdue passes from their department
+            cursor.execute('SELECT department_id FROM users WHERE id = %s', (session['user_id'],))
+            dept_result = cursor.fetchone()
+            
+            if dept_result:
+                department_id = dept_result[0]
+                cursor.execute(f'''
+                    {base_query} AND gp.department_id = %s 
+                    ORDER BY gp.expected_return_date ASC
+                ''', (department_id,))
+                overdue_passes = dict_fetchall(cursor)
+            else:
+                overdue_passes = []
+                
+        else:
+            # Regular user sees only their own overdue passes
+            cursor.execute(f'''
+                {base_query} AND gp.created_by = %s 
+                ORDER BY gp.expected_return_date ASC
+            ''', (session['user_id'],))
+            overdue_passes = dict_fetchall(cursor)
+        
+        # Get statistics
+        cursor.execute('''
+            SELECT COUNT(*) as total_overdue,
+                   COUNT(CASE WHEN TIMESTAMPDIFF(DAY, expected_return_date, NOW()) > 7 THEN 1 END) as critical_overdue,
+                   COUNT(CASE WHEN TIMESTAMPDIFF(DAY, expected_return_date, NOW()) BETWEEN 1 AND 7 THEN 1 END) as high_overdue
+            FROM gate_passes
+            WHERE material_type = 'returnable' 
+            AND expected_return_date < NOW() 
+            AND actual_return_date IS NULL
+            AND status = 'approved'
+        ''')
+        stats = dict_fetchone(cursor)
+        
+    except Exception as e:
+        print(f"Overdue returns error: {e}")
+        import traceback
+        traceback.print_exc()
+        overdue_passes = []
+        stats = {'total_overdue': 0, 'critical_overdue': 0, 'high_overdue': 0}
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return render_template('overdue_returns.html', 
+                         overdue_passes=overdue_passes,
+                         stats=stats,
+                         now=datetime.now())
+
+@app.route('/api/check_overdue_alarm')
+def check_overdue_alarm():
+    """Check if user has overdue materials for alarm"""
+    if 'user_id' not in session:
+        return jsonify({'has_overdue': False, 'overdue_count': 0})
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'has_overdue': False, 'overdue_count': 0})
+    
+    cursor = conn.cursor()
+    
+    try:
+        base_query = '''
+            SELECT COUNT(*) as overdue_count
+            FROM gate_passes gp
+            WHERE gp.material_type = 'returnable' 
+            AND gp.expected_return_date < NOW() 
+            AND gp.actual_return_date IS NULL
+            AND gp.status = 'approved'
+        '''
+        
+        if session['role'] == 'system_admin':
+            # System Admin - all overdue
+            cursor.execute(base_query)
+            
+        elif session['role'] == 'store_manager':
+            # Store Manager - their store's overdue
+            store_location = 'store_1' if 'store1' in session['username'] else 'store_2'
+            cursor.execute(f"{base_query} AND gp.store_location = %s", (store_location,))
+            
+        elif session['role'] == 'security':
+            # Security - all overdue
+            cursor.execute(base_query)
+            
+        elif session['role'] == 'department_head':
+            # Department Head - their department's overdue
+            cursor.execute('SELECT department_id FROM users WHERE id = %s', (session['user_id'],))
+            dept_result = cursor.fetchone()
+            
+            if dept_result:
+                department_id = dept_result[0]
+                cursor.execute(f"{base_query} AND gp.department_id = %s", (department_id,))
+            else:
+                return jsonify({'has_overdue': False, 'overdue_count': 0})
+                
+        else:
+            # Regular user - their own overdue
+            cursor.execute(f"{base_query} AND gp.created_by = %s", (session['user_id'],))
+        
+        result = cursor.fetchone()
+        overdue_count = result[0] if result else 0
+        
+        return jsonify({
+            'has_overdue': overdue_count > 0,
+            'overdue_count': overdue_count
+        })
+        
+    except Exception as e:
+        print(f"Alarm check error: {e}")
+        return jsonify({'has_overdue': False, 'overdue_count': 0})
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/api/send_overdue_reminder/<int:gate_pass_id>', methods=['POST'])
+def send_overdue_reminder(gate_pass_id):
+    """Send reminder notification for overdue material"""
+    if 'user_id' not in session or session['role'] not in ['system_admin', 'department_head']:
+        return jsonify({'success': False, 'message': 'Access denied!'})
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'success': False, 'message': 'Database connection failed!'})
+    
+    cursor = conn.cursor()
+    
+    try:
+        # Get gate pass details
+        cursor.execute('''
+            SELECT gp.*, u.id as creator_id, u.name as creator_name,
+                   d.name as department_name, TIMESTAMPDIFF(DAY, gp.expected_return_date, NOW()) as overdue_days
+            FROM gate_passes gp
+            JOIN users u ON gp.created_by = u.id
+            JOIN departments d ON gp.department_id = d.id
+            WHERE gp.id = %s AND gp.material_type = 'returnable' 
+            AND gp.expected_return_date < NOW() 
+            AND gp.actual_return_date IS NULL
+            AND gp.status = 'approved'
+        ''', (gate_pass_id,))
+        
+        gate_pass = dict_fetchone(cursor)
+        
+        if not gate_pass:
+            return jsonify({'success': False, 'message': 'Gate pass not found or not overdue!'})
+        
+        # Check permissions
+        if session['role'] == 'department_head':
+            cursor.execute('SELECT department_id FROM users WHERE id = %s', (session['user_id'],))
+            dept_head_dept = cursor.fetchone()
+            
+            if not dept_head_dept or dept_head_dept[0] != gate_pass['department_id']:
+                return jsonify({'success': False, 'message': 'You can only send reminders for your department!'})
+        
+        # Send reminder to creator
+        overdue_days = gate_pass['overdue_days'] or 0
+        reminder_message = f"⏰ REMINDER: Your material with Gate Pass {gate_pass['pass_number']} is {overdue_days} day(s) overdue! Please return immediately."
+        
+        create_notification(
+            gate_pass['creator_id'],
+            reminder_message,
+            'alert',
+            gate_pass_id
+        )
+        
+        # Also notify department head (if not the one sending)
+        if session['role'] == 'system_admin':
+            cursor.execute('''
+                SELECT u.id FROM users u 
+                WHERE u.department_id = %s 
+                AND u.role = 'department_head' 
+                AND u.status = 'approved'
+                LIMIT 1
+            ''', (gate_pass['department_id'],))
+            
+            dept_head = cursor.fetchone()
+            if dept_head and dept_head[0] != session['user_id']:
+                create_notification(
+                    dept_head[0],
+                    f"⏰ Reminder sent to {gate_pass['creator_name']} for overdue Gate Pass {gate_pass['pass_number']}",
+                    'info',
+                    gate_pass_id
+                )
+        
+        # Log the reminder
+        cursor.execute('''
+            INSERT INTO overdue_reminders (gate_pass_id, reminded_by, reminder_date, remarks)
+            VALUES (%s, %s, %s, %s)
+        ''', (gate_pass_id, session['user_id'], datetime.now(), 
+              f"Manual reminder sent by {session['name']}"))
+        
+        conn.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Reminder sent to {gate_pass["creator_name"]}!'
+        })
+        
+    except Exception as e:
+        conn.rollback()
+        print(f"Reminder error: {e}")
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/api/mark_force_returned/<int:gate_pass_id>', methods=['POST'])
+def mark_force_returned(gate_pass_id):
+    """System Admin marks overdue material as force returned"""
+    if 'user_id' not in session or session['role'] != 'system_admin':
+        return jsonify({'success': False, 'message': 'Access denied!'})
+    
+    data = request.get_json()
+    remarks = data.get('remarks', '').strip()
+    notify_all = data.get('notify_all', True)
+    
+    if not remarks:
+        return jsonify({'success': False, 'message': 'Remarks required for force return!'})
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'success': False, 'message': 'Database connection failed!'})
+    
+    cursor = conn.cursor()
+    
+    try:
+        # Get gate pass details
+        cursor.execute('''
+            SELECT gp.*, u.id as creator_id, u.name as creator_name,
+                   d.name as department_name, u.department_id,
+                   dh.id as dept_head_id, dh.name as dept_head_name
+            FROM gate_passes gp
+            JOIN users u ON gp.created_by = u.id
+            JOIN departments d ON gp.department_id = d.id
+            LEFT JOIN users dh ON d.id = dh.department_id AND dh.role = 'department_head' AND dh.status = 'approved'
+            WHERE gp.id = %s AND gp.material_type = 'returnable' 
+            AND gp.actual_return_date IS NULL
+        ''', (gate_pass_id,))
+        
+        gate_pass = dict_fetchone(cursor)
+        
+        if not gate_pass:
+            return jsonify({'success': False, 'message': 'Gate pass not found!'})
+        
+        # Mark as force returned
+        cursor.execute('''
+            UPDATE gate_passes 
+            SET actual_return_date = %s, 
+                status = 'force_returned',
+                force_return_remarks = %s,
+                force_returned_by = %s
+            WHERE id = %s
+        ''', (datetime.now(), remarks, session['user_id'], gate_pass_id))
+        
+        # Log the force return
+        cursor.execute('''
+            INSERT INTO force_return_logs (gate_pass_id, returned_by, return_date, remarks)
+            VALUES (%s, %s, %s, %s)
+        ''', (gate_pass_id, session['user_id'], datetime.now(), remarks))
+        
+        conn.commit()
+        
+        # Send notifications if requested
+        if notify_all:
+            # Notify creator
+            create_notification(
+                gate_pass['creator_id'],
+                f"⚠️ Your material with Gate Pass {gate_pass['pass_number']} has been marked as force returned by System Admin. Remarks: {remarks}",
+                'alert',
+                gate_pass_id
+            )
+            
+            # Notify department head
+            if gate_pass['dept_head_id']:
+                create_notification(
+                    gate_pass['dept_head_id'],
+                    f"⚠️ Material from your department (Gate Pass {gate_pass['pass_number']}) has been marked force returned by System Admin.",
+                    'alert',
+                    gate_pass_id
+                )
+            
+            # Notify all system admins (except current)
+            cursor.execute('''
+                SELECT id FROM users 
+                WHERE role = "system_admin" 
+                AND status = "approved"
+                AND id != %s
+            ''', (session['user_id'],))
+            
+            other_admins = dict_fetchall(cursor)
+            for admin in other_admins:
+                create_notification(
+                    admin['id'],
+                    f"⚠️ Gate Pass {gate_pass['pass_number']} force returned by {session['name']}",
+                    'info',
+                    gate_pass_id
+                )
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Gate Pass {gate_pass["pass_number"]} marked as force returned!'
+        })
+        
+    except Exception as e:
+        conn.rollback()
+        print(f"Force return error: {e}")
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
     finally:
         cursor.close()
         conn.close()

@@ -571,6 +571,18 @@
                     </a>
                 </li>
                 
+                <!-- ✅ ADDED: Overdue Returns Menu Item for ALL users -->
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'overdue_returns' %}active{% endif %}" 
+                       href="{{ url_for('overdue_returns') }}" onclick="handleNavClick()">
+                        <i class="fas fa-clock text-warning"></i>
+                        <span>Overdue Returns</span>
+                        {% if session.overdue_count and session.overdue_count > 0 %}
+                        <span class="badge bg-danger ms-auto">{{ session.overdue_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+                
                 <!-- ✅ ADDED: Security QR Scan Menu Item -->
                 {% if session.role == 'security' %}
                 <li class="nav-item">

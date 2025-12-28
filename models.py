@@ -1,4 +1,4 @@
-# models.py - COMPLETELY FIXED WITH PROPER INITIALIZATION INCLUDING SECURITY
+# models.py - COMPLETELY FIXED WITH PROPER INITIALIZATION INCLUDING SECURITY AND OVERDUE TRACKING
 import MySQLdb
 from config import config
 import hashlib
@@ -101,7 +101,7 @@ def init_db():
             )
         ''')
         
-        # Gate passes table - UPDATED with store information
+        # Gate passes table - UPDATED with new status values and security approval columns
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS gate_passes (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -121,7 +121,8 @@ def init_db():
                 images TEXT NOT NULL,  -- REQUIRED: No gate pass without images
                 qr_code_form VARCHAR(500),
                 qr_code_sticker VARCHAR(500),
-                status ENUM('draft', 'pending_dept', 'pending_store', 'pending_security', 'ready_for_dispatch', 'approved', 'rejected', 'inquiry', 'in_transit', 'returned', 'overdue') DEFAULT 'draft',
+                status ENUM('draft', 'pending_dept', 'pending_store', 'pending_security', 'ready_for_dispatch', 
+                           'approved', 'rejected', 'inquiry', 'in_transit', 'returned', 'overdue', 'gone_from_gate', 'force_returned') DEFAULT 'draft',
                 department_approval ENUM('pending', 'approved', 'rejected', 'inquiry') DEFAULT 'pending',
                 store_approval ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
                 security_approval ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
@@ -134,9 +135,17 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 session_token VARCHAR(32),
+                approved_by_security VARCHAR(255),
+                approval_timestamp DATETIME,
+                gate_exit_time DATETIME,
+                last_overdue_notification DATETIME,
+                last_store_notification DATETIME,
+                force_return_remarks TEXT,
+                force_returned_by INT,
                 FOREIGN KEY (created_by) REFERENCES users(id),
                 FOREIGN KEY (division_id) REFERENCES divisions(id),
-                FOREIGN KEY (department_id) REFERENCES departments(id)
+                FOREIGN KEY (department_id) REFERENCES departments(id),
+                FOREIGN KEY (force_returned_by) REFERENCES users(id)
             )
         ''')
         
@@ -162,7 +171,7 @@ def init_db():
                 user_id INT NOT NULL,
                 gate_pass_id INT,
                 message TEXT NOT NULL,
-                type ENUM('approval', 'reminder', 'status', 'alert', 'return_overdue') NOT NULL,
+                type ENUM('approval', 'reminder', 'status', 'alert', 'return_overdue', 'store_alert', 'critical', 'warning') NOT NULL,
                 is_read BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id),
@@ -248,23 +257,37 @@ def init_db():
             )
         ''')
         
-        # Add missing columns if they don't exist
-        try:
-            cursor.execute("SHOW COLUMNS FROM gate_passes LIKE 'store_location'")
-            if not cursor.fetchone():
-                cursor.execute('ALTER TABLE gate_passes ADD COLUMN store_location ENUM("store_1", "store_2") NULL')
-        except:
-            pass
+        # ============== OVERDUE TRACKING TABLES ==============
         
-        # Add missing column for store_manager_requests if not exists
-        try:
-            cursor.execute("SHOW COLUMNS FROM store_manager_requests LIKE 'admin_response_by'")
-            if not cursor.fetchone():
-                cursor.execute('ALTER TABLE store_manager_requests ADD COLUMN admin_response_by INT NULL')
-                cursor.execute('ALTER TABLE store_manager_requests ADD FOREIGN KEY (admin_response_by) REFERENCES users(id)')
-                print("✅ Added admin_response_by column to store_manager_requests")
-        except Exception as e:
-            print(f"⚠️ Could not add admin_response_by column: {e}")
+        # Overdue reminders table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS overdue_reminders (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                gate_pass_id INT NOT NULL,
+                reminded_by INT NOT NULL,
+                reminder_date DATETIME NOT NULL,
+                remarks TEXT,
+                FOREIGN KEY (gate_pass_id) REFERENCES gate_passes(id) ON DELETE CASCADE,
+                FOREIGN KEY (reminded_by) REFERENCES users(id) ON DELETE CASCADE,
+                INDEX idx_reminder_date (reminder_date)
+            )
+        ''')
+        
+        # Force return logs table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS force_return_logs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                gate_pass_id INT NOT NULL,
+                returned_by INT NOT NULL,
+                return_date DATETIME NOT NULL,
+                remarks TEXT,
+                FOREIGN KEY (gate_pass_id) REFERENCES gate_passes(id) ON DELETE CASCADE,
+                FOREIGN KEY (returned_by) REFERENCES users(id) ON DELETE CASCADE,
+                INDEX idx_return_date (return_date)
+            )
+        ''')
+        
+        # ============== END OVERDUE TRACKING TABLES ==============
         
         # ✅ ADDED: Create default divisions including Security Division
         cursor.execute("SELECT COUNT(*) FROM divisions")
@@ -458,66 +481,67 @@ def init_db():
                     ''', (test_password, test_div[0], test_dept[0]))
                     print("✅ Created test user: akib / akib123")
         
-        # ✅ ADDED: Verify gate_passes table structure
-        try:
-            print("\n" + "="*60)
-            print("🔍 VERIFYING GATE_PASSES TABLE STRUCTURE")
-            print("="*60)
-            
-            cursor.execute("SHOW COLUMNS FROM gate_passes")
-            columns = [col[0] for col in cursor.fetchall()]
-            print(f"📊 gate_passes table has {len(columns)} columns")
-            
-            # Check for required columns
-            required_columns = ['pass_number', 'created_by', 'division_id', 'department_id', 
-                              'material_description', 'images', 'status', 'urgent']
-            missing_columns = [col for col in required_columns if col not in columns]
-            
-            if missing_columns:
-                print(f"⚠️ Missing columns in gate_passes: {missing_columns}")
-                print("🛠️ Attempting to add missing columns...")
-                
-                for column in missing_columns:
-                    try:
-                        if column == 'images':
-                            cursor.execute('ALTER TABLE gate_passes ADD COLUMN images TEXT NOT NULL')
-                            print(f"✅ Added column: images (TEXT NOT NULL)")
-                        elif column == 'status':
-                            cursor.execute('ALTER TABLE gate_passes ADD COLUMN status VARCHAR(50) DEFAULT "pending_dept"')
-                            print(f"✅ Added column: status (VARCHAR(50) DEFAULT 'pending_dept')")
-                        elif column == 'urgent':
-                            cursor.execute('ALTER TABLE gate_passes ADD COLUMN urgent BOOLEAN DEFAULT FALSE')
-                            print(f"✅ Added column: urgent (BOOLEAN DEFAULT FALSE)")
-                        elif column == 'division_id':
-                            cursor.execute('ALTER TABLE gate_passes ADD COLUMN division_id INT NOT NULL')
-                            print(f"✅ Added column: division_id (INT NOT NULL)")
-                        elif column == 'department_id':
-                            cursor.execute('ALTER TABLE gate_passes ADD COLUMN department_id INT NOT NULL')
-                            print(f"✅ Added column: department_id (INT NOT NULL)")
-                        else:
-                            cursor.execute(f'ALTER TABLE gate_passes ADD COLUMN {column} VARCHAR(255)')
-                            print(f"✅ Added column: {column} (VARCHAR(255))")
-                    except Exception as col_error:
-                        print(f"⚠️ Could not add column {column}: {col_error}")
-                
-                conn.commit()
-                print("✅ Missing columns added successfully!")
-            else:
-                print("✅ All required columns are present in gate_passes table")
-            
-            # Also check for the correct ENUM values
+        # ✅ ADDED: Verify all table structures
+        print("\n" + "="*60)
+        print("🔍 VERIFYING ALL TABLE STRUCTURES")
+        print("="*60)
+        
+        # Check for missing columns in all tables
+        tables_to_check = {
+            'gate_passes': [
+                ('approved_by_security', 'VARCHAR(255)'),
+                ('approval_timestamp', 'DATETIME'),
+                ('gate_exit_time', 'DATETIME'),
+                ('last_overdue_notification', 'DATETIME'),
+                ('last_store_notification', 'DATETIME'),
+                ('force_return_remarks', 'TEXT'),
+                ('force_returned_by', 'INT')
+            ],
+            'store_manager_requests': [
+                ('admin_response_by', 'INT')
+            ]
+        }
+        
+        for table_name, columns_to_add in tables_to_check.items():
             try:
-                cursor.execute("SHOW COLUMNS FROM gate_passes LIKE 'status'")
-                status_col = cursor.fetchone()
-                if status_col:
-                    print(f"📊 Status column type: {status_col[1]}")
-            except:
-                pass
+                cursor.execute(f"SHOW COLUMNS FROM {table_name}")
+                existing_columns = [col[0] for col in cursor.fetchall()]
                 
-        except Exception as table_error:
-            print(f"⚠️ Table verification error: {table_error}")
-            import traceback
-            traceback.print_exc()
+                for column_name, column_type in columns_to_add:
+                    if column_name not in existing_columns:
+                        print(f"🛠️ Adding missing column: {table_name}.{column_name}")
+                        try:
+                            cursor.execute(f'ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}')
+                            # Add foreign key constraint if needed
+                            if column_name == 'force_returned_by':
+                                cursor.execute(f'''
+                                    ALTER TABLE {table_name} 
+                                    ADD FOREIGN KEY (force_returned_by) REFERENCES users(id)
+                                ''')
+                            elif column_name == 'admin_response_by':
+                                cursor.execute(f'''
+                                    ALTER TABLE {table_name} 
+                                    ADD FOREIGN KEY (admin_response_by) REFERENCES users(id)
+                                ''')
+                            print(f"✅ Added {column_name} to {table_name}")
+                        except Exception as col_error:
+                            print(f"⚠️ Could not add column {column_name}: {col_error}")
+            except Exception as table_error:
+                print(f"⚠️ Error checking table {table_name}: {table_error}")
+        
+        # Also check for the correct ENUM values in gate_passes status
+        try:
+            cursor.execute("SHOW COLUMNS FROM gate_passes LIKE 'status'")
+            status_col = cursor.fetchone()
+            if status_col:
+                print(f"📊 Status column type: {status_col[1]}")
+                
+                # Check for required status values
+                required_statuses = ['gone_from_gate', 'force_returned']
+                if any(status not in status_col[1] for status in required_statuses):
+                    print("⚠️ Some required status values missing. Please check manually.")
+        except:
+            pass
         
         # ✅ ADDED: Final verification of all tables
         print("\n" + "="*60)
@@ -530,9 +554,12 @@ def init_db():
         
         for table in tables:
             table_name = table[0]
-            cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
-            count = cursor.fetchone()[0]
-            print(f"  📈 {table_name}: {count} rows")
+            try:
+                cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+                count = cursor.fetchone()[0]
+                print(f"  📈 {table_name}: {count} rows")
+            except:
+                print(f"  ❌ {table_name}: Error counting rows")
         
         # ✅ ADDED: Print all default users for verification
         print("\n" + "="*60)
@@ -546,7 +573,8 @@ def init_db():
         
         conn.commit()
         print("\n" + "="*60)
-        print("✅ Database initialized successfully with ALL default users!")
+        print("✅ Database initialized successfully with ALL tables and default users!")
+        print("✅ Includes overdue tracking tables: overdue_reminders, force_return_logs")
         print("="*60)
         print("\n📋 DEFAULT LOGIN CREDENTIALS:")
         print("   System Admin: sysadmin / admin123")
@@ -556,6 +584,14 @@ def init_db():
         print("   Security Officer 1: security1 / security123")
         print("   Security Officer 2: security2 / security123")
         print("   Regular User: akib / akib123")
+        print("="*60)
+        print("\n🔔 FEATURES INCLUDED:")
+        print("   • Overdue returns tracking")
+        print("   • Automatic notifications")
+        print("   • Role-based overdue views")
+        print("   • Force return functionality")
+        print("   • Reminder system")
+        print("   • Alarm system with sound")
         print("="*60)
         return True
         

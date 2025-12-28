@@ -1,0 +1,379 @@
+<!-- templates/overdue_returns.html -->
+{% extends "base.html" %}
+
+{% block page_title %}Overdue Returns{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-2">Overdue Material Returns</h1>
+            <p class="text-muted mb-0">Track returnable materials that are overdue</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" onclick="refreshPage()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button class="btn btn-outline-secondary" onclick="enableAlarm()" id="alarmToggle">
+                <i class="fas fa-bell-slash"></i> Enable Alarm
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-gradient-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-1">Total Overdue</h6>
+                            <h2 class="mb-0">{{ stats.total_overdue or 0 }}</h2>
+                        </div>
+                        <div class="icon-circle">
+                            <i class="fas fa-clock fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-gradient-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-1">Critical (7+ Days)</h6>
+                            <h2 class="mb-0">{{ stats.critical_overdue or 0 }}</h2>
+                        </div>
+                        <div class="icon-circle">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-gradient-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-1">High (1-7 Days)</h6>
+                            <h2 class="mb-0">{{ stats.high_overdue or 0 }}</h2>
+                        </div>
+                        <div class="icon-circle">
+                            <i class="fas fa-exclamation-circle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overdue Passes Table -->
+    <div class="card">
+        <div class="card-header bg-white">
+            <h5 class="card-title mb-0">Overdue Returnable Materials</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if overdue_passes %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Gate Pass #</th>
+                            <th>Material</th>
+                            <th>Department</th>
+                            <th>Expected Return</th>
+                            <th>Overdue By</th>
+                            <th>Creator</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pass in overdue_passes %}
+                        <tr class="{% if pass.overdue_days and pass.overdue_days > 7 %}table-danger
+                                   {% elif pass.overdue_days and pass.overdue_days > 0 %}table-warning
+                                   {% else %}table-info{% endif %}">
+                            <td>
+                                <strong>{{ pass.pass_number }}</strong>
+                            </td>
+                            <td>
+                                <div class="fw-medium">{{ pass.material_description[:50] }}{% if pass.material_description|length > 50 %}...{% endif %}</div>
+                                <small class="text-muted">To: {{ pass.destination }}</small>
+                            </td>
+                            <td>{{ pass.department_name }}</td>
+                            <td>
+                                <div class="text-danger">
+                                    <i class="fas fa-calendar-times me-1"></i>
+                                    {{ pass.expected_return_date.strftime('%d-%m-%Y %H:%M') if pass.expected_return_date else 'N/A' }}
+                                </div>
+                            </td>
+                            <td>
+                                {% if pass.overdue_days %}
+                                    {% if pass.overdue_days > 7 %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>
+                                            {{ pass.overdue_days }} days
+                                        </span>
+                                    {% elif pass.overdue_days > 0 %}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-exclamation-circle me-1"></i>
+                                            {{ pass.overdue_days }} days
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-clock me-1"></i>
+                                            {{ pass.overdue_hours }} hours
+                                        </span>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                            <td>{{ pass.creator_name }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('gate_pass.gate_pass_detail', gate_pass_id=pass.id) }}" 
+                                       class="btn btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if session.role in ['system_admin', 'department_head'] and pass.department_id == session.get('department_id') %}
+                                    <button class="btn btn-outline-warning" 
+                                            onclick="sendReminder({{ pass.id }})"
+                                            title="Send Reminder">
+                                        <i class="fas fa-bell"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if session.role == 'system_admin' %}
+                                    <button class="btn btn-outline-danger" 
+                                            onclick="markForceReturned({{ pass.id }})"
+                                            title="Mark Force Returned">
+                                        <i class="fas fa-undo"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                <h4>No Overdue Returns!</h4>
+                <p class="text-muted">All returnable materials are on time.</p>
+            </div>
+            {% endif %}
+        </div>
+        <div class="card-footer bg-white">
+            <small class="text-muted">
+                <i class="fas fa-info-circle me-1"></i>
+                Showing {{ overdue_passes|length }} overdue return(s)
+            </small>
+        </div>
+    </div>
+
+    <!-- Alarm Status -->
+    <div class="mt-4">
+        <div class="alert alert-info d-flex align-items-center justify-content-between">
+            <div>
+                <i class="fas fa-bell me-2"></i>
+                <strong>Overdue Alarm System:</strong> 
+                <span id="alarmStatus">Disabled</span>
+            </div>
+            <audio id="overdueAlarm" loop style="display: none;">
+                <source src="https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3" type="audio/mpeg">
+            </audio>
+        </div>
+    </div>
+</div>
+
+<!-- Force Return Modal (for System Admin) -->
+<div class="modal fade" id="forceReturnModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">Mark Force Returned</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to mark this material as force returned?</p>
+                <div class="mb-3">
+                    <label for="returnRemarks" class="form-label">Remarks:</label>
+                    <textarea class="form-control" id="returnRemarks" rows="3" 
+                              placeholder="Reason for force return..."></textarea>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="notifyAll" checked>
+                    <label class="form-check-label" for="notifyAll">
+                        Notify all concerned parties
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" onclick="confirmForceReturn()">Mark Force Returned</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.icon-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.table > tbody > tr > td {
+    vertical-align: middle;
+}
+</style>
+
+<script>
+let alarmEnabled = false;
+let alarmAudio = document.getElementById('overdueAlarm');
+let alarmInterval;
+let currentForceReturnId = null;
+
+function refreshPage() {
+    location.reload();
+}
+
+function enableAlarm() {
+    alarmEnabled = !alarmEnabled;
+    const toggleBtn = document.getElementById('alarmToggle');
+    const statusText = document.getElementById('alarmStatus');
+    
+    if (alarmEnabled) {
+        toggleBtn.innerHTML = '<i class="fas fa-bell"></i> Disable Alarm';
+        toggleBtn.classList.remove('btn-outline-secondary');
+        toggleBtn.classList.add('btn-warning');
+        statusText.textContent = 'Enabled (Checking every 30 seconds)';
+        
+        // Check immediately
+        checkOverdueAlarm();
+        
+        // Set interval to check every 30 seconds
+        alarmInterval = setInterval(checkOverdueAlarm, 30000);
+        
+    } else {
+        toggleBtn.innerHTML = '<i class="fas fa-bell-slash"></i> Enable Alarm';
+        toggleBtn.classList.remove('btn-warning');
+        toggleBtn.classList.add('btn-outline-secondary');
+        statusText.textContent = 'Disabled';
+        
+        // Stop alarm if playing
+        alarmAudio.pause();
+        alarmAudio.currentTime = 0;
+        
+        // Clear interval
+        if (alarmInterval) {
+            clearInterval(alarmInterval);
+        }
+    }
+}
+
+function checkOverdueAlarm() {
+    fetch('/api/check_overdue_alarm')
+        .then(response => response.json())
+        .then(data => {
+            if (data.has_overdue && alarmEnabled) {
+                // Play alarm sound
+                alarmAudio.play().catch(e => console.log('Audio play failed:', e));
+                
+                // Show notification
+                if (Notification.permission === "granted") {
+                    new Notification("🚨 Overdue Material Alert!", {
+                        body: `You have ${data.overdue_count} overdue material(s)`,
+                        icon: "/static/icons/icon-32x32.png"
+                    });
+                } else if (Notification.permission !== "denied") {
+                    Notification.requestPermission();
+                }
+            } else if (!data.has_overdue) {
+                // Stop alarm if no overdue
+                alarmAudio.pause();
+                alarmAudio.currentTime = 0;
+            }
+        })
+        .catch(error => console.error('Alarm check error:', error));
+}
+
+function sendReminder(gatePassId) {
+    if (!confirm('Send reminder to the creator about this overdue material?')) return;
+    
+    fetch(`/api/send_overdue_reminder/${gatePassId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Reminder sent successfully!');
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error sending reminder');
+        console.error(error);
+    });
+}
+
+function markForceReturned(gatePassId) {
+    currentForceReturnId = gatePassId;
+    $('#forceReturnModal').modal('show');
+}
+
+function confirmForceReturn() {
+    const remarks = document.getElementById('returnRemarks').value;
+    const notifyAll = document.getElementById('notifyAll').checked;
+    
+    if (!remarks.trim()) {
+        alert('Please enter remarks for force return');
+        return;
+    }
+    
+    fetch(`/api/mark_force_returned/${currentForceReturnId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            remarks: remarks,
+            notify_all: notifyAll
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Material marked as force returned!');
+            $('#forceReturnModal').modal('hide');
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error processing request');
+        console.error(error);
+    });
+}
+
+// Request notification permission on page load
+document.addEventListener('DOMContentLoaded', function() {
+    if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+    }
+    
+    // Auto-check for overdue on page load
+    setTimeout(checkOverdueAlarm, 2000);
+});
+</script>
+{% endblock %}

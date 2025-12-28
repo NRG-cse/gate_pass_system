@@ -81,6 +81,10 @@
                                 <span class="badge bg-info px-3 py-2 fs-6">
                                     <i class="fas fa-shipping-fast"></i> READY FOR DISPATCH
                                 </span>
+                            {% elif gate_pass.status == 'gone_from_gate' %}
+                                <span class="badge bg-dark px-3 py-2 fs-6">
+                                    <i class="fas fa-truck-moving"></i> GONE FROM GATE
+                                </span>
                             {% endif %}
                         </div>
                     </div>
@@ -341,6 +345,9 @@
                                                 {% if gate_pass.security_approval_date %}
                                                 <br><small>{{ gate_pass.security_approval_date.strftime('%d/%m %H:%M') }}</small>
                                                 {% endif %}
+                                                {% if gate_pass.approved_by_security %}
+                                                <br><small>By: {{ gate_pass.approved_by_security }}</small>
+                                                {% endif %}
                                             </div>
                                         {% elif gate_pass.security_approval == 'rejected' %}
                                             <div class="status-rejected">
@@ -398,13 +405,20 @@
                                             <div class="status-approved">
                                                 <i class="fas fa-shipping-fast"></i> Ready for Dispatch
                                             </div>
+                                        {% elif gate_pass.status == 'gone_from_gate' %}
+                                            <div class="status-approved">
+                                                <i class="fas fa-truck-moving"></i> Gone from Gate
+                                                {% if gate_pass.gate_exit_time %}
+                                                <br><small>{{ gate_pass.gate_exit_time.strftime('%d/%m %H:%M') }}</small>
+                                                {% endif %}
+                                            </div>
                                         {% endif %}
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Material Photos Section -->
+                        <!-- Material Photos Section - IMPORTANT: Security-দের জন্য দেখানো হবে -->
                         {% if gate_pass.images_list %}
                         <div class="card border-0 shadow-sm mb-3">
                             <div class="card-header bg-light text-dark">
@@ -502,7 +516,7 @@
                                         </div>
                                     </div>
                                     {% endif %}
-                                    <!-- SECURITY USERS এর জন্য কোনো APPROVE/RESJECT বাটন থাকবে না -->
+                                    <!-- SECURITY USERS এর জন্য কোনো APPROVE/REJECT বাটন থাকবে না -->
                                 </div>
                             </div>
                         </div>
