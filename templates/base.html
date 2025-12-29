@@ -571,6 +571,16 @@
                     </a>
                 </li>
                 
+                <!-- ✅ ADDED: Returns List Menu Item for ALL users -->
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'returns_list_page' %}active{% endif %}" 
+                       href="{{ url_for('returns_list_page') }}" onclick="handleNavClick()">
+                        <i class="fas fa-undo"></i>
+                        <span>Returns List</span>
+                        <span id="returnsBadge" class="badge bg-success float-end">0</span>
+                    </a>
+                </li>
+                
                 <!-- ✅ ADDED: Overdue Returns Menu Item for ALL users -->
                 <li class="nav-item">
                     <a class="nav-link {% if request.endpoint == 'overdue_returns' %}active{% endif %}" 
@@ -588,7 +598,7 @@
                 <li class="nav-item">
                     <a class="nav-link {% if request.endpoint == 'security_scan_page' %}active{% endif %}" href="{{ url_for('security_scan_page') }}" onclick="handleNavClick()">
                         <i class="fas fa-qrcode"></i>
-                        <span>Scan QR</span>
+                        <span>QR Scanner</span>
                     </a>
                 </li>
                 {% endif %}
@@ -809,6 +819,7 @@
     const sidebarOverlay = document.getElementById('sidebarOverlay');
     const mainContent = document.getElementById('mainContent');
     const swipeIndicator = document.getElementById('swipeIndicator');
+    const returnsBadge = document.getElementById('returnsBadge');
     
     // Detect if mobile
     const isMobile = window.innerWidth <= 992;
@@ -819,6 +830,23 @@
     let touchEndX = 0;
     let touchEndY = 0;
     const swipeThreshold = 50; // Minimum swipe distance
+    
+    // Load returns count for badge
+    function loadReturnsBadge() {
+        fetch('/api/returns_statistics')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.statistics.today_returns > 0) {
+                returnsBadge.textContent = data.statistics.today_returns;
+                returnsBadge.style.display = 'block';
+            } else {
+                returnsBadge.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading returns badge:', error);
+        });
+    }
     
     // Initialize sidebar based on screen size
     function initSidebar() {
@@ -948,6 +976,7 @@
     // Initialize on load
     document.addEventListener('DOMContentLoaded', function() {
         initSidebar();
+        loadReturnsBadge();
         
         // Add touch event listeners
         document.addEventListener('touchstart', handleTouchStart, {passive: true});
@@ -959,6 +988,9 @@
                 closeSidebar();
             }
         });
+        
+        // Auto-refresh returns badge every 30 seconds
+        setInterval(loadReturnsBadge, 30000);
     });
     
     // Handle window resize

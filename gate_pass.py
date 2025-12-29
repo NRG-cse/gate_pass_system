@@ -1,4 +1,4 @@
-# gate_pass.py - UPDATED WITH PROPER WORKFLOW + ALL FEATURES
+# gate_pass.py - COMPLETE WITH SECURITY APPROVAL WORKFLOW
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from models import get_db_connection, dict_fetchall, dict_fetchone
 from qr_utils import generate_qr_code, generate_gate_pass_qr_data
@@ -306,6 +306,15 @@ def gate_pass_list():
     cursor = conn.cursor()
     
     try:
+        current_user_department_id = None
+        
+        # ✅ FIXED: Get current user's department for template
+        if session['role'] == 'department_head':
+            cursor.execute('SELECT department_id FROM users WHERE id = %s', (session['user_id'],))
+            dept_result = cursor.fetchone()
+            if dept_result:
+                current_user_department_id = dept_result[0]
+        
         # ✅ FIXED: For Store Managers - Show ALL gate passes AND their store requests
         if session['role'] == 'store_manager':
             store_location = 'store_1' if 'store1' in session['username'] else 'store_2'
@@ -361,7 +370,10 @@ def gate_pass_list():
             else:
                 gate_passes = []
             
-            return render_template('gate_pass_list.html', gate_passes=gate_passes, store_requests=[])
+            return render_template('gate_pass_list.html', 
+                                 gate_passes=gate_passes, 
+                                 store_requests=[],
+                                 current_user_department_id=current_user_department_id)
         
         # ✅ FIXED: For Security - ALL department approved gate passes
         elif session['role'] == 'security':
@@ -397,7 +409,9 @@ def gate_pass_list():
             ''')
             gate_passes = dict_fetchall(cursor)
             
-            return render_template('gate_pass_list.html', gate_passes=gate_passes, store_requests=[])
+            return render_template('gate_pass_list.html', 
+                                 gate_passes=gate_passes, 
+                                 store_requests=[])
         
         # ✅ FIXED: For Regular User - Only their own passes
         else:
@@ -414,7 +428,9 @@ def gate_pass_list():
             ''', (session['user_id'],))
             gate_passes = dict_fetchall(cursor)
             
-            return render_template('gate_pass_list.html', gate_passes=gate_passes, store_requests=[])
+            return render_template('gate_pass_list.html', 
+                                 gate_passes=gate_passes, 
+                                 store_requests=[])
         
     except Exception as e:
         print(f"Gate pass list error: {e}")
@@ -424,7 +440,10 @@ def gate_pass_list():
         cursor.close()
         conn.close()
     
-    return render_template('gate_pass_list.html', gate_passes=gate_passes, store_requests=[])
+    return render_template('gate_pass_list.html', 
+                         gate_passes=gate_passes, 
+                         store_requests=[],
+                         current_user_department_id=current_user_department_id)
 
 @gate_pass_bp.route('/gate_pass_detail/<int:gate_pass_id>')
 def gate_pass_detail(gate_pass_id):
@@ -661,6 +680,204 @@ def approve_gate_pass(gate_pass_id, action):
         cursor.close()
         conn.close()
 
+# ✅ NEW: Department Head & Store Manager approval with optional comment
+@gate_pass_bp.route('/approve_gate_pass_with_comment/<int:gate_pass_id>/<action>', methods=['POST'])
+def approve_gate_pass_with_comment(gate_pass_id, action):
+    """Department Head/Store Manager approves gate pass with optional comment"""
+    
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Access denied!'})
+    
+    # Check if user has permission
+    if session['role'] not in ['department_head', 'store_manager']:
+        return jsonify({'success': False, 'message': 'Access denied!'})
+    
+    if action not in ['approve', 'reject']:
+        return jsonify({'success': False, 'message': 'Invalid action!'})
+    
+    # Get comment from request
+    data = request.get_json()
+    comment = data.get('comment', '').strip() if data else ''
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'success': False, 'message': 'Database connection failed!'})
+    
+    cursor = conn.cursor()
+    
+    try:
+        # Get gate pass details
+        cursor.execute('SELECT * FROM gate_passes WHERE id = %s', (gate_pass_id,))
+        gate_pass = dict_fetchone(cursor)
+        
+        if not gate_pass:
+            return jsonify({'success': False, 'message': 'Gate pass not found!'})
+        
+        # Check permissions based on role
+        if session['role'] == 'department_head':
+            # Check if gate pass is pending department approval
+            if gate_pass['status'] != 'pending_dept':
+                return jsonify({'success': False, 'message': f'Gate pass is already {gate_pass["status"]}!'})
+            
+            # Check if department head can approve this gate pass
+            cursor.execute('''SELECT department_id FROM users WHERE id = %s''', (session['user_id'],))
+            dept_head_dept = cursor.fetchone()
+            
+            if not dept_head_dept or dept_head_dept[0] != gate_pass['department_id']:
+                return jsonify({'success': False, 'message': 'You can only approve gate passes from your department!'})
+            
+            # Handle approval
+            if action == 'approve':
+                new_status = 'pending_store'
+                approval_status = 'approved'
+                
+                # Create approval record with comment
+                cursor.execute('''
+                    INSERT INTO gate_pass_approvals (gate_pass_id, user_id, approval_type, status, comments)
+                    VALUES (%s, %s, 'department', 'approved', %s)
+                ''', (gate_pass_id, session['user_id'], comment if comment else None))
+                
+                # Notify ALL Store Managers
+                cursor.execute('SELECT id FROM users WHERE role = "store_manager" AND status = "approved"')
+                store_managers = dict_fetchall(cursor)
+                
+                for store_manager in store_managers:
+                    notification_msg = f"📋 New Gate Pass {gate_pass['pass_number']} approved by department head"
+                    if comment:
+                        notification_msg += f" (Comment: {comment[:50]})"
+                    create_notification(
+                        store_manager['id'],
+                        notification_msg,
+                        'approval',
+                        gate_pass_id
+                    )
+                
+                message = f"✅ Gate Pass {gate_pass['pass_number']} approved! Sent to stores."
+                
+            else:  # reject
+                new_status = 'rejected'
+                approval_status = 'rejected'
+                
+                cursor.execute('''
+                    INSERT INTO gate_pass_approvals (gate_pass_id, user_id, approval_type, status, comments)
+                    VALUES (%s, %s, 'department', 'rejected', %s)
+                ''', (gate_pass_id, session['user_id'], comment if comment else None))
+                
+                message = f"❌ Gate Pass {gate_pass['pass_number']} rejected."
+            
+            # Update gate pass
+            cursor.execute('''
+                UPDATE gate_passes 
+                SET status = %s, department_approval = %s, department_approval_date = %s
+                WHERE id = %s
+            ''', (new_status, approval_status, datetime.now(), gate_pass_id))
+            
+            # Notify creator
+            notify_msg = f"📋 Your Gate Pass {gate_pass['pass_number']} has been {action}d by department head"
+            if comment:
+                notify_msg += f" (Comment: {comment})"
+            create_notification(
+                gate_pass['created_by'],
+                notify_msg,
+                'status',
+                gate_pass_id
+            )
+            
+        elif session['role'] == 'store_manager':
+            store_location = 'store_1' if 'store1' in session['username'] else 'store_2'
+            
+            # Check if gate pass is pending store approval
+            if gate_pass['status'] != 'pending_store':
+                return jsonify({'success': False, 'message': f'Gate pass is already {gate_pass["status"]}!'})
+            
+            if action == 'approve':
+                new_status = 'pending_security'
+                store_approval_status = 'approved'
+                
+                cursor.execute('''
+                    INSERT INTO gate_pass_approvals (gate_pass_id, user_id, approval_type, status, comments)
+                    VALUES (%s, %s, 'store', 'approved', %s)
+                ''', (gate_pass_id, session['user_id'], comment if comment else None))
+                
+                # Notify ALL Security users
+                cursor.execute('SELECT id FROM users WHERE role = "security" AND status = "approved"')
+                security_users = dict_fetchall(cursor)
+                
+                for security_user in security_users:
+                    notification_msg = f"🛡️ Gate Pass {gate_pass['pass_number']} approved by store"
+                    if comment:
+                        notification_msg += f" (Comment: {comment[:50]})"
+                    create_notification(
+                        security_user['id'],
+                        notification_msg,
+                        'approval',
+                        gate_pass_id
+                    )
+                
+                message = f"✅ Gate Pass {gate_pass['pass_number']} approved! Sent to security."
+                
+            else:  # reject
+                new_status = 'rejected'
+                store_approval_status = 'rejected'
+                
+                cursor.execute('''
+                    INSERT INTO gate_pass_approvals (gate_pass_id, user_id, approval_type, status, comments)
+                    VALUES (%s, %s, 'store', 'rejected', %s)
+                ''', (gate_pass_id, session['user_id'], comment if comment else None))
+                
+                message = f"❌ Gate Pass {gate_pass['pass_number']} rejected by store."
+            
+            # Update gate pass
+            cursor.execute('''
+                UPDATE gate_passes 
+                SET status = %s, store_approval = %s, store_approval_date = %s, store_location = %s
+                WHERE id = %s
+            ''', (new_status, store_approval_status, datetime.now(), store_location, gate_pass_id))
+            
+            # Notify creator
+            notify_msg = f"🏪 Your Gate Pass {gate_pass['pass_number']} has been {action}d by store"
+            if comment:
+                notify_msg += f" (Comment: {comment})"
+            create_notification(
+                gate_pass['created_by'],
+                notify_msg,
+                'status',
+                gate_pass_id
+            )
+            
+            # Notify department head
+            cursor.execute('''
+                SELECT u.id FROM users u 
+                WHERE u.department_id = %s 
+                AND u.role = 'department_head' 
+                AND u.status = 'approved'
+                LIMIT 1
+            ''', (gate_pass['department_id'],))
+            
+            dept_head = cursor.fetchone()
+            if dept_head:
+                notify_dept_msg = f"🏪 Gate Pass {gate_pass['pass_number']} from your department has been {action}d by store"
+                if comment:
+                    notify_dept_msg += f" (Comment: {comment})"
+                create_notification(
+                    dept_head[0],
+                    notify_dept_msg,
+                    'status',
+                    gate_pass_id
+                )
+        
+        conn.commit()
+        
+        return jsonify({'success': True, 'message': message, 'has_comment': bool(comment)})
+        
+    except Exception as e:
+        print(f"Error approving gate pass with comment: {e}")
+        conn.rollback()
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+    finally:
+        cursor.close()
+        conn.close()
+
 @gate_pass_bp.route('/store/approve_gate_pass/<int:gate_pass_id>/<action>', methods=['POST'])
 def store_approve_gate_pass(gate_pass_id, action):
     """Store Manager approves gate pass - UPDATED WORKFLOW"""
@@ -692,7 +909,7 @@ def store_approve_gate_pass(gate_pass_id, action):
         
         if action == 'approve':
             # ✅ UPDATED: Store approve করলে Security এর কাছে যাবে
-            new_status = 'pending_security'
+            new_status = 'pending_security'  # Changed from 'pending_security' to stay consistent
             store_approval_status = 'approved'
             
             cursor.execute('''
@@ -707,12 +924,12 @@ def store_approve_gate_pass(gate_pass_id, action):
             for security_user in security_users:
                 create_notification(
                     security_user['id'],
-                    f"🛡️ Gate Pass {gate_pass['pass_number']} approved by store, waiting for security",
-                    'info',
+                    f"🛡️ Gate Pass {gate_pass['pass_number']} approved by store, waiting for security approval",
+                    'approval',
                     gate_pass_id
                 )
             
-            message = f"✅ Gate Pass {gate_pass['pass_number']} approved! Sent to security."
+            message = f"✅ Gate Pass {gate_pass['pass_number']} approved! Sent to security for final approval."
             
         else:  # reject
             new_status = 'rejected'
@@ -764,6 +981,131 @@ def store_approve_gate_pass(gate_pass_id, action):
         
     except Exception as e:
         print(f"Error in store approval: {e}")
+        conn.rollback()
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+    finally:
+        cursor.close()
+        conn.close()
+
+# ✅ ADDED: Security Approve/Reject Gate Pass
+@gate_pass_bp.route('/security/approve_gate_pass/<int:gate_pass_id>/<action>', methods=['POST'])
+def security_approve_gate_pass(gate_pass_id, action):
+    """Security approves gate pass"""
+    if 'user_id' not in session or session['role'] != 'security':
+        return jsonify({'success': False, 'message': 'Access denied! Only Security can approve gate passes.'})
+    
+    if action not in ['approve', 'reject']:
+        return jsonify({'success': False, 'message': 'Invalid action!'})
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'success': False, 'message': 'Database connection failed!'})
+    
+    cursor = conn.cursor()
+    
+    try:
+        # Get gate pass details
+        cursor.execute('SELECT * FROM gate_passes WHERE id = %s', (gate_pass_id,))
+        gate_pass = dict_fetchone(cursor)
+        
+        if not gate_pass:
+            return jsonify({'success': False, 'message': 'Gate pass not found!'})
+        
+        # Check if gate pass is pending security approval
+        if gate_pass['status'] != 'pending_security':
+            return jsonify({'success': False, 'message': f'Gate pass is already {gate_pass["status"]}!'})
+        
+        if action == 'approve':
+            # ✅ Security approves - gate pass becomes approved
+            new_status = 'approved'
+            security_approval_status = 'approved'
+            
+            cursor.execute('''
+                INSERT INTO gate_pass_approvals (gate_pass_id, user_id, approval_type, status)
+                VALUES (%s, %s, 'security', 'approved')
+            ''', (gate_pass_id, session['user_id']))
+            
+            message = f"✅ Gate Pass {gate_pass['pass_number']} approved by Security!"
+            
+        else:  # reject
+            new_status = 'rejected'
+            security_approval_status = 'rejected'
+            
+            cursor.execute('''
+                INSERT INTO gate_pass_approvals (gate_pass_id, user_id, approval_type, status)
+                VALUES (%s, %s, 'security', 'rejected')
+            ''', (gate_pass_id, session['user_id']))
+            
+            message = f"❌ Gate Pass {gate_pass['pass_number']} rejected by Security."
+        
+        # Update gate pass
+        cursor.execute('''
+            UPDATE gate_passes 
+            SET status = %s, security_approval = %s, security_approval_date = %s,
+                approved_by_security = %s
+            WHERE id = %s
+        ''', (new_status, security_approval_status, datetime.now(), session['name'], gate_pass_id))
+        
+        conn.commit()
+        
+        # Notify all parties
+        # 1. Notify creator
+        create_notification(
+            gate_pass['created_by'],
+            f"🛡️ Your Gate Pass {gate_pass['pass_number']} has been {action}d by Security",
+            'status',
+            gate_pass_id
+        )
+        
+        # 2. Notify department head
+        cursor.execute('''
+            SELECT u.id FROM users u 
+            WHERE u.department_id = %s 
+            AND u.role = 'department_head' 
+            AND u.status = 'approved'
+            LIMIT 1
+        ''', (gate_pass['department_id'],))
+        
+        dept_head = cursor.fetchone()
+        if dept_head:
+            create_notification(
+                dept_head[0],
+                f"🛡️ Gate Pass {gate_pass['pass_number']} from your department has been {action}d by Security",
+                'status',
+                gate_pass_id
+            )
+        
+        # 3. Notify store manager (if store was involved)
+        if gate_pass['store_location']:
+            cursor.execute('''
+                SELECT u.id FROM users u 
+                WHERE u.role = 'store_manager' AND u.status = 'approved'
+                LIMIT 1
+            ''')
+            store_manager = cursor.fetchone()
+            if store_manager:
+                create_notification(
+                    store_manager[0],
+                    f"🛡️ Gate Pass {gate_pass['pass_number']} has been {action}d by Security",
+                    'status',
+                    gate_pass_id
+                )
+        
+        # 4. Notify all system admins
+        cursor.execute('SELECT id FROM users WHERE role = "system_admin" AND status = "approved"')
+        admins = dict_fetchall(cursor)
+        for admin in admins:
+            create_notification(
+                admin['id'],
+                f"🛡️ Gate Pass {gate_pass['pass_number']} has been {action}d by Security ({session['name']})",
+                'status',
+                gate_pass_id
+            )
+        
+        return jsonify({'success': True, 'message': message})
+        
+    except Exception as e:
+        print(f"Error in security approval: {e}")
         conn.rollback()
         return jsonify({'success': False, 'message': f'Error: {str(e)}'})
     finally:

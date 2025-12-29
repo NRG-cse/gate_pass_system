@@ -1,4 +1,4 @@
-# app.py - COMPLETE VERSION WITH OVERDUE RETURNS FEATURE
+# app.py - COMPLETE VERSION WITH OVERDUE RETURNS + SECURITY APPROVAL + MANUAL RETURN + RETURNS LIST
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from models import get_db_connection, init_db, dict_fetchall, dict_fetchone
 from notifications import start_notification_scheduler, start_overdue_alarm_scheduler, create_notification
@@ -10,9 +10,39 @@ from datetime import datetime
 from flask import send_from_directory
 import os
 import json
+from functools import wraps  # এই লাইন যোগ করুন
 
 app = Flask(__name__)
 app.secret_key = 'gate-pass-system-secret-key-2024'
+
+# ==================== CUSTOM DECORATORS ====================
+def login_required(f):
+    """Decorator to require login for routes"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please login to access this page', 'warning')
+            return redirect(url_for('auth.login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def role_required(*roles):
+    """Decorator to require specific role(s) for routes"""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'user_id' not in session:
+                flash('Please login to access this page', 'warning')
+                return redirect(url_for('auth.login'))
+            
+            if session.get('role') not in roles:
+                flash('You do not have permission to access this page', 'danger')
+                return redirect(url_for('dashboard'))
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+# ==================== END DECORATORS ====================
 
 # Register blueprints
 app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -60,10 +90,8 @@ def index():
     return redirect(url_for('auth.login'))
 
 @app.route('/dashboard')
+@login_required
 def dashboard():
-    if 'user_id' not in session:
-        return redirect(url_for('auth.login'))
-    
     conn = get_db_connection()
     if conn is None:
         flash('Database connection failed!', 'error')
@@ -376,11 +404,9 @@ def dashboard():
                          now=datetime.now())
 
 @app.route('/approval_pending')
+@login_required
 def approval_pending():
     """Show pending approvals for department heads and store managers ONLY"""
-    if 'user_id' not in session:
-        return redirect(url_for('auth.login'))
-    
     # ✅ UPDATED: System Admin should be redirected to admin user approvals
     if session['role'] == 'system_admin':
         flash('System Administrator: Use Admin Panel → User Approvals for user approvals.', 'info')
@@ -474,9 +500,10 @@ def approval_pending():
                          now=datetime.now())
 
 @app.route('/approve_user/<int:user_id>/<action>')
+@login_required
 def approve_user(user_id, action):
     """Approve or reject user registration - FIXED VERSION"""
-    if 'user_id' not in session or session['role'] not in ['system_admin', 'department_head']:
+    if session['role'] not in ['system_admin', 'department_head']:
         return jsonify({'success': False, 'message': 'Access denied!'})
     
     if action not in ['approve', 'reject']:
@@ -680,13 +707,134 @@ def notify_gate_pass_printed(gate_pass_id, printed_by_user_id, printed_by_name):
         cursor.close()
         conn.close()
 
+# ✅ ADDED: Security Approve/Reject Gate Pass
+@app.route('/security/approve_gate_pass/<int:gate_pass_id>/<action>', methods=['POST'])
+@role_required('security')
+def security_approve_gate_pass(gate_pass_id, action):
+    """Security approves gate pass"""
+    if action not in ['approve', 'reject']:
+        return jsonify({'success': False, 'message': 'Invalid action!'})
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'success': False, 'message': 'Database connection failed!'})
+    
+    cursor = conn.cursor()
+    
+    try:
+        # Get gate pass details
+        cursor.execute('SELECT * FROM gate_passes WHERE id = %s', (gate_pass_id,))
+        gate_pass = dict_fetchone(cursor)
+        
+        if not gate_pass:
+            return jsonify({'success': False, 'message': 'Gate pass not found!'})
+        
+        # Check if gate pass is pending security approval
+        if gate_pass['status'] != 'pending_security':
+            return jsonify({'success': False, 'message': f'Gate pass is already {gate_pass["status"]}!'})
+        
+        if action == 'approve':
+            # ✅ Security approves - gate pass becomes approved
+            new_status = 'approved'
+            security_approval_status = 'approved'
+            
+            cursor.execute('''
+                INSERT INTO gate_pass_approvals (gate_pass_id, user_id, approval_type, status)
+                VALUES (%s, %s, 'security', 'approved')
+            ''', (gate_pass_id, session['user_id']))
+            
+            message = f"✅ Gate Pass {gate_pass['pass_number']} approved by Security!"
+            
+        else:  # reject
+            new_status = 'rejected'
+            security_approval_status = 'rejected'
+            
+            cursor.execute('''
+                INSERT INTO gate_pass_approvals (gate_pass_id, user_id, approval_type, status)
+                VALUES (%s, %s, 'security', 'rejected')
+            ''', (gate_pass_id, session['user_id']))
+            
+            message = f"❌ Gate Pass {gate_pass['pass_number']} rejected by Security."
+        
+        # Update gate pass
+        cursor.execute('''
+            UPDATE gate_passes 
+            SET status = %s, security_approval = %s, security_approval_date = %s,
+                approved_by_security = %s
+            WHERE id = %s
+        ''', (new_status, security_approval_status, datetime.now(), session['name'], gate_pass_id))
+        
+        conn.commit()
+        
+        # Notify all parties
+        # 1. Notify creator
+        create_notification(
+            gate_pass['created_by'],
+            f"🛡️ Your Gate Pass {gate_pass['pass_number']} has been {action}d by Security",
+            'status',
+            gate_pass_id
+        )
+        
+        # 2. Notify department head
+        cursor.execute('''
+            SELECT u.id FROM users u 
+            WHERE u.department_id = %s 
+            AND u.role = 'department_head' 
+            AND u.status = 'approved'
+            LIMIT 1
+        ''', (gate_pass['department_id'],))
+        
+        dept_head = cursor.fetchone()
+        if dept_head:
+            create_notification(
+                dept_head[0],
+                f"🛡️ Gate Pass {gate_pass['pass_number']} from your department has been {action}d by Security",
+                'status',
+                gate_pass_id
+            )
+        
+        # 3. Notify store manager (if store was involved)
+        if gate_pass['store_location']:
+            cursor.execute('''
+                SELECT u.id FROM users u 
+                WHERE u.role = 'store_manager' AND u.status = 'approved'
+                LIMIT 1
+            ''')
+            store_manager = cursor.fetchone()
+            if store_manager:
+                create_notification(
+                    store_manager[0],
+                    f"🛡️ Gate Pass {gate_pass['pass_number']} has been {action}d by Security",
+                    'status',
+                    gate_pass_id
+                )
+        
+        # 4. Notify all system admins
+        cursor.execute('SELECT id FROM users WHERE role = "system_admin" AND status = "approved"')
+        admins = dict_fetchall(cursor)
+        for admin in admins:
+            create_notification(
+                admin['id'],
+                f"🛡️ Gate Pass {gate_pass['pass_number']} has been {action}d by Security ({session['name']})",
+                'status',
+                gate_pass_id
+            )
+        
+        return jsonify({'success': True, 'message': message})
+        
+    except Exception as e:
+        print(f"Error in security approval: {e}")
+        conn.rollback()
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+    finally:
+        cursor.close()
+        conn.close()
+
 # ✅ ADDED: Security QR Scan and Return Marking
 @app.route('/security/scan_qr', methods=['POST'])
+@role_required('security')
 def security_scan_qr():
     """Security scans QR code to mark material as returned"""
-    if 'user_id' not in session or session['role'] != 'security':
-        return jsonify({'success': False, 'message': 'Access denied! Only Security can scan QR codes.'})
-    
     data = request.get_json()
     qr_data = data.get('qr_data')
     
@@ -820,13 +968,116 @@ def security_scan_qr():
         cursor.close()
         conn.close()
 
+# ✅ ADDED: Manual Return for Security
+@app.route('/security/manual_return', methods=['POST'])
+@role_required('security')
+def manual_return_gate_pass():
+    """Manual gate pass return without QR scanning"""
+    data = request.get_json()
+    pass_number = data.get('pass_number', '').strip().upper()
+    
+    if not pass_number:
+        return jsonify({'success': False, 'message': 'Please enter gate pass number!'})
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'success': False, 'message': 'Database connection failed!'})
+    
+    cursor = conn.cursor()
+    
+    try:
+        # Get gate pass details
+        cursor.execute('''  
+            SELECT gp.*, u.name as creator_name, u.id as creator_id, 
+                   d.name as department_name, u.department_id,
+                   dh.id as dept_head_id, dh.name as dept_head_name
+            FROM gate_passes gp 
+            JOIN users u ON gp.created_by = u.id 
+            JOIN departments d ON u.department_id = d.id
+            LEFT JOIN users dh ON d.id = dh.department_id AND dh.role = 'department_head' AND dh.status = 'approved'
+            WHERE gp.pass_number = %s AND gp.material_type = 'returnable'
+        ''', (pass_number,))
+        
+        gate_pass = dict_fetchone(cursor)
+        
+        if not gate_pass:
+            return jsonify({'success': False, 'message': 'Gate pass not found or not returnable!'})
+        
+        # Check if already returned
+        if gate_pass['actual_return_date']:
+            return jsonify({'success': False, 'message': 'Material already returned!'})
+        
+        # Update as returned
+        cursor.execute('''
+            UPDATE gate_passes 
+            SET actual_return_date = %s, status = 'returned',
+                security_approval_date = %s
+            WHERE id = %s
+        ''', (datetime.now(), datetime.now(), gate_pass['id']))
+        
+        # Create security log
+        cursor.execute('''
+            INSERT INTO security_logs (gate_pass_id, user_id, alert_type, details)
+            VALUES (%s, %s, 'material_returned', %s)
+        ''', (gate_pass['id'], session['user_id'], 
+              f'Material returned manually. Gate Pass: {pass_number}. Handled by: {session["name"]}'))
+        
+        conn.commit()
+        
+        # Send notifications to all parties
+        # 1. Notify Creator
+        create_notification(
+            gate_pass['creator_id'],
+            f"✅ Your material with Gate Pass {pass_number} has been manually returned by Security.",
+            'status',
+            gate_pass['id']
+        )
+        
+        # 2. Notify Department Head (if exists)
+        if gate_pass['dept_head_id']:
+            create_notification(
+                gate_pass['dept_head_id'],
+                f"📦 Material from your department (Gate Pass {pass_number}) has been manually returned.",
+                'status',
+                gate_pass['id']
+            )
+        
+        # 3. Notify all Super Admins
+        cursor.execute('SELECT id FROM users WHERE role = "system_admin" AND status = "approved"')
+        admins = dict_fetchall(cursor)
+        for admin in admins:
+            create_notification(
+                admin['id'],
+                f"🔄 Manual Return: Gate Pass {pass_number} from {gate_pass['department_name']} has been returned.",
+                'status',
+                gate_pass['id']
+            )
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'message': f'✅ Gate Pass {pass_number} marked as returned!',
+            'gate_pass': {
+                'pass_number': pass_number,
+                'material_description': gate_pass['material_description'],
+                'department': gate_pass['department_name'],
+                'return_time': datetime.now().strftime('%H:%M')
+            }
+        })
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': f'Error processing return: {str(e)}'})
+    finally:
+        cursor.close()
+        conn.close()
+
 @app.route('/security/print_gate_pass/<int:gate_pass_id>')
+@role_required('security')
 def security_print_gate_pass(gate_pass_id):
     """Security prints gate pass copy"""
-    if 'user_id' not in session or session['role'] != 'security':
-        flash('Access denied! Only Security can print gate passes.', 'error')
-        return redirect(url_for('dashboard'))
-    
     conn = get_db_connection()
     if conn is None:
         flash('Database connection failed!', 'error')
@@ -844,14 +1095,19 @@ def security_print_gate_pass(gate_pass_id):
             JOIN departments d ON gp.department_id = d.id 
             JOIN divisions dv ON gp.division_id = dv.id 
             LEFT JOIN users dh ON d.id = dh.department_id AND dh.role = 'department_head' AND dh.status = 'approved'
-            WHERE gp.id = %s AND gp.department_approval = 'approved'
+            WHERE gp.id = %s AND gp.status = 'approved'  # ✅ CHANGED: Must be approved
         ''', (gate_pass_id,))
         
         gate_pass = dict_fetchone(cursor)
         
         if not gate_pass:
-            flash('Gate pass not found or not approved by department!', 'error')
+            flash('Gate pass not found or not approved by all parties!', 'error')
             return redirect(url_for('gate_pass.gate_pass_list'))
+        
+        # Check if security has approved this gate pass
+        if gate_pass['security_approval'] != 'approved':
+            flash('You must approve this gate pass before printing!', 'error')
+            return redirect(url_for('gate_pass.gate_pass_detail', gate_pass_id=gate_pass_id))
         
         # Parse images JSON
         try:
@@ -899,21 +1155,16 @@ def security_print_gate_pass(gate_pass_id):
 
 # ✅ ADDED: Security QR Scan Page
 @app.route('/security/scan')
+@role_required('security')
 def security_scan_page():
     """Security QR scan page"""
-    if 'user_id' not in session or session['role'] != 'security':
-        flash('Access denied! Only Security can access QR scanner.', 'error')
-        return redirect(url_for('dashboard'))
-    
     return render_template('security/scan_qr.html')
 
 # ✅ ADDED: Today's Returns API for Security
 @app.route('/security/today_returns')
+@role_required('security')
 def security_today_returns():
     """Get today's material returns for security"""
-    if 'user_id' not in session or session['role'] != 'security':
-        return jsonify({'success': False, 'message': 'Access denied!'})
-    
     conn = get_db_connection()
     if conn is None:
         return jsonify({'success': False, 'message': 'Database connection failed!'})
@@ -953,10 +1204,8 @@ def security_today_returns():
 
 # ✅ ADDED: Mark Returned (Legacy route for backward compatibility)
 @app.route('/mark_returned/<int:gate_pass_id>', methods=['POST'])
+@role_required('security')
 def mark_returned(gate_pass_id):
-    if 'user_id' not in session or session['role'] != 'security':
-        return jsonify({'success': False, 'message': 'Access denied'})
-    
     conn = get_db_connection()
     if conn is None:
         return jsonify({'success': False, 'message': 'Database connection failed'})
@@ -997,11 +1246,9 @@ def mark_returned(gate_pass_id):
 
 # ✅ ADDED: Overdue Returns Page
 @app.route('/overdue_returns')
+@login_required
 def overdue_returns():
     """View all overdue returnable gate passes"""
-    if 'user_id' not in session:
-        return redirect(url_for('auth.login'))
-    
     conn = get_db_connection()
     if conn is None:
         flash('Database connection failed!', 'error')
@@ -1096,12 +1343,238 @@ def overdue_returns():
                          stats=stats,
                          now=datetime.now())
 
+# ✅ ADDED: Returns List Page
+@app.route('/returns_list_page')
+@login_required
+def returns_list_page():
+    """View all returned gate passes"""
+    conn = get_db_connection()
+    if conn is None:
+        flash('Database connection failed!', 'error')
+        return render_template('returns_list.html', departments=[])
+    
+    cursor = conn.cursor()
+    
+    try:
+        # Get departments for filter dropdown
+        if session['role'] == 'system_admin' or session['role'] == 'security':
+            cursor.execute('SELECT id, name FROM departments ORDER BY name')
+        elif session['role'] == 'department_head':
+            cursor.execute('SELECT department_id FROM users WHERE id = %s', (session['user_id'],))
+            user_dept = cursor.fetchone()
+            if user_dept:
+                cursor.execute('SELECT id, name FROM departments WHERE id = %s', (user_dept[0],))
+        else:
+            cursor.execute('SELECT id, name FROM departments WHERE 1=0')  # Empty for regular users
+        
+        departments = dict_fetchall(cursor)
+    except Exception as e:
+        print(f"Error loading departments: {e}")
+        departments = []
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return render_template('returns_list.html', departments=departments)
+
+# ✅ ADDED: API for Returns List
+@app.route('/api/returns_list')
+@login_required
+def api_returns_list():
+    """Get paginated returns list"""
+    # Get pagination and filter parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+    department_id = request.args.get('department_id', '', type=str)
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'success': False, 'message': 'Database connection failed!'})
+    
+    cursor = conn.cursor()
+    
+    try:
+        # Base query for returned gate passes
+        base_query = '''
+            SELECT gp.*, u.name as creator_name, u.id as creator_id,
+                   d.name as department_name, dv.name as division_name,
+                   DATE(gp.actual_return_date) as return_date,
+                   TIME(gp.actual_return_date) as return_time,
+                   DATE(gp.created_at) as created_date,
+                   CASE 
+                       WHEN gp.security_approval_date IS NOT NULL THEN 'qr_scan'
+                       ELSE 'manual'
+                   END as return_type
+            FROM gate_passes gp
+            JOIN users u ON gp.created_by = u.id
+            JOIN departments d ON gp.department_id = d.id
+            JOIN divisions dv ON gp.division_id = dv.id
+            WHERE gp.actual_return_date IS NOT NULL
+        '''
+        
+        # Role-based filtering
+        if session['role'] == 'user':
+            base_query += ' AND gp.created_by = %s'
+            params = [session['user_id']]
+        elif session['role'] == 'department_head':
+            cursor.execute('SELECT department_id FROM users WHERE id = %s', (session['user_id'],))
+            user_dept = cursor.fetchone()
+            if user_dept:
+                base_query += ' AND gp.department_id = %s'
+                params = [user_dept[0]]
+            else:
+                return jsonify({'success': True, 'returns': [], 'total': 0})
+        else:
+            params = []
+        
+        # Additional filters
+        if date_from:
+            base_query += ' AND DATE(gp.actual_return_date) >= %s'
+            params.append(date_from)
+        
+        if date_to:
+            base_query += ' AND DATE(gp.actual_return_date) <= %s'
+            params.append(date_to)
+        
+        if department_id:
+            base_query += ' AND gp.department_id = %s'
+            params.append(int(department_id))
+        
+        # Count total
+        count_query = 'SELECT COUNT(*) FROM (' + base_query + ') as t'
+        cursor.execute(count_query, tuple(params))
+        total_count = cursor.fetchone()[0]
+        
+        # Get paginated data
+        base_query += ' ORDER BY gp.actual_return_date DESC LIMIT %s OFFSET %s'
+        params.extend([per_page, (page - 1) * per_page])
+        
+        cursor.execute(base_query, tuple(params))
+        returns = dict_fetchall(cursor)
+        
+        return jsonify({
+            'success': True,
+            'returns': returns,
+            'total': total_count,
+            'per_page': per_page,
+            'current_page': page,
+            'total_pages': (total_count + per_page - 1) // per_page
+        })
+        
+    except Exception as e:
+        print(f"Error loading returns list: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+    finally:
+        cursor.close()
+        conn.close()
+
+# ✅ ADDED: Returns Statistics
+@app.route('/api/returns_statistics')
+@login_required
+def api_returns_statistics():
+    """Get returns statistics"""
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'success': False, 'message': 'Database connection failed!'})
+    
+    cursor = conn.cursor()
+    
+    try:
+        statistics = {}
+        
+        # Total returns
+        if session['role'] == 'user':
+            cursor.execute('''
+                SELECT COUNT(*) FROM gate_passes 
+                WHERE actual_return_date IS NOT NULL AND created_by = %s
+            ''', (session['user_id'],))
+        elif session['role'] == 'department_head':
+            cursor.execute('SELECT department_id FROM users WHERE id = %s', (session['user_id'],))
+            user_dept = cursor.fetchone()
+            if user_dept:
+                cursor.execute('''
+                    SELECT COUNT(*) FROM gate_passes 
+                    WHERE actual_return_date IS NOT NULL AND department_id = %s
+                ''', (user_dept[0],))
+            else:
+                cursor.execute('SELECT 0')
+        else:
+            cursor.execute('SELECT COUNT(*) FROM gate_passes WHERE actual_return_date IS NOT NULL')
+        
+        statistics['total_returns'] = cursor.fetchone()[0]
+        
+        # Today's returns
+        if session['role'] == 'user':
+            cursor.execute('''
+                SELECT COUNT(*) FROM gate_passes 
+                WHERE DATE(actual_return_date) = CURDATE() AND created_by = %s
+            ''', (session['user_id'],))
+        elif session['role'] == 'department_head':
+            if user_dept:
+                cursor.execute('''
+                    SELECT COUNT(*) FROM gate_passes 
+                    WHERE DATE(actual_return_date) = CURDATE() AND department_id = %s
+                ''', (user_dept[0],))
+            else:
+                cursor.execute('SELECT 0')
+        else:
+            cursor.execute('SELECT COUNT(*) FROM gate_passes WHERE DATE(actual_return_date) = CURDATE()')
+        
+        statistics['today_returns'] = cursor.fetchone()[0]
+        
+        # This week's returns
+        if session['role'] == 'user':
+            cursor.execute('''
+                SELECT COUNT(*) FROM gate_passes 
+                WHERE actual_return_date >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND created_by = %s
+            ''', (session['user_id'],))
+        elif session['role'] == 'department_head':
+            if user_dept:
+                cursor.execute('''
+                    SELECT COUNT(*) FROM gate_passes 
+                    WHERE actual_return_date >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND department_id = %s
+                ''', (user_dept[0],))
+            else:
+                cursor.execute('SELECT 0')
+        else:
+            cursor.execute('SELECT COUNT(*) FROM gate_passes WHERE actual_return_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)')
+        
+        statistics['week_returns'] = cursor.fetchone()[0]
+        
+        # This month's returns
+        if session['role'] == 'user':
+            cursor.execute('''
+                SELECT COUNT(*) FROM gate_passes 
+                WHERE actual_return_date >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND created_by = %s
+            ''', (session['user_id'],))
+        elif session['role'] == 'department_head':
+            if user_dept:
+                cursor.execute('''
+                    SELECT COUNT(*) FROM gate_passes 
+                    WHERE actual_return_date >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND department_id = %s
+                ''', (user_dept[0],))
+            else:
+                cursor.execute('SELECT 0')
+        else:
+            cursor.execute('SELECT COUNT(*) FROM gate_passes WHERE actual_return_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)')
+        
+        statistics['month_returns'] = cursor.fetchone()[0]
+        
+        return jsonify({'success': True, 'statistics': statistics})
+        
+    except Exception as e:
+        print(f"Error loading statistics: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+    finally:
+        cursor.close()
+        conn.close()
+
 @app.route('/api/check_overdue_alarm')
+@login_required
 def check_overdue_alarm():
     """Check if user has overdue materials for alarm"""
-    if 'user_id' not in session:
-        return jsonify({'has_overdue': False, 'overdue_count': 0})
-    
     conn = get_db_connection()
     if conn is None:
         return jsonify({'has_overdue': False, 'overdue_count': 0})
@@ -1162,9 +1635,10 @@ def check_overdue_alarm():
         conn.close()
 
 @app.route('/api/send_overdue_reminder/<int:gate_pass_id>', methods=['POST'])
+@login_required
 def send_overdue_reminder(gate_pass_id):
     """Send reminder notification for overdue material"""
-    if 'user_id' not in session or session['role'] not in ['system_admin', 'department_head']:
+    if session['role'] not in ['system_admin', 'department_head']:
         return jsonify({'success': False, 'message': 'Access denied!'})
     
     conn = get_db_connection()
@@ -1253,11 +1727,9 @@ def send_overdue_reminder(gate_pass_id):
         conn.close()
 
 @app.route('/api/mark_force_returned/<int:gate_pass_id>', methods=['POST'])
+@role_required('system_admin')
 def mark_force_returned(gate_pass_id):
     """System Admin marks overdue material as force returned"""
-    if 'user_id' not in session or session['role'] != 'system_admin':
-        return jsonify({'success': False, 'message': 'Access denied!'})
-    
     data = request.get_json()
     remarks = data.get('remarks', '').strip()
     notify_all = data.get('notify_all', True)
@@ -1358,95 +1830,128 @@ def mark_force_returned(gate_pass_id):
         conn.close()
 
 @app.route('/check_notifications')
+@login_required
 def check_notifications():
-    if 'user_id' not in session:
-        return jsonify({'new_notifications': 0})
-    
+    """Enhanced notification check with better error handling"""
     conn = get_db_connection()
     if conn is None:
-        return jsonify({'new_notifications': 0})
+        # Fallback to simple response
+        return jsonify({
+            'new_notifications': 0,
+            'total': 0,
+            'has_notifications': False
+        })
     
     cursor = conn.cursor()
     
     try:
+        # Get unread count
         cursor.execute('''
-            SELECT COUNT(*) FROM notifications 
+            SELECT COUNT(*) as unread_count 
+            FROM notifications 
             WHERE user_id = %s AND is_read = FALSE
         ''', (session['user_id'],))
         
-        count = cursor.fetchone()[0]
-        return jsonify({'new_notifications': count})
+        unread_result = cursor.fetchone()
+        unread_count = unread_result['unread_count'] if unread_result else 0
+        
+        # Get total notifications (optional - for additional info)
+        cursor.execute('''
+            SELECT COUNT(*) as total_count 
+            FROM notifications 
+            WHERE user_id = %s
+        ''', (session['user_id'],))
+        
+        total_result = cursor.fetchone()
+        total_count = total_result['total_count'] if total_result else 0
+        
+        # Get recent notifications for preview (optional)
+        cursor.execute('''
+            SELECT id, message, type, is_read, created_at, gate_pass_id
+            FROM notifications 
+            WHERE user_id = %s 
+            ORDER BY created_at DESC
+            LIMIT 5
+        ''', (session['user_id'],))
+        
+        recent_notifications = []
+        columns = [col[0] for col in cursor.description]
+        for row in cursor.fetchall():
+            recent_notifications.append(dict(zip(columns, row)))
+        
+        # Convert datetime to string for JSON serialization
+        for notification in recent_notifications:
+            if 'created_at' in notification and notification['created_at']:
+                notification['created_at_str'] = notification['created_at'].strftime('%H:%M')
+                notification['created_date'] = notification['created_at'].strftime('%d/%m')
+        
+        return jsonify({
+            'success': True,
+            'new_notifications': unread_count,
+            'total': total_count,
+            'has_notifications': total_count > 0,
+            'notifications': recent_notifications,
+            'user_id': session['user_id'],
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
         
     except Exception as e:
-        print(f"Notification check error: {e}")
-        return jsonify({'new_notifications': 0})
+        print(f"Error checking notifications: {e}")
+        # Fallback to simple response
+        return jsonify({
+            'new_notifications': 0,
+            'total': 0,
+            'has_notifications': False,
+            'error': str(e)[:100]
+        })
+        
     finally:
         cursor.close()
         conn.close()
 
 @app.route('/mark_notification_read/<int:notification_id>', methods=['POST'])
+@login_required
 def mark_notification_read(notification_id):
-    if 'user_id' not in session:
-        return redirect(url_for('auth.login'))
+    """Mark a single notification as read"""
+    from notifications import mark_notification_read as mark_read
     
-    conn = get_db_connection()
-    if conn is None:
-        flash('Database connection failed!', 'error')
-        return redirect(url_for('dashboard'))
+    success = mark_read(notification_id, session.get('user_id'))
     
-    cursor = conn.cursor()
+    if success:
+        flash('Notification marked as read', 'success')
+    else:
+        flash('Notification not found or access denied', 'warning')
     
-    try:
-        cursor.execute('''
-            UPDATE notifications SET is_read = TRUE 
-            WHERE id = %s AND user_id = %s
-        ''', (notification_id, session['user_id']))
-        
-        conn.commit()
-        flash('Notification marked as read!', 'success')
-    except Exception as e:
-        conn.rollback()
-        flash(f'Error marking notification: {str(e)}', 'error')
-    finally:
-        cursor.close()
-        conn.close()
-    
-    return redirect(url_for('dashboard'))
+    return redirect(request.referrer or url_for('dashboard'))
 
 @app.route('/mark_all_notifications_read', methods=['POST'])
+@login_required
 def mark_all_notifications_read():
-    if 'user_id' not in session:
-        return redirect(url_for('auth.login'))
-    
+    """Mark all notifications for current user as read"""
     conn = get_db_connection()
-    if conn is None:
-        flash('Database connection failed!', 'error')
-        return redirect(url_for('dashboard'))
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''
+                UPDATE notifications 
+                SET is_read = TRUE 
+                WHERE user_id = %s AND is_read = FALSE
+            ''', (session.get('user_id'),))
+            conn.commit()
+            flash('All notifications marked as read', 'success')
+        except Exception as e:
+            print(f"Error marking all notifications read: {e}")
+            conn.rollback()
+            flash('Error marking notifications as read', 'error')
+        finally:
+            cursor.close()
+            conn.close()
     
-    cursor = conn.cursor()
+    return redirect(request.referrer or url_for('dashboard'))
     
-    try:
-        cursor.execute('''
-            UPDATE notifications SET is_read = TRUE 
-            WHERE user_id = %s AND is_read = FALSE
-        ''', (session['user_id'],))
-        
-        conn.commit()
-        flash('All notifications marked as read!', 'success')
-    except Exception as e:
-        conn.rollback()
-        flash(f'Error marking notifications: {str(e)}', 'error')
-    finally:
-        cursor.close()
-        conn.close()
-    
-    return redirect(url_for('dashboard'))
-
 @app.route('/upload_photo', methods=['POST'])
+@login_required
 def upload_photo():
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Not authenticated'})
-    
     try:
         if 'photo' not in request.files:
             return jsonify({'success': False, 'message': 'No photo uploaded'})
@@ -1474,6 +1979,7 @@ def upload_photo():
         return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/check_camera_support')
+@login_required
 def check_camera_support():
     """Check if browser supports camera API"""
     return jsonify({
@@ -1493,11 +1999,9 @@ def setup_directories():
 setup_directories()
 
 @app.route('/check_photo_count', methods=['POST'])
+@login_required
 def check_photo_count():
     """Check if photos are being sent correctly"""
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Not logged in'})
-    
     try:
         captured_images = request.form.getlist('captured_images[]')
         return jsonify({
@@ -1509,11 +2013,9 @@ def check_photo_count():
         return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/api/notify_gate_pass_printing', methods=['POST'])
+@role_required('security')
 def api_notify_gate_pass_printing():
     """API endpoint to notify that gate pass is being printed"""
-    if 'user_id' not in session or session['role'] != 'security':
-        return jsonify({'success': False, 'message': 'Access denied!'})
-    
     data = request.get_json()
     gate_pass_id = data.get('gate_pass_id')
     printed_by = data.get('printed_by')
@@ -1542,11 +2044,9 @@ def api_notify_gate_pass_printing():
     return jsonify({'success': True, 'message': 'Print notification logged'})
 
 @app.route('/api/notify_gate_pass_print_complete', methods=['POST'])
+@role_required('security')
 def api_notify_gate_pass_print_complete():
     """API endpoint to notify that gate pass printing is complete"""
-    if 'user_id' not in session or session['role'] != 'security':
-        return jsonify({'success': False, 'message': 'Access denied!'})
-    
     data = request.get_json()
     gate_pass_id = data.get('gate_pass_id')
     printed_by = data.get('printed_by')

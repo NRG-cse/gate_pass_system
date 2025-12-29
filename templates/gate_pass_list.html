@@ -214,7 +214,7 @@
                     </thead>
                     <tbody>
                         {% for pass in gate_passes %}
-                        <tr>
+                        <tr id="gatepass-{{ pass.id }}">
                             <td class="ps-4">
                                 <div>
                                     <h6 class="fw-bold mb-1 text-primary">
@@ -310,115 +310,115 @@
                                 <small class="text-muted">{{ pass.created_at.strftime('%I:%M %p') }}</small>
                             </td>
                             <td class="text-center">
+                                <!-- Action Buttons Section - FIXED VERSION -->
                                 <div class="btn-group btn-group-sm" role="group">
+                                    <!-- View Button (Always visible) -->
                                     <a href="{{ url_for('gate_pass.gate_pass_detail', gate_pass_id=pass.id) }}" 
                                        class="btn btn-outline-primary px-3"
                                        title="View Details">
                                         <i class="fas fa-eye"></i>
                                     </a>
                                     
-                                    <!-- Store Manager: Approve/Reject -->
-                                    {% if user_role == 'store_manager' and pass.status == 'pending_store' %}
-                                    <button onclick="storeApproveGatePass({{ pass.id }}, 'approve')" 
-                                            class="btn btn-outline-success px-3"
-                                            title="Approve">
-                                        <i class="fas fa-check"></i>
-                                    </button>
-                                    <button onclick="storeApproveGatePass({{ pass.id }}, 'reject')" 
-                                            class="btn btn-outline-danger px-3"
-                                            title="Reject">
-                                        <i class="fas fa-times"></i>
-                                    </button>
+                                    <!-- ✅ FIXED: Department Head Actions -->
+                                    {% if session.role == 'department_head' and pass.department_id == current_user_department_id %}
+                                        <!-- Edit Button (only for draft/pending_dept) -->
+                                        {% if pass.status in ['draft', 'pending_dept'] %}
+                                        <button type="button" class="btn btn-outline-warning px-3" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#editGatePassModal"
+                                                onclick="loadGatePassForEdit({{ pass.id }})"
+                                                title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        {% endif %}
+                                        
+                                        <!-- Delete Button (only for draft/pending_dept) -->
+                                        {% if pass.status in ['draft', 'pending_dept'] %}
+                                        <button onclick="deleteGatePassByDeptHead({{ pass.id }})" 
+                                                class="btn btn-outline-danger px-3"
+                                                title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        {% endif %}
+                                        
+                                        <!-- Approve/Reject/Inquiry Buttons (only for pending_dept) -->
+                                        {% if pass.status == 'pending_dept' %}
+                                        <button onclick="approveGatePassWithModal({{ pass.id }}, 'approve')" 
+                                                class="btn btn-outline-success px-3"
+                                                title="Approve">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        <button onclick="approveGatePassWithModal({{ pass.id }}, 'reject')" 
+                                                class="btn btn-outline-danger px-3"
+                                                title="Reject">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                        <button type="button" 
+                                                class="btn btn-outline-info px-3"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#inquiryModal"
+                                                onclick="setInquiryGatePassId({{ pass.id }})"
+                                                title="Mark for Inquiry">
+                                            <i class="fas fa-question-circle"></i>
+                                        </button>
+                                        {% endif %}
                                     {% endif %}
                                     
-                                    <!-- Security: View Only -->
-                                    {% if session.role == 'security' and pass.status == 'pending_security' %}
-                                    <a href="#" class="btn btn-outline-secondary px-3" title="View Only - No Approval Required">
-                                        <i class="fas fa-info-circle"></i> View
-                                    </a>
+                                    <!-- ✅ FIXED: Store Manager Actions -->
+                                    {% if session.role == 'store_manager' %}
+                                        {% if pass.status == 'pending_store' %}
+                                        <button onclick="storeApproveGatePassWithModal({{ pass.id }}, 'approve')" 
+                                                class="btn btn-outline-success px-3"
+                                                title="Approve">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        <button onclick="storeApproveGatePassWithModal({{ pass.id }}, 'reject')" 
+                                                class="btn btn-outline-danger px-3"
+                                                title="Reject">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                        {% endif %}
+                                        
+                                        {% if pass.status == 'approved' %}
+                                        <button onclick="markDispatched({{ pass.id }})" 
+                                                class="btn btn-outline-success px-3"
+                                                title="Mark as Dispatched">
+                                            <i class="fas fa-truck"></i>
+                                        </button>
+                                        {% endif %}
                                     {% endif %}
                                     
-                                    <!-- Department Head: Edit/Delete (only for draft/pending_dept) -->
-                                    {% if session.role == 'department_head' and pass.status in ['draft', 'pending_dept'] %}
-                                    <button type="button" class="btn btn-outline-warning px-3" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#editGatePassModal"
-                                            onclick="loadGatePassForEdit({{ pass.id }})"
-                                            title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button onclick="deleteGatePassByDeptHead({{ pass.id }})" 
-                                            class="btn btn-outline-danger px-3"
-                                            title="Delete">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                    {% endif %}
-                                    
-                                    <!-- Department Head: Approve/Reject/Inquiry -->
-                                    {% if session.role == 'department_head' and pass.status == 'pending_dept' %}
-                                    <button onclick="approveGatePass({{ pass.id }}, 'approve')" 
-                                            class="btn btn-outline-success px-3"
-                                            title="Approve">
-                                        <i class="fas fa-check"></i>
-                                    </button>
-                                    <button onclick="approveGatePass({{ pass.id }}, 'reject')" 
-                                            class="btn btn-outline-danger px-3"
-                                            title="Reject">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                    <button type="button" 
-                                            class="btn btn-outline-info px-3"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#inquiryModal"
-                                            onclick="setInquiryGatePassId({{ pass.id }})"
-                                            title="Mark for Inquiry">
-                                        <i class="fas fa-question-circle"></i>
-                                    </button>
-                                    {% endif %}
-                                    
-                                    <!-- ✅ Security Print Button -->
-                                    {% if session.role == 'security' and pass.status == 'approved' %}
-                                    <a href="{{ url_for('security_print_gate_pass', gate_pass_id=pass.id) }}" 
-                                       class="btn btn-outline-info px-3"
-                                       title="Print Security Copy"
-                                       target="_blank">
-                                        <i class="fas fa-print"></i>
-                                    </a>
-                                    {% endif %}
-                                    
-                                    <!-- Store Manager: Mark as Dispatched -->
-                                    {% if user_role == 'store_manager' and pass.status == 'approved' %}
-                                    <button onclick="markDispatched({{ pass.id }})" 
-                                            class="btn btn-outline-success px-3"
-                                            title="Mark as Dispatched">
-                                        <i class="fas fa-truck"></i>
-                                    </button>
-                                    {% endif %}
-                                    
-                                    <!-- System Admin: View Only (No Approval) -->
-                                    {% if session.role == 'system_admin' %}
-                                    <!-- System Admin এর জন্য শুধু view button -->
-                                    <a href="{{ url_for('gate_pass.gate_pass_detail', gate_pass_id=pass.id) }}" 
-                                       class="btn btn-outline-primary px-3"
-                                       title="View Details">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    {% endif %}
-                                    
-                                    <!-- Security: Mark as Returned -->
-                                    {% if session.role == 'security' and pass.status == 'approved' and pass.material_type == 'returnable' and not pass.actual_return_date %}
-                                    <button onclick="markReturned({{ pass.id }})" 
-                                            class="btn btn-warning px-3"
-                                            title="Mark as Returned">
-                                        <i class="fas fa-undo"></i>
-                                    </button>
-                                    {% endif %}
-                                    
-                                    <!-- Store Manager and Security: View Only Info -->
-                                    {% if (user_role == 'store_manager' or session.role == 'security') and pass.status == 'approved' %}
-                                    <a href="#" class="btn btn-outline-secondary px-3" title="View Only - No Approval Required">
-                                        <i class="fas fa-info-circle"></i>
-                                    </a>
+                                    <!-- ✅ FIXED: Security Actions -->
+                                    {% if session.role == 'security' %}
+                                        {% if pass.status == 'pending_security' %}
+                                        <button onclick="securityApproveGatePass({{ pass.id }}, 'approve')" 
+                                                class="btn btn-outline-success px-3"
+                                                title="Approve">
+                                            <i class="fas fa-shield-alt"></i>
+                                        </button>
+                                        <button onclick="securityApproveGatePass({{ pass.id }}, 'reject')" 
+                                                class="btn btn-outline-danger px-3"
+                                                title="Reject">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                        {% endif %}
+                                        
+                                        {% if pass.status == 'approved' %}
+                                        <a href="{{ url_for('security_print_gate_pass', gate_pass_id=pass.id) }}" 
+                                           class="btn btn-outline-info px-3"
+                                           title="Print Security Copy"
+                                           target="_blank">
+                                            <i class="fas fa-print"></i>
+                                        </a>
+                                        {% endif %}
+                                        
+                                        {% if pass.status == 'approved' and pass.material_type == 'returnable' and not pass.actual_return_date %}
+                                        <button onclick="markReturned({{ pass.id }})" 
+                                                class="btn btn-warning px-3"
+                                                title="Mark as Returned">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                        {% endif %}
                                     {% endif %}
                                 </div>
                             </td>
@@ -477,6 +477,38 @@
         </div>
         <div class="toast-body">
             <div id="errorMessage">An error occurred!</div>
+        </div>
+    </div>
+</div>
+
+<!-- Comment Modal for Approval -->
+<div class="modal fade" id="commentModal" tabindex="-1" aria-labelledby="commentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="commentModalLabel">
+                    <i class="fas fa-comment me-2"></i>Add Optional Comment
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="approvalComment" class="form-label">
+                        <i class="fas fa-sticky-note me-1"></i>Comment (Optional)
+                    </label>
+                    <textarea class="form-control" id="approvalComment" rows="4" 
+                              placeholder="Add any comments or remarks about this approval (will be visible in details page but not in print)..."></textarea>
+                    <div class="form-text">
+                        This comment will be saved with the approval record but <strong>not printed</strong> on the gate pass.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Skip & Continue</button>
+                <button type="button" class="btn btn-primary" id="confirmApprovalWithComment">
+                    <i class="fas fa-check me-1"></i>Submit with Comment
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -624,6 +656,227 @@
 </style>
 
 <script>
+// Global variable to store approval context
+let currentApprovalContext = {
+    passId: null,
+    action: null,
+    role: null
+};
+
+// ✅ NEW: Department Head Approval with Modal
+function approveGatePassWithModal(passId, action) {
+    currentApprovalContext = {
+        passId: passId,
+        action: action,
+        role: 'department_head'
+    };
+    
+    // Clear previous comment
+    if (document.getElementById('approvalComment')) {
+        document.getElementById('approvalComment').value = '';
+    }
+    
+    // Show comment modal
+    const modalElement = document.getElementById('commentModal');
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+    } else {
+        // Fallback if modal not found
+        processApprovalWithoutComment(passId, action, 'department_head');
+    }
+}
+
+// ✅ NEW: Store Manager Approval with Modal
+function storeApproveGatePassWithModal(passId, action) {
+    currentApprovalContext = {
+        passId: passId,
+        action: action,
+        role: 'store_manager'
+    };
+    
+    // Clear previous comment
+    if (document.getElementById('approvalComment')) {
+        document.getElementById('approvalComment').value = '';
+    }
+    
+    // Show comment modal
+    const modalElement = document.getElementById('commentModal');
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+    } else {
+        // Fallback if modal not found
+        processApprovalWithoutComment(passId, action, 'store_manager');
+    }
+}
+
+// ✅ FIXED: Comment Modal for list page
+document.addEventListener('DOMContentLoaded', function() {
+    // Setup comment modal confirm button for list page
+    const listConfirmBtn = document.getElementById('confirmApprovalWithComment');
+    if (listConfirmBtn) {
+        listConfirmBtn.addEventListener('click', function() {
+            const comment = document.getElementById('approvalComment')?.value.trim() || '';
+            const { passId, action, role } = currentApprovalContext;
+            
+            if (!passId || !action || !role) {
+                showToast('Error: Approval context not set!', 'error');
+                return;
+            }
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('commentModal'));
+            if (modal) modal.hide();
+            
+            // Process approval
+            processListApprovalWithComment(passId, action, role, comment);
+        });
+    }
+    
+    // Auto-hide toasts after 5 seconds
+    const toasts = document.querySelectorAll('.toast');
+    toasts.forEach(toast => {
+        const bsToast = new bootstrap.Toast(toast, { delay: 5000 });
+    });
+});
+
+// ✅ NEW: Process approval for list page
+function processListApprovalWithComment(passId, action, role, comment) {
+    const button = document.querySelector(`button[onclick*="${passId}"]`);
+    const gatepassRow = document.getElementById(`gatepass-${passId}`);
+    
+    if (button) {
+        const originalText = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        
+        // Show loading state on the row
+        if (gatepassRow) {
+            gatepassRow.style.opacity = '0.7';
+        }
+    }
+    
+    // Determine the correct endpoint based on role
+    let endpoint = '';
+    
+    if (role === 'department_head') {
+        endpoint = `/gate_pass/approve_gate_pass_with_comment/${passId}/${action}`;
+    } else if (role === 'store_manager') {
+        endpoint = `/gate_pass/approve_gate_pass_with_comment/${passId}/${action}`;
+    }
+    
+    // Send request
+    fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            comment: comment
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || 'Approval processed successfully!', 'success');
+            
+            // Auto refresh after 1 second
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            showToast(data.message || 'Error processing approval', 'error');
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = originalText;
+            }
+            if (gatepassRow) {
+                gatepassRow.style.opacity = '1';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Network error. Please try again.', 'error');
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+        if (gatepassRow) {
+            gatepassRow.style.opacity = '1';
+        }
+    });
+}
+
+// Process approval without comment
+function processApprovalWithoutComment(passId, action, role) {
+    const button = document.querySelector(`button[onclick*="${passId}"]`);
+    const gatepassRow = document.getElementById(`gatepass-${passId}`);
+    
+    if (button) {
+        const originalText = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        
+        // Show loading state on the row
+        if (gatepassRow) {
+            gatepassRow.style.opacity = '0.7';
+        }
+    }
+    
+    // Determine the correct endpoint based on role
+    let endpoint = '';
+    let method = 'GET';
+    
+    if (role === 'department_head') {
+        endpoint = `/gate_pass/approve_gate_pass/${passId}/${action}`;
+        method = 'GET';
+    } else if (role === 'store_manager') {
+        endpoint = `/gate_pass/store/approve_gate_pass/${passId}/${action}`;
+        method = 'POST';
+    }
+    
+    // Send request without comment
+    fetch(endpoint, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || 'Approval processed successfully!', 'success');
+            
+            // Auto refresh after 1 second
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            showToast(data.message || 'Error processing approval', 'error');
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = originalText;
+            }
+            if (gatepassRow) {
+                gatepassRow.style.opacity = '1';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Network error. Please try again.', 'error');
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+        if (gatepassRow) {
+            gatepassRow.style.opacity = '1';
+        }
+    });
+}
+
 // Store Manager: Approve/Reject Gate Pass
 function storeApproveGatePass(passId, action) {
     const actionText = action === 'approve' ? 'Approve' : 'Reject';
@@ -811,7 +1064,7 @@ function markDispatched(gatePassId) {
     });
 }
 
-// Department Head: Approve/Reject Gate Pass
+// Department Head: Approve/Reject Gate Pass (old function for backward compatibility)
 function approveGatePass(passId, action) {
     const actionText = action === 'approve' ? 'Approve' : 'Reject';
     const icon = action === 'approve' ? '✅' : '❌';
@@ -868,6 +1121,36 @@ function markReturned(passId) {
     });
 }
 
+// Security: Approve/Reject Gate Pass
+function securityApproveGatePass(passId, action) {
+    const actionText = action === 'approve' ? 'Approve' : 'Reject';
+    const icon = action === 'approve' ? '✅' : '❌';
+    
+    if (!confirm(`${icon} ${actionText} this gate pass as Security Officer?`)) return;
+    
+    showToast('Processing security approval...', 'info');
+    
+    fetch(`/security/approve_gate_pass/${passId}/${action}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || 'Gate pass approved successfully!', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast(data.message || 'Error processing request', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error processing request', 'error');
+    });
+}
+
 // Refresh table
 function refreshTable() {
     location.reload();
@@ -894,13 +1177,5 @@ function showToast(message, type = 'success') {
     const bsToast = new bootstrap.Toast(toastElement);
     bsToast.show();
 }
-
-// Auto-hide toasts after 5 seconds
-document.addEventListener('DOMContentLoaded', function() {
-    const toasts = document.querySelectorAll('.toast');
-    toasts.forEach(toast => {
-        const bsToast = new bootstrap.Toast(toast, { delay: 5000 });
-    });
-});
 </script>
 {% endblock %}

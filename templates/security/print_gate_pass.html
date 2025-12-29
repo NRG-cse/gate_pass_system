@@ -1,343 +1,1054 @@
+{% extends "base.html" %}
+
+{% block content %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Security Gate Pass - {{ gate_pass.pass_number }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* COMPACT PRINT STYLES */
         @media print {
-            .no-print { 
-                display: none !important; 
-            }
-            body { 
-                padding: 0 !important; 
-                margin: 0 !important; 
-                font-size: 12px !important;
+            body {
+                font-family: 'Arial', sans-serif;
+                font-size: 9pt !important;
+                line-height: 1.2;
+                margin: 0;
+                padding: 0;
                 background: white !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
-            .print-area { 
-                width: 100% !important; 
-                max-width: 100% !important; 
-                margin: 0 !important; 
-                padding: 5mm !important;
-                border: none !important; 
-                box-shadow: none !important;
-                position: absolute !important;
-                top: 0 !important;
-                left: 0 !important;
+            
+            .no-print {
+                display: none !important;
             }
-            .container { 
-                max-width: 100% !important; 
-                padding: 0 !important; 
+            
+            .print-container {
+                width: 190mm;
+                min-height: 277mm;
+                max-height: 277mm;
+                margin: 0 auto;
+                padding: 10mm;
+                position: relative;
+                page-break-inside: avoid;
             }
-            .page-break { 
+            
+            /* Two Column Layout for Print */
+            .two-column-layout {
+                display: flex;
+                width: 100%;
+                gap: 5mm;
+                margin-bottom: 3mm;
+            }
+            
+            .left-column {
+                width: 70%;
+                flex: 0 0 70%;
+            }
+            
+            .right-column {
+                width: 30%;
+                flex: 0 0 30%;
+                border-left: 1px solid #ccc;
+                padding-left: 3mm;
+            }
+            
+            /* Compact Header */
+            .compact-header {
+                display: flex;
+                align-items: flex-start;
+                margin-bottom: 5mm;
+                padding-bottom: 3mm;
+                border-bottom: 1.5px solid #000;
+            }
+            
+            .logo-section {
+                width: 25mm;
+                height: 25mm;
+                border: 1px solid #ccc;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                margin-right: 5mm;
+                flex-shrink: 0;
+            }
+            
+            .company-info {
+                flex-grow: 1;
+            }
+            
+            .company-name {
+                font-size: 16pt;
+                font-weight: bold;
+                margin-bottom: 1mm;
+                color: #000;
+            }
+            
+            .company-address {
+                font-size: 8pt;
+                color: #555;
+                margin-bottom: 0.5mm;
+                line-height: 1.2;
+            }
+            
+            .gate-pass-title {
+                text-align: right;
+                font-size: 14pt;
+                font-weight: bold;
+                color: #000;
+                margin-bottom: 1mm;
+            }
+            
+            .gate-pass-number {
+                font-size: 12pt;
+                font-weight: bold;
+                text-align: right;
+                color: #333;
+            }
+            
+            /* Compact Card Styles */
+            .compact-card {
+                border: 1px solid #000;
+                margin-bottom: 3mm;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            .compact-card-header {
+                background: #f0f0f0;
+                padding: 2mm 3mm;
+                border-bottom: 1px solid #000;
+                font-weight: bold;
+                font-size: 9pt;
+            }
+            
+            .compact-card-body {
+                padding: 2mm 3mm;
+            }
+            
+            /* Compact Table */
+            .compact-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 8pt;
+            }
+            
+            .compact-table td {
+                padding: 0.5mm 1mm;
+                vertical-align: top;
+                line-height: 1.2;
+            }
+            
+            .compact-table .label {
+                font-weight: bold;
+                width: 35%;
+                color: #333;
+            }
+            
+            .compact-table .value {
+                width: 65%;
+                word-break: break-word;
+            }
+            
+            /* Compact QR Code */
+            .compact-qr-container {
+                text-align: center;
+                margin-bottom: 3mm;
+            }
+            
+            .compact-qr-image {
+                width: 40mm;
+                height: 40mm;
+                border: 1px solid #ccc;
+                padding: 1mm;
+                background: white;
+                margin: 0 auto;
+            }
+            
+            .compact-qr-text {
+                font-size: 7pt;
+                color: #666;
+                margin-top: 1mm;
+                word-break: break-all;
+            }
+            
+            /* Status Badges */
+            .status-badge {
+                display: inline-block;
+                padding: 1px 4px;
+                font-size: 7pt;
+                border: 1px solid #ccc;
+                margin: 0 1px 1px 0;
+                border-radius: 2px;
+            }
+            
+            .status-approved {
+                background: #e8f5e9;
+                color: #2e7d32;
+            }
+            
+            .status-pending {
+                background: #fff3e0;
+                color: #f57c00;
+            }
+            
+            .status-rejected {
+                background: #ffebee;
+                color: #c62828;
+            }
+            
+            /* Approval Grid */
+            .approval-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 2mm;
+                margin-top: 2mm;
+                font-size: 7pt;
+            }
+            
+            .approval-item {
+                text-align: center;
+                padding: 1mm;
+                border: 1px solid #ccc;
+                border-radius: 2px;
+            }
+            
+            /* Footer */
+            .compact-footer {
+                margin-top: 3mm;
+                padding-top: 2mm;
+                border-top: 1px solid #000;
+                font-size: 7pt;
+                color: #666;
+            }
+            
+            /* Prevent page breaks */
+            .page-break-avoid {
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
             }
             
-            /* Ensure colors print correctly */
-            .gate-pass-header {
-                background: linear-gradient(135deg, #2c3e50, #34495e) !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
+            /* Ensure single page */
+            html, body {
+                width: 210mm;
+                height: 297mm;
+                overflow: hidden;
             }
             
+            @page {
+                size: A4 portrait;
+                margin: 10mm;
+            }
+            
+            /* Security Stamp */
             .security-stamp {
-                border: 3px solid #e74c3c !important;
-                background: rgba(231, 76, 60, 0.1) !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
+                position: absolute;
+                top: 15mm;
+                right: 15mm;
+                transform: rotate(15deg);
+                border: 2px solid #d32f2f;
+                padding: 3mm 5mm;
+                background: rgba(255, 255, 255, 0.9);
+                font-weight: bold;
+                color: #d32f2f;
+                font-size: 10pt;
+                z-index: 100;
+                box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
             }
             
-            /* Force images to print */
-            .qr-image, .material-image {
-                display: block !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
+            /* Signature Section */
+            .signature-section {
+                margin-top: 5mm;
+                padding-top: 2mm;
+                border-top: 1px solid #000;
+            }
+            
+            .signature-row {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 3mm;
+            }
+            
+            .signature-box {
+                width: 45%;
+                text-align: center;
+            }
+            
+            .signature-line {
+                width: 80%;
+                height: 1px;
+                background: #000;
+                margin: 15mm auto 2mm auto;
+            }
+            
+            .signature-text {
+                font-size: 8pt;
+                font-weight: bold;
+            }
+            
+            .signature-designation {
+                font-size: 7pt;
+                color: #666;
+            }
+            
+            /* Material Images */
+            .compact-images {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 1mm;
+                margin-top: 1mm;
+            }
+            
+            .compact-image {
+                width: 100%;
+                height: 15mm;
+                object-fit: cover;
+                border: 1px solid #ccc;
+                border-radius: 1px;
+            }
+            
+            /* Important Notes */
+            .important-notes {
+                background: #fff8e1;
+                border: 1px solid #ffd54f;
+                padding: 2mm;
+                margin: 2mm 0;
+                font-size: 7pt;
+                line-height: 1.3;
+            }
+
+            /* Security Copy Badge */
+            .security-copy-badge {
+                position: absolute;
+                top: 5mm;
+                right: 5mm;
+                background: #d32f2f;
+                color: white;
+                padding: 2mm 4mm;
+                font-weight: bold;
+                font-size: 10pt;
+                border-radius: 3px;
+                z-index: 50;
             }
         }
         
-        @page {
-            size: A4 portrait;
-            margin: 10mm;
+        /* WEB VIEW STYLES */
+        @media screen {
+            body {
+                background: #f8f9fa;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                padding-bottom: 20px;
+            }
+            
+            .print-container {
+                display: none;
+            }
+            
+            .no-print {
+                display: block;
+            }
+            
+            .preview-container {
+                max-width: 210mm;
+                margin: 20px auto;
+                background: white;
+                padding: 20px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+                border-radius: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Web Interface -->
+    <div class="no-print">
+        <div class="container-fluid p-0 h-100">
+            <div class="row g-0 h-100">
+                <div class="col-12 h-100">
+                    <div class="card h-100 m-0 border-0">
+                        <!-- Security Approval Header -->
+                        <div class="card-header bg-success text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h4 class="mb-0">
+                                        <i class="fas fa-shield-alt"></i> 
+                                        SECURITY GATE PASS PRINTING
+                                    </h4>
+                                    <p class="mb-0">
+                                        Gate Pass: {{ gate_pass.pass_number }} | Approved by: {{ security_name }}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span class="badge bg-light text-dark fs-6 px-3 py-2">
+                                        <i class="fas fa-print"></i> READY TO PRINT
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card-body p-4">
+                            <!-- Print Confirmation -->
+                            <div class="text-center mb-5">
+                                <div class="display-1 text-success mb-3">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <h2 class="fw-bold mb-3">SECURITY APPROVED ✓</h2>
+                                <div class="alert alert-success fs-5">
+                                    <i class="fas fa-check-double"></i>
+                                    All approvals completed. Gate pass is ready for printing.
+                                </div>
+                            </div>
+
+                            <!-- Print Controls -->
+                            <div class="text-center mb-4">
+                                <button onclick="startPrintProcess()" class="btn btn-primary btn-lg px-5 py-3 fs-3">
+                                    <i class="fas fa-print me-3"></i> PRINT SECURITY COPY
+                                </button>
+                                <a href="{{ url_for('gate_pass.gate_pass_list') }}" class="btn btn-secondary btn-lg ms-3 px-4 py-3 fs-5">
+                                    <i class="fas fa-arrow-left me-2"></i> Back to List
+                                </a>
+                                
+                                <p class="text-muted mt-3">
+                                    <i class="fas fa-info-circle"></i>
+                                    After printing, material can leave the gate
+                                </p>
+                            </div>
+                            
+                            <!-- IMPORTANT: Print Instructions -->
+                            <div class="alert alert-warning">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                                    <div>
+                                        <h5 class="mb-1">📋 IMPORTANT PRINTING INSTRUCTIONS:</h5>
+                                        <p class="mb-0">
+                                            <strong>Please print 2 copies:</strong><br>
+                                            1. <strong>SECURITY OFFICE COPY</strong> (Keep for records)<br>
+                                            2. <strong>RECEIVER COPY</strong> (Give to receiver with material)
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Print Preview -->
+                            <div class="preview-container mt-5">
+                                <h5 class="fw-bold mb-3 text-center">Print Preview (Single Page):</h5>
+                                <div class="text-center mb-3">
+                                    <small class="text-muted">This is how the printed copy will look</small>
+                                </div>
+                                
+                                <!-- Preview of actual print layout -->
+                                <div style="border: 2px dashed #ccc; padding: 10px; background: #f9f9f9;">
+                                    <div class="compact-header">
+                                        <div class="logo-section">
+                                            <i class="fas fa-building fa-2x text-muted"></i>
+                                            <div style="font-size: 8px; margin-top: 2px;">NR GROUP</div>
+                                        </div>
+                                        <div class="company-info">
+                                            <div class="company-name">NR GROUP</div>
+                                            <div class="company-address">
+                                                Square Masterbari, Jamirdia, Bhaluka, Mymensingh<br>
+                                                One stop solution for sustainable textile
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="gate-pass-title">GATE PASS</div>
+                                            <div class="gate-pass-number">{{ gate_pass.pass_number }}</div>
+                                            <div style="font-size: 9px; color: #666;">
+                                                Created: {{ gate_pass.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="two-column-layout">
+                                        <div class="left-column">
+                                            <!-- Preview content here -->
+                                            <div style="font-size: 10px; color: #666; padding: 5px;">
+                                                <strong>Material:</strong> {{ gate_pass.material_description|truncate(100) }}<br>
+                                                <strong>Destination:</strong> {{ gate_pass.destination }}<br>
+                                                <strong>Receiver:</strong> {{ gate_pass.receiver_name }}
+                                            </div>
+                                        </div>
+                                        <div class="right-column">
+                                            <div style="text-align: center; padding: 5px;">
+                                                <div style="width: 60px; height: 60px; background: #eee; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
+                                                    QR
+                                                </div>
+                                                <div style="font-size: 8px; margin-top: 2px;">Verification Code</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Security Signature Preview -->
+                                    <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc;">
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <div style="width: 45%;">
+                                                <div style="font-size: 9px; font-weight: bold;">Receiver Signature & Stamp</div>
+                                                <div style="width: 80%; height: 1px; background: #000; margin: 25px 0 5px 0;"></div>
+                                                <div style="font-size: 8px;">Name: {{ gate_pass.receiver_name }}</div>
+                                                <div style="font-size: 8px;">Date: __________________</div>
+                                            </div>
+                                            <div style="width: 45%; text-align: right;">
+                                                <div style="font-size: 9px; font-weight: bold;">Security Signature & Seal</div>
+                                                <div style="width: 80%; height: 1px; background: #000; margin: 25px 0 5px 0; margin-left: auto;"></div>
+                                                <div style="font-size: 8px;">Name: {{ security_name }}</div>
+                                                <div style="font-size: 8px;">Date: {{ now.strftime('%d/%m/%Y') }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style="font-size: 9px; color: #888; text-align: center; padding: 10px; border-top: 1px dashed #ccc; margin-top: 10px;">
+                                        This is a preview. Actual print will be more detailed and compact.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-3">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Note:</strong> Printing will notify all parties including creator, department head, store manager, and system admins.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PRINT AREA (Hidden in web view) -->
+    <div class="print-container">
+        <!-- Security Copy Badge -->
+        <div class="security-copy-badge">
+            SECURITY OFFICE COPY
+        </div>
+
+        <!-- Security Stamp -->
+        <div class="security-stamp">
+            SECURITY COPY<br>
+            {{ now.strftime('%d/%m/%Y') }}
+        </div>
+
+        <!-- Compact Header -->
+        <div class="compact-header page-break-avoid">
+            <!-- Company Logo -->
+            <div class="logo-section">
+                <!-- Replace with actual logo -->
+                <!-- <img src="{{ url_for('static', filename='images/logo.png') }}" style="max-width: 100%; max-height: 100%;"> -->
+                <i class="fas fa-building" style="font-size: 16pt;"></i>
+                <div style="font-size: 7pt; margin-top: 1mm; text-align: center;">NR GROUP</div>
+            </div>
+            
+            <!-- Company Info -->
+            <div class="company-info">
+                <div class="company-name">NR GROUP</div>
+                <div class="company-address">
+                    Square Masterbari, Jamirdia, Bhaluka, Mymensingh<br>
+                    Quality Textiles Manufacturer & Exporter<br>
+                    Tel: +880 XXX XXXXXXX | Email: info@nrgroup.com
+                </div>
+            </div>
+            
+            <!-- Gate Pass Info -->
+            <div>
+                <div class="gate-pass-title">GATE PASS</div>
+                <div class="gate-pass-number">{{ gate_pass.pass_number }}</div>
+                <div style="font-size: 8pt; color: #555; text-align: right;">
+                    Created: {{ gate_pass.created_at.strftime('%d/%m/%Y %H:%M') }}<br>
+                    Printed: {{ now.strftime('%d/%m/%Y %H:%M') }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Badges -->
+        <div style="margin-bottom: 3mm; text-align: center;">
+            <span class="status-badge status-{{ gate_pass.department_approval }}">
+                Dept: {{ gate_pass.department_approval|upper }}
+            </span>
+            <span class="status-badge status-{{ gate_pass.store_approval }}">
+                Store: {{ gate_pass.store_approval|upper }}
+            </span>
+            <span class="status-badge status-{{ gate_pass.security_approval }}">
+                Security: {{ gate_pass.security_approval|upper }}
+            </span>
+            <span class="status-badge status-{{ gate_pass.status }}">
+                Status: {{ gate_pass.status|upper|replace('_', ' ') }}
+            </span>
+            {% if gate_pass.material_type == 'returnable' %}
+            <span class="status-badge" style="background: #e3f2fd; color: #1565c0;">
+                Returnable
+            </span>
+            {% endif %}
+        </div>
+
+        <!-- Main Two Column Layout -->
+        <div class="two-column-layout page-break-avoid">
+            <!-- Left Column: Details -->
+            <div class="left-column">
+                <!-- Material Information -->
+                <div class="compact-card">
+                    <div class="compact-card-header">
+                        MATERIAL INFORMATION
+                    </div>
+                    <div class="compact-card-body">
+                        <table class="compact-table">
+                            <tr>
+                                <td class="label">Description:</td>
+                                <td class="value">{{ gate_pass.material_description }}</td>
+                            </tr>
+                            <tr>
+                                <td class="label">Type:</td>
+                                <td class="value">{{ gate_pass.material_type|title }}</td>
+                            </tr>
+                            <tr>
+                                <td class="label">Status:</td>
+                                <td class="value">{{ gate_pass.material_status|title }}</td>
+                            </tr>
+                            <tr>
+                                <td class="label">Destination:</td>
+                                <td class="value">{{ gate_pass.destination }}</td>
+                            </tr>
+                            <tr>
+                                <td class="label">Purpose:</td>
+                                <td class="value">{{ gate_pass.purpose }}</td>
+                            </tr>
+                            {% if gate_pass.material_type == 'returnable' and gate_pass.expected_return_date %}
+                            <tr>
+                                <td class="label">Expected Return:</td>
+                                <td class="value">{{ gate_pass.expected_return_date.strftime('%d/%m/%Y %H:%M') }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Receiver & Creator Info -->
+                <div class="row" style="display: flex; gap: 2mm; margin-bottom: 3mm;">
+                    <div style="flex: 1;">
+                        <div class="compact-card" style="height: 100%;">
+                            <div class="compact-card-header">
+                                RECEIVER INFORMATION
+                            </div>
+                            <div class="compact-card-body">
+                                <table class="compact-table">
+                                    <tr>
+                                        <td class="label">Name:</td>
+                                        <td class="value"><strong>{{ gate_pass.receiver_name }}</strong></td>
+                                    </tr>
+                                    {% if gate_pass.receiver_contact %}
+                                    <tr>
+                                        <td class="label">Contact:</td>
+                                        <td class="value">{{ gate_pass.receiver_contact }}</td>
+                                    </tr>
+                                    {% endif %}
+                                    <tr>
+                                        <td class="label">Send Date:</td>
+                                        <td class="value">{{ gate_pass.send_date.strftime('%d/%m/%Y %H:%M') }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="flex: 1;">
+                        <div class="compact-card" style="height: 100%;">
+                            <div class="compact-card-header">
+                                CREATED BY
+                            </div>
+                            <div class="compact-card-body">
+                                <table class="compact-table">
+                                    <tr>
+                                        <td class="label">Name:</td>
+                                        <td class="value">{{ gate_pass.creator_name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="label">Designation:</td>
+                                        <td class="value">{{ gate_pass.creator_designation }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="label">Department:</td>
+                                        <td class="value">{{ gate_pass.department_name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="label">Division:</td>
+                                        <td class="value">{{ gate_pass.division_name }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Material Photos -->
+                {% if gate_pass.images_list %}
+                <div class="compact-card">
+                    <div class="compact-card-header">
+                        MATERIAL PHOTOS ({{ gate_pass.images_list|length }})
+                    </div>
+                    <div class="compact-card-body">
+                        <div class="compact-images">
+                            {% for image in gate_pass.images_list[:4] %}
+                            <div>
+                                <img src="{{ url_for('static', filename=image) }}" 
+                                     alt="Material Photo" class="compact-image">
+                                <div style="font-size: 6pt; text-align: center; margin-top: 1px;">Photo {{ loop.index }}</div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Important Notes -->
+                <div class="important-notes page-break-avoid">
+                    <strong>⚠️ SECURITY INSTRUCTIONS:</strong>
+                    <ul style="margin: 1mm 0 0 0; padding-left: 4mm;">
+                        <li>This is SECURITY COPY - Must remain at security office</li>
+                        <li>Verify QR code when material goes out and returns</li>
+                        <li>Check receiver identity before releasing material</li>
+                        <li>For returnable items, ensure timely return</li>
+                        <li>Report discrepancies to supervisor immediately</li>
+                        <li>Give RECEIVER COPY to receiver with material</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Right Column: QR Code & Verification -->
+            <div class="right-column">
+                <!-- QR Code -->
+                <div class="compact-card">
+                    <div class="compact-card-header">
+                        VERIFICATION QR CODE
+                    </div>
+                    <div class="compact-card-body">
+                        <div class="compact-qr-container">
+                            {% if gate_pass.qr_form_img %}
+                            <img src="{{ gate_pass.qr_form_img }}" alt="QR Code" class="compact-qr-image">
+                            {% else %}
+                            <div style="width: 40mm; height: 40mm; background: #eee; display: flex; align-items: center; justify-content: center;">
+                                QR Not Generated
+                            </div>
+                            {% endif %}
+                            
+                            {% if gate_pass.qr_code_form %}
+                            <div class="compact-qr-text">
+                                {{ gate_pass.qr_code_form[:30] }}...
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div style="font-size: 7pt; text-align: center; margin-top: 2mm;">
+                            <strong>Scan at Gate Entry/Exit</strong><br>
+                            Required for material verification
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Approval Status -->
+                <div class="compact-card">
+                    <div class="compact-card-header">
+                        APPROVAL STATUS
+                    </div>
+                    <div class="compact-card-body">
+                        <div class="approval-grid">
+                            <div class="approval-item">
+                                <div style="font-weight: bold;">Department</div>
+                                <div style="margin-top: 1mm;">
+                                    {% if gate_pass.department_approval == 'approved' %}
+                                    <span style="color: #2e7d32;">✓ Approved</span>
+                                    {% if gate_pass.department_approval_date %}
+                                    <div style="font-size: 6pt;">{{ gate_pass.department_approval_date.strftime('%d/%m %H:%M') }}</div>
+                                    {% endif %}
+                                    {% elif gate_pass.department_approval == 'rejected' %}
+                                    <span style="color: #c62828;">✗ Rejected</span>
+                                    {% else %}
+                                    <span style="color: #f57c00;">⏱ Pending</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="approval-item">
+                                <div style="font-weight: bold;">Store</div>
+                                <div style="margin-top: 1mm;">
+                                    {% if gate_pass.store_approval == 'approved' %}
+                                    <span style="color: #2e7d32;">✓ Approved</span>
+                                    {% if gate_pass.store_approval_date %}
+                                    <div style="font-size: 6pt;">{{ gate_pass.store_approval_date.strftime('%d/%m %H:%M') }}</div>
+                                    {% endif %}
+                                    {% elif gate_pass.store_approval == 'rejected' %}
+                                    <span style="color: #c62828;">✗ Rejected</span>
+                                    {% else %}
+                                    <span style="color: #f57c00;">⏱ Pending</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="approval-item">
+                                <div style="font-weight: bold;">Security</div>
+                                <div style="margin-top: 1mm;">
+                                    {% if gate_pass.security_approval == 'approved' %}
+                                    <span style="color: #2e7d32;">✓ Approved</span>
+                                    {% if gate_pass.security_approval_date %}
+                                    <div style="font-size: 6pt;">{{ gate_pass.security_approval_date.strftime('%d/%m %H:%M') }}</div>
+                                    {% endif %}
+                                    {% if gate_pass.approved_by_security %}
+                                    <div style="font-size: 6pt;">By: {{ gate_pass.approved_by_security|truncate(10) }}</div>
+                                    {% endif %}
+                                    {% elif gate_pass.security_approval == 'rejected' %}
+                                    <span style="color: #c62828;">✗ Rejected</span>
+                                    {% else %}
+                                    <span style="color: #f57c00;">⏱ Pending</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Security Information -->
+                <div class="compact-card">
+                    <div class="compact-card-header">
+                        SECURITY INFORMATION
+                    </div>
+                    <div class="compact-card-body">
+                        <table class="compact-table">
+                            <tr>
+                                <td class="label">Printed By:</td>
+                                <td class="value">{{ security_name }}</td>
+                            </tr>
+                            <tr>
+                                <td class="label">Print Date:</td>
+                                <td class="value">{{ now.strftime('%d/%m/%Y %H:%M') }}</td>
+                            </tr>
+                            <tr>
+                                <td class="label">Pass Number:</td>
+                                <td class="value">{{ gate_pass.pass_number }}</td>
+                            </tr>
+                            <tr>
+                                <td class="label">Document ID:</td>
+                                <td class="value">GP-{{ gate_pass.pass_number }}-{{ now.strftime('%Y%m%d') }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Signatures -->
+        <div class="signature-section page-break-avoid">
+            <div class="signature-row">
+                <div class="signature-box">
+                    <div class="signature-line"></div>
+                    <div class="signature-text">
+                        {% if gate_pass.dept_head_name %}
+                        {{ gate_pass.dept_head_name }}
+                        {% else %}
+                        Department Head
+                        {% endif %}
+                    </div>
+                    <div class="signature-designation">
+                        Department Head Signature<br>
+                        {% if gate_pass.department_approval_date %}
+                        Date: {{ gate_pass.department_approval_date.strftime('%d/%m/%Y') }}
+                        {% else %}
+                        Date: __________________
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="signature-box">
+                    <div class="signature-line"></div>
+                    <div class="signature-text">{{ security_name }}</div>
+                    <div class="signature-designation">
+                        Security Officer Signature<br>
+                        Date: {{ now.strftime('%d/%m/%Y') }}
+                    </div>
+                </div>
+            </div>
+            
+            <div style="width: 60%; margin: 5mm auto 0 auto; text-align: center;">
+                <div class="signature-line"></div>
+                <div class="signature-text">{{ gate_pass.receiver_name }}</div>
+                <div class="signature-designation">
+                    Receiver Signature & Company Stamp<br>
+                    Date: __________________
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="compact-footer">
+            <div style="text-align: center; margin-bottom: 1mm;">
+                <strong>NR GROUP GATE PASS SYSTEM v2.0</strong> | 
+                Computer Generated Document | 
+                Page 1 of 1
+            </div>
+            <div style="text-align: center;">
+                Printed on: {{ now.strftime('%d/%m/%Y %H:%M:%S') }} | 
+                Valid without signature | 
+                For queries: Security Dept - Ext: 101
+            </div>
+            <div style="text-align: center; font-size: 6pt; margin-top: 1mm; color: #999;">
+                © 2024 NR Group. All rights reserved. Unauthorized duplication prohibited.
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize toast
+    const printToast = new bootstrap.Toast(document.getElementById('printToast'));
+    
+    // Main print process function
+    function startPrintProcess() {
+        // Show confirmation for 2 copies
+        if (confirm('📋 IMPORTANT: Print 2 copies:\n\n1. SECURITY OFFICE COPY (Keep for records)\n2. RECEIVER COPY (Give to receiver)\n\nClick OK to start printing...')) {
+            // Show loading
+            showLoading();
+            
+            // Step 1: Send notification
+            sendPrintNotification();
+        }
+    }
+    
+    // Send notification to server
+    function sendPrintNotification() {
+        const gatePassId = "{{ gate_pass.id }}";
+        const printedByName = "{{ security_name }}";
+        
+        fetch('/api/notify_gate_pass_printing', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                gate_pass_id: gatePassId,
+                printed_by: "{{ session['user_id'] }}",
+                printed_by_name: printedByName,
+                printed_by_role: "security",
+                copies_printed: 2,
+                note: "Security printed 2 copies: Security Office Copy + Receiver Copy"
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Step 2: Adjust for print and trigger print
+                adjustForPrintAndPrint();
+            } else {
+                showToast('Error sending notification: ' + data.message, 'error');
+                hideLoading();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error sending notification', 'error');
+            hideLoading();
+        });
+    }
+    
+    // Adjust layout for print and trigger print
+    function adjustForPrintAndPrint() {
+        // Hide web interface
+        document.querySelectorAll('.no-print').forEach(el => {
+            el.style.display = 'none';
+        });
+        
+        // Show print area
+        document.querySelector('.print-container').style.display = 'block';
+        
+        // Adjust for single page
+        adjustForSinglePage();
+        
+        // Trigger print
+        setTimeout(() => {
+            window.print();
+        }, 500);
+    }
+    
+    // Adjust layout to fit in single page
+    function adjustForSinglePage() {
+        const printContainer = document.querySelector('.print-container');
+        const containerHeight = printContainer.scrollHeight;
+        const maxHeight = 277; // A4 height in mm (297mm - 20mm margins)
+        
+        // If content is too long, reduce font sizes
+        if (containerHeight > maxHeight * 3.78) { // Convert mm to pixels (3.78px per mm)
+            // Reduce font sizes
+            document.body.style.fontSize = '8pt';
+            
+            // Reduce QR code size
+            const qrImage = document.querySelector('.compact-qr-image');
+            if (qrImage) {
+                qrImage.style.width = '35mm';
+                qrImage.style.height = '35mm';
+            }
+            
+            // Reduce image sizes
+            document.querySelectorAll('.compact-image').forEach(img => {
+                img.style.height = '12mm';
+            });
+            
+            // Reduce padding
+            document.querySelectorAll('.compact-card-body, .compact-card-header').forEach(el => {
+                el.style.padding = '1mm 2mm';
+            });
         }
         
-        body { 
-            background: #f8f9fa; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            padding-bottom: 20px;
-        }
+        // Ensure all images are visible
+        document.querySelectorAll('img').forEach(img => {
+            img.style.visibility = 'visible';
+            img.style.opacity = '1';
+        });
+    }
+    
+    // After print
+    window.onafterprint = function() {
+        // Send completion notification
+        sendPrintCompleteNotification();
         
-        .print-area {
-            background: white;
-            width: 210mm;
-            min-height: 297mm;
-            margin: 10px auto;
-            padding: 15mm;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            position: relative;
-        }
+        // Hide loading
+        hideLoading();
         
-        /* Company Header */
-        .company-header {
-            text-align: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #2c3e50;
-        }
+        // Show success message with instructions
+        alert('✅ Gate pass printed successfully!\n\n📋 IMPORTANT:\n• Keep SECURITY OFFICE COPY for records\n• Give RECEIVER COPY to receiver with material');
         
-        .company-logo {
-            max-height: 60px;
-            margin-bottom: 10px;
-        }
+        // Redirect after delay
+        setTimeout(() => {
+            window.location.href = "{{ url_for('gate_pass.gate_pass_list') }}";
+        }, 2000);
+    };
+    
+    // Send completion notification
+    function sendPrintCompleteNotification() {
+        const gatePassId = "{{ gate_pass.id }}";
         
-        .company-name {
-            font-size: 28px;
-            font-weight: bold;
-            color: #2c3e50;
-            letter-spacing: 1px;
-            margin: 5px 0;
-        }
-        
-        .company-address {
-            font-size: 14px;
-            color: #7f8c8d;
-            margin-bottom: 5px;
-        }
-        
-        .company-tagline {
-            font-size: 12px;
-            color: #95a5a6;
-            font-style: italic;
-        }
-        
-        /* Gate Pass Title */
-        .gate-pass-header {
-            text-align: center;
-            background: linear-gradient(135deg, #2c3e50, #34495e);
-            color: white;
-            padding: 12px;
-            border-radius: 5px;
-            margin: 20px 0;
-            position: relative;
-        }
-        
-        .gate-pass-title {
-            font-size: 24px;
-            font-weight: bold;
-            margin: 0;
-        }
-        
-        .gate-pass-subtitle {
-            font-size: 14px;
-            opacity: 0.9;
-        }
-        
-        /* Security Stamp */
-        .security-stamp {
-            position: absolute;
-            right: 20px;
-            top: 20px;
-            transform: rotate(15deg);
-            border: 3px solid #e74c3c;
-            padding: 8px 15px;
-            background: rgba(231, 76, 60, 0.1);
-            font-weight: bold;
-            color: #e74c3c;
-            font-size: 16px;
-            z-index: 10;
-        }
-        
-        /* Main Content */
-        .content-section {
-            margin-bottom: 25px;
-            page-break-inside: avoid;
-        }
-        
-        .section-title {
-            font-size: 16px;
-            font-weight: bold;
-            background: #f8f9fa;
-            padding: 8px 12px;
-            border-left: 4px solid #3498db;
-            margin: 15px 0 10px 0;
-            border-radius: 3px;
-        }
-        
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 15px;
-        }
-        
-        .info-item {
-            display: flex;
-            border-bottom: 1px dashed #ddd;
-            padding: 6px 0;
-        }
-        
-        .info-label {
-            font-weight: bold;
-            color: #2c3e50;
-            min-width: 180px;
-            flex-shrink: 0;
-        }
-        
-        .info-value {
-            color: #34495e;
-            flex-grow: 1;
-        }
-        
-        /* QR Codes Section */
-        .qr-section {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin: 25px 0;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border: 2px solid #ddd;
-        }
-        
-        .qr-box {
-            text-align: center;
-            padding: 15px;
-            flex: 1;
-        }
-        
-        .qr-title {
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #2c3e50;
-        }
-        
-        .qr-image {
-            width: 150px;
-            height: 150px;
-            border: 1px solid #ddd;
-            padding: 5px;
-            background: white;
-            display: block;
-            margin: 0 auto;
-        }
-        
-        .qr-notes {
-            font-size: 11px;
-            color: #7f8c8d;
-            margin-top: 8px;
-        }
-        
-        /* Signatures */
-        .signature-section {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 2px solid #000;
-        }
-        
-        .signature-row {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
-        }
-        
-        .signature-box {
-            width: 45%;
-            text-align: center;
-        }
-        
-        .signature-line {
-            width: 80%;
-            height: 1px;
-            background: #000;
-            margin: 40px auto 5px auto;
-        }
-        
-        .signature-name {
-            font-weight: bold;
-            margin-top: 5px;
-        }
-        
-        .signature-designation {
-            font-size: 11px;
-            color: #7f8c8d;
-        }
-        
-        /* Footer */
-        .footer-notes {
-            margin-top: 30px;
-            padding-top: 15px;
-            border-top: 1px solid #ddd;
-            font-size: 11px;
-            color: #7f8c8d;
-            text-align: center;
-        }
-        
-        .warning-box {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 5px;
-            padding: 10px;
-            margin: 15px 0;
-            font-size: 11px;
-        }
-        
-        /* Status Badges */
-        .status-badge {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 15px;
-            font-size: 11px;
-            font-weight: bold;
-        }
-        
-        .status-approved { 
-            background: #d4edda !important; 
-            color: #155724 !important; 
-        }
-        .status-pending { 
-            background: #fff3cd !important; 
-            color: #856404 !important; 
-        }
-        .status-urgent { 
-            background: #f8d7da !important; 
-            color: #721c24 !important; 
-        }
-        .status-rejected {
-            background: #f8d7da !important;
-            color: #721c24 !important;
-        }
-        
-        /* Material Images */
-        .material-images {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 10px;
-        }
-        
-        .material-image {
-            width: 80px;
-            height: 80px;
-            object-fit: cover;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        
-        /* Toast Notification */
-        .toast-container {
-            z-index: 9999;
-        }
-        
-        /* Print loading overlay */
-        .print-loading {
+        fetch('/api/notify_gate_pass_print_complete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                gate_pass_id: gatePassId,
+                printed_by: "{{ session['user_id'] }}",
+                pass_number: "{{ gate_pass.pass_number }}",
+                copies_printed: 2
+            })
+        })
+        .catch(error => console.error('Error:', error));
+    }
+    
+    // Show loading
+    function showLoading() {
+        // Create loading overlay
+        const loadingDiv = document.createElement('div');
+        loadingDiv.id = 'loadingOverlay';
+        loadingDiv.style.cssText = `
             position: fixed;
             top: 0;
             left: 0;
@@ -349,525 +1060,29 @@
             justify-content: center;
             align-items: center;
             z-index: 9999;
-        }
+        `;
         
-        .print-loading.hidden {
-            display: none;
-        }
-    </style>
-</head>
-<body>
-    <!-- Print Loading Overlay -->
-    <div id="printLoading" class="print-loading hidden">
-        <div class="spinner-border text-primary" style="width: 4rem; height: 4rem;" role="status">
-            <span class="visually-hidden">Printing...</span>
-        </div>
-        <h4 class="mt-3">Sending notifications and printing...</h4>
-        <p class="text-muted">Please wait while we notify all parties</p>
-    </div>
+        loadingDiv.innerHTML = `
+            <div class="spinner-border text-primary" style="width: 4rem; height: 4rem;"></div>
+            <h4 class="mt-3">Preparing print...</h4>
+            <p class="text-muted">Sending notifications and preparing 2 copies</p>
+        `;
+        
+        document.body.appendChild(loadingDiv);
+    }
     
-    <!-- Toast Notification -->
-    <div class="toast-container position-fixed top-0 end-0 p-3">
-        <div id="printToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header">
-                <i class="fas fa-print me-2"></i>
-                <strong class="me-auto">Print Status</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-            <div class="toast-body" id="printToastMessage">
-                Print completed successfully!
-            </div>
-        </div>
-    </div>
+    // Hide loading
+    function hideLoading() {
+        const loadingDiv = document.getElementById('loadingOverlay');
+        if (loadingDiv) {
+            loadingDiv.remove();
+        }
+    }
     
-    <div class="container">
-        <!-- Print Controls -->
-        <div class="no-print text-center my-4">
-            <button onclick="startPrintProcess()" class="btn btn-primary btn-lg">
-                <i class="fas fa-print me-2"></i>Print Security Copy
-            </button>
-            <a href="{{ url_for('gate_pass.gate_pass_list') }}" class="btn btn-secondary btn-lg ms-3">
-                <i class="fas fa-arrow-left me-2"></i>Back to List
-            </a>
-            <button onclick="printWithHeader()" class="btn btn-success btn-lg ms-3">
-                <i class="fas fa-print me-2"></i>Print with Company Header
-            </button>
-            
-            <div class="mt-3">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <strong>Note:</strong> Printing will notify all parties including creator, department head, store manager, and system admins.
-                </div>
-            </div>
-        </div>
-
-        <!-- Gate Pass Print Area -->
-        <div class="print-area">
-            <!-- Security Stamp -->
-            <div class="security-stamp">
-                SECURITY COPY<br>
-                {{ now.strftime('%d/%m/%Y') }}
-            </div>
-
-            <!-- Company Header -->
-            <div class="company-header">
-                <!-- Add your company logo here -->
-                <!-- <img src="{{ url_for('static', filename='images/company-logo.png') }}" alt="NR Group" class="company-logo"> -->
-                
-                <div class="company-name">NR GROUP</div>
-                <div class="company-address">Square Masterbari, Jamirdia, Bhaluka, Mymensingh</div>
-                <div class="company-tagline">Quality Textiles Manufacturer & Exporter</div>
-            </div>
-
-            <!-- Gate Pass Header -->
-            <div class="gate-pass-header">
-                <h1 class="gate-pass-title">GATE PASS - SECURITY DEPARTMENT</h1>
-                <div class="gate-pass-subtitle">
-                    Pass No: <strong>{{ gate_pass.pass_number }}</strong> | 
-                    Printed: {{ now.strftime('%d/%m/%Y %H:%M') }} | 
-                    Printed By: {{ security_name }}
-                    {% if gate_pass.urgent %}
-                    <span class="status-badge status-urgent ms-2">URGENT</span>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Section 1: Basic Information -->
-            <div class="content-section">
-                <div class="section-title">1. BASIC INFORMATION</div>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="info-label">Pass Number:</span>
-                        <span class="info-value"><strong>{{ gate_pass.pass_number }}</strong></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Created Date:</span>
-                        <span class="info-value">{{ gate_pass.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Created By:</span>
-                        <span class="info-value">{{ gate_pass.creator_name }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Designation:</span>
-                        <span class="info-value">{{ gate_pass.creator_designation }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Division:</span>
-                        <span class="info-value">{{ gate_pass.division_name }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Department:</span>
-                        <span class="info-value">{{ gate_pass.department_name }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Department Head:</span>
-                        <span class="info-value">
-                            {% if gate_pass.dept_head_name %}
-                            {{ gate_pass.dept_head_name }} ({{ gate_pass.dept_head_designation }})
-                            {% else %}
-                            Not Assigned
-                            {% endif %}
-                        </span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Department Approval:</span>
-                        <span class="info-value">
-                            <span class="status-badge status-{{ gate_pass.department_approval }}">
-                                {{ gate_pass.department_approval|upper }}
-                            </span>
-                            {% if gate_pass.department_approval_date %}
-                            <br><small>{{ gate_pass.department_approval_date.strftime('%d/%m/%Y %H:%M') }}</small>
-                            {% endif %}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Section 2: Material Details -->
-            <div class="content-section">
-                <div class="section-title">2. MATERIAL DETAILS</div>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="info-label">Material Description:</span>
-                        <span class="info-value">{{ gate_pass.material_description }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Destination:</span>
-                        <span class="info-value">{{ gate_pass.destination }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Purpose:</span>
-                        <span class="info-value">{{ gate_pass.purpose }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Material Type:</span>
-                        <span class="info-value">{{ gate_pass.material_type|title }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Material Status:</span>
-                        <span class="info-value">{{ gate_pass.material_status|title }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Store Location:</span>
-                        <span class="info-value">
-                            {% if gate_pass.store_location %}
-                            {{ gate_pass.store_location|replace('_', ' ')|title }}
-                            {% else %}
-                            Not Assigned
-                            {% endif %}
-                        </span>
-                    </div>
-                </div>
-                
-                <!-- Material Images -->
-                {% if gate_pass.images_list and gate_pass.images_list|length > 0 %}
-                <div class="mt-3">
-                    <strong>Material Images:</strong>
-                    <div class="material-images">
-                        {% for image in gate_pass.images_list[:3] %}
-                        <img src="{{ url_for('static', filename=image) }}" alt="Material Image" class="material-image">
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-
-            <!-- Section 3: Receiver & Dates -->
-            <div class="content-section">
-                <div class="section-title">3. RECEIVER INFORMATION & DATES</div>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="info-label">Receiver Name:</span>
-                        <span class="info-value">{{ gate_pass.receiver_name }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Receiver Contact:</span>
-                        <span class="info-value">{{ gate_pass.receiver_contact or 'N/A' }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Send Date:</span>
-                        <span class="info-value">{{ gate_pass.send_date.strftime('%d/%m/%Y %H:%M') }}</span>
-                    </div>
-                    {% if gate_pass.material_type == 'returnable' and gate_pass.expected_return_date %}
-                    <div class="info-item">
-                        <span class="info-label">Expected Return:</span>
-                        <span class="info-value">{{ gate_pass.expected_return_date.strftime('%d/%m/%Y %H:%M') }}</span>
-                    </div>
-                    {% endif %}
-                    <div class="info-item">
-                        <span class="info-label">Current Status:</span>
-                        <span class="info-value">
-                            <span class="status-badge status-{{ gate_pass.status }}">
-                                {{ gate_pass.status|upper|replace('_', ' ') }}
-                            </span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Section 4: QR Codes -->
-            <div class="content-section">
-                <div class="section-title">4. VERIFICATION CODES</div>
-                <div class="qr-section">
-                    <!-- QR Code 1: For Form -->
-                    <div class="qr-box">
-                        <div class="qr-title">FORM QR CODE</div>
-                        {% if gate_pass.qr_form_img %}
-                        <img src="{{ gate_pass.qr_form_img }}" alt="Form QR Code" class="qr-image">
-                        {% else %}
-                        <div style="width: 150px; height: 150px; background: #eee; display: flex; align-items: center; justify-content: center;">
-                            QR Not Generated
-                        </div>
-                        {% endif %}
-                        <div class="qr-notes">
-                            Scan this code to verify gate pass details<br>
-                            (Keep with security copy)
-                        </div>
-                    </div>
-                    
-                    <!-- QR Code 2: For Sticker -->
-                    <div class="qr-box">
-                        <div class="qr-title">STICKER QR CODE</div>
-                        {% if gate_pass.qr_sticker_img %}
-                        <img src="{{ gate_pass.qr_sticker_img }}" alt="Sticker QR Code" class="qr-image">
-                        {% else %}
-                        <div style="width: 150px; height: 150px; background: #eee; display: flex; align-items: center; justify-content: center;">
-                            QR Not Generated
-                        </div>
-                        {% endif %}
-                        <div class="qr-notes">
-                            Stick this code on material<br>
-                            (For return verification)
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Section 5: Important Notes -->
-            <div class="content-section">
-                <div class="section-title">5. IMPORTANT INSTRUCTIONS</div>
-                <div class="warning-box">
-                    <strong>⚠️ SECURITY DEPARTMENT INSTRUCTIONS:</strong>
-                    <ul class="mb-0" style="padding-left: 20px;">
-                        <li>This is the SECURITY COPY - Must remain with security office</li>
-                        <li>Check QR code when material goes out and returns</li>
-                        <li>Verify receiver identity before releasing material</li>
-                        <li>For returnable items, ensure return within specified date</li>
-                        <li>Report any discrepancy immediately to supervisor</li>
-                        <li>Sticker QR code must be attached to material</li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- Section 6: Signatures -->
-            <div class="content-section">
-                <div class="section-title">6. AUTHORIZATIONS</div>
-                <div class="signature-section">
-                    <div class="signature-row">
-                        <!-- Department Head Signature -->
-                        <div class="signature-box">
-                            <div class="signature-line"></div>
-                            <div class="signature-name">
-                                {% if gate_pass.dept_head_name %}
-                                {{ gate_pass.dept_head_name }}
-                                {% else %}
-                                Department Head
-                                {% endif %}
-                            </div>
-                            <div class="signature-designation">
-                                Department Head Signature
-                                {% if gate_pass.department_approval_date %}
-                                <br>Date: {{ gate_pass.department_approval_date.strftime('%d/%m/%Y') }}
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <!-- Security Officer Signature -->
-                        <div class="signature-box">
-                            <div class="signature-line"></div>
-                            <div class="signature-name">{{ security_name }}</div>
-                            <div class="signature-designation">
-                                Security Officer Signature
-                                <br>Date: {{ now.strftime('%d/%m/%Y') }}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Receiver Signature -->
-                    <div class="signature-box" style="width: 60%; margin: 30px auto 0 auto;">
-                        <div class="signature-line"></div>
-                        <div class="signature-name">{{ gate_pass.receiver_name }}</div>
-                        <div class="signature-designation">
-                            Receiver Signature & Stamp
-                            <br>Date: __________________
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="footer-notes">
-                <p>
-                    <strong>NR GROUP GATE PASS SYSTEM v2.0</strong> | 
-                    This document is computer generated and valid without signature | 
-                    Page 1 of 1 | 
-                    Printed on: {{ now.strftime('%d/%m/%Y %H:%M:%S') }}
-                </p>
-                <p>
-                    For any queries, contact: Security Department - Ext: 101 | 
-                    Gate Pass System © 2024 NR Group. All rights reserved.
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Initialize toast
-        const printToast = new bootstrap.Toast(document.getElementById('printToast'));
-        
-        // Auto print and send notification
-        window.onload = function() {
-            // Check if auto-print is enabled (uncomment if needed)
-            // setTimeout(function() {
-            //     startPrintProcess();
-            // }, 1000);
-        };
-        
-        // Main print process function
-        function startPrintProcess() {
-            // Show loading overlay
-            document.getElementById('printLoading').classList.remove('hidden');
-            
-            // Step 1: Send notification that printing has started
-            sendPrintNotification();
-        }
-        
-        // Send notification to server that gate pass is being printed
-        function sendPrintNotification() {
-            const gatePassId = "{{ gate_pass.id }}";
-            const printedByName = "{{ security_name }}";
-            
-            fetch('/api/notify_gate_pass_printing', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    gate_pass_id: gatePassId,
-                    printed_by: "{{ session['user_id'] }}",
-                    printed_by_name: printedByName
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    console.log('Print notification sent successfully');
-                    
-                    // Step 2: Adjust for print
-                    adjustForPrint();
-                    
-                    // Step 3: Trigger actual print
-                    setTimeout(() => {
-                        window.print();
-                    }, 500);
-                } else {
-                    showToast('Error sending notification: ' + data.message, 'error');
-                    hideLoading();
-                }
-            })
-            .catch(error => {
-                console.error('Error sending print notification:', error);
-                showToast('Error sending notification', 'error');
-                hideLoading();
-            });
-        }
-        
-        // Return to list after print
-        window.onafterprint = function() {
-            setTimeout(function() {
-                // Send final notification that printing is complete
-                sendPrintCompleteNotification();
-                
-                // Hide loading
-                hideLoading();
-                
-                // Show success toast
-                showToast('Gate pass printed successfully! All parties have been notified.', 'success');
-                
-                // Redirect after 2 seconds
-                setTimeout(function() {
-                    window.location.href = "{{ url_for('gate_pass.gate_pass_list') }}";
-                }, 2000);
-            }, 1000);
-        };
-        
-        // Send notification that printing is complete
-        function sendPrintCompleteNotification() {
-            const gatePassId = "{{ gate_pass.id }}";
-            
-            fetch('/api/notify_gate_pass_print_complete', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    gate_pass_id: gatePassId,
-                    printed_by: "{{ session['user_id'] }}",
-                    pass_number: "{{ gate_pass.pass_number }}",
-                    creator_name: "{{ gate_pass.creator_name }}",
-                    department_name: "{{ gate_pass.department_name }}"
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    console.log('Print completion notification sent');
-                }
-            })
-            .catch(error => {
-                console.error('Error sending completion notification:', error);
-            });
-        }
-        
-        // Print with company header
-        function printWithHeader() {
-            startPrintProcess();
-        }
-        
-        // Ensure everything fits on one page
-        function adjustForPrint() {
-            const printArea = document.querySelector('.print-area');
-            const contentHeight = printArea.scrollHeight;
-            const pageHeight = 1122; // A4 height in pixels (297mm)
-            
-            if (contentHeight > pageHeight) {
-                // Reduce font sizes slightly
-                document.body.style.fontSize = '11px';
-                
-                // Adjust QR code sizes
-                const qrImages = document.querySelectorAll('.qr-image');
-                qrImages.forEach(img => {
-                    img.style.width = '120px';
-                    img.style.height = '120px';
-                });
-                
-                // Adjust material images
-                const materialImages = document.querySelectorAll('.material-image');
-                materialImages.forEach(img => {
-                    img.style.width = '60px';
-                    img.style.height = '60px';
-                });
-            }
-            
-            // Ensure all images are visible for printing
-            document.querySelectorAll('.qr-image, .material-image').forEach(img => {
-                if (img.tagName === 'IMG') {
-                    img.style.display = 'block';
-                    img.style.visibility = 'visible';
-                    img.style.opacity = '1';
-                }
-            });
-        }
-        
-        // Call adjust function before print
-        window.addEventListener('beforeprint', adjustForPrint);
-        
-        // Show toast notification
-        function showToast(message, type = 'success') {
-            const toastBody = document.getElementById('printToastMessage');
-            const toast = document.getElementById('printToast');
-            const toastHeader = toast.querySelector('.toast-header');
-            
-            toastBody.textContent = message;
-            
-            // Set color based on type
-            if (type === 'error') {
-                toastHeader.className = 'toast-header bg-danger text-white';
-            } else if (type === 'warning') {
-                toastHeader.className = 'toast-header bg-warning text-dark';
-            } else {
-                toastHeader.className = 'toast-header bg-success text-white';
-            }
-            
-            printToast.show();
-        }
-        
-        // Hide loading overlay
-        function hideLoading() {
-            document.getElementById('printLoading').classList.add('hidden');
-        }
-        
-        // Handle browser print dialog cancel
-        window.addEventListener('afterprint', function() {
-            // Check if print was actually completed
-            if (!document.body.classList.contains('print-mode')) {
-                // User likely cancelled the print
-                hideLoading();
-                showToast('Print was cancelled', 'warning');
-            }
-        });
-    </script>
-</body>
-</html>
+    // Show toast
+    function showToast(message, type = 'success') {
+        alert(message); // Simple alert for now
+    }
+</script>
+{% endblock %}
+[file content end]

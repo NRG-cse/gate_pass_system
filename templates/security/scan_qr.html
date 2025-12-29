@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block page_title %}QR Code Scanner - Security{% endblock %}
+{% block page_title %}QR Code Scanner & Manual Return - Security{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3">
@@ -9,16 +9,16 @@
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
-                        <i class="fas fa-qrcode me-2"></i>Scan QR Code for Material Return
+                        <i class="fas fa-qrcode me-2"></i>Material Return - QR Scanner & Manual Entry
                     </h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <!-- Camera Preview -->
+                            <!-- Camera Scanner Section -->
                             <div class="card mb-4">
                                 <div class="card-header bg-light">
-                                    <h6 class="mb-0">Camera Scanner</h6>
+                                    <h6 class="mb-0"><i class="fas fa-camera me-2"></i>QR Code Scanner</h6>
                                 </div>
                                 <div class="card-body text-center">
                                     <div id="cameraPreview" class="border rounded mb-3" style="height: 300px; background: #f8f9fa;">
@@ -33,19 +33,20 @@
                                 </div>
                             </div>
                             
-                            <!-- Manual QR Input -->
-                            <div class="card">
-                                <div class="card-header bg-light">
-                                    <h6 class="mb-0">Manual QR Code Input</h6>
+                            <!-- Manual Gate Pass Return Section -->
+                            <div class="card" id="manualReturnSection">
+                                <div class="card-header bg-warning">
+                                    <h6 class="mb-0"><i class="fas fa-keyboard me-2"></i>Manual Gate Pass Return</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="mb-3">
-                                        <label class="form-label">Enter QR Code Data:</label>
-                                        <textarea id="manualQrInput" class="form-control" rows="4" 
-                                                  placeholder="Paste QR code data here or scan with camera..."></textarea>
+                                        <label class="form-label">Enter Gate Pass Number:</label>
+                                        <input type="text" id="manualPassNumber" class="form-control" 
+                                               placeholder="Enter gate pass number (e.g., GP20241229123000)">
+                                        <small class="text-muted">Enter gate pass number starting with "GP"</small>
                                     </div>
-                                    <button id="processManualQr" class="btn btn-success w-100">
-                                        <i class="fas fa-check me-2"></i>Process QR Code
+                                    <button id="manualReturnBtn" class="btn btn-warning w-100">
+                                        <i class="fas fa-check-circle me-2"></i>Mark as Returned
                                     </button>
                                 </div>
                             </div>
@@ -55,16 +56,16 @@
                             <!-- Scan Results -->
                             <div class="card">
                                 <div class="card-header bg-info text-white">
-                                    <h6 class="mb-0">Scan Results</h6>
+                                    <h6 class="mb-0">Return Results</h6>
                                 </div>
                                 <div class="card-body">
                                     <div id="scanResult" class="text-center py-4">
                                         <div class="empty-state-icon mb-3">
                                             <i class="fas fa-qrcode fa-4x text-muted opacity-25"></i>
                                         </div>
-                                        <h5 class="text-muted">No QR Code Scanned Yet</h5>
+                                        <h5 class="text-muted">No Return Processed Yet</h5>
                                         <p class="text-muted small">
-                                            Scan a QR code or manually enter QR data to mark material as returned
+                                            Scan QR code or manually enter gate pass number to mark material as returned
                                         </p>
                                     </div>
                                     
@@ -73,7 +74,7 @@
                                         <div class="spinner-border text-primary" role="status">
                                             <span class="visually-hidden">Loading...</span>
                                         </div>
-                                        <p class="mt-2">Processing QR code...</p>
+                                        <p class="mt-2">Processing...</p>
                                     </div>
                                     
                                     <!-- Success Result -->
@@ -83,14 +84,14 @@
                                             <div id="successDetails" class="mt-3"></div>
                                         </div>
                                         <button id="scanAnother" class="btn btn-primary w-100">
-                                            <i class="fas fa-redo me-2"></i>Scan Another QR Code
+                                            <i class="fas fa-redo me-2"></i>Process Another Return
                                         </button>
                                     </div>
                                     
                                     <!-- Error Result -->
                                     <div id="errorResult" class="d-none">
                                         <div class="alert alert-danger">
-                                            <h5><i class="fas fa-exclamation-circle me-2"></i>Scan Failed</h5>
+                                            <h5><i class="fas fa-exclamation-circle me-2"></i>Return Failed</h5>
                                             <p id="errorMessage" class="mb-0"></p>
                                         </div>
                                         <button id="tryAgain" class="btn btn-warning w-100">
@@ -100,14 +101,19 @@
                                 </div>
                             </div>
                             
-                            <!-- Recent Scans -->
+                            <!-- Today's Returns -->
                             <div class="card mt-4">
-                                <div class="card-header bg-light">
-                                    <h6 class="mb-0">Today's Returns</h6>
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0"><i class="fas fa-history me-2"></i>Today's Returns</h6>
                                 </div>
                                 <div class="card-body p-0">
                                     <div id="todayReturns" class="list-group list-group-flush">
-                                        <!-- Will be populated by JavaScript -->
+                                        <div class="list-group-item text-center py-4">
+                                            <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                            Loading today's returns...
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -136,11 +142,16 @@
     border: none;
     border-bottom: 1px solid rgba(0,0,0,0.1);
 }
+.manual-return-section {
+    background-color: #fff3cd;
+    border-left: 4px solid #ffc107;
+}
 </style>
 
 <script>
 let html5QrCode;
 let cameraActive = false;
+let selectedCameraId = null;
 
 // Start Camera
 document.getElementById('startCamera').addEventListener('click', function() {
@@ -152,9 +163,14 @@ document.getElementById('stopCamera').addEventListener('click', function() {
     stopCamera();
 });
 
-// Manual QR Processing
-document.getElementById('processManualQr').addEventListener('click', function() {
-    const qrData = document.getElementById('manualQrInput').value.trim();
+// Manual Return Button
+document.getElementById('manualReturnBtn').addEventListener('click', function() {
+    manualReturn();
+});
+
+// Manual QR Processing (for QR data input)
+document.getElementById('processManualQr')?.addEventListener('click', function() {
+    const qrData = document.getElementById('manualQrInput')?.value.trim();
     if (qrData) {
         processQrCode(qrData);
     } else {
@@ -172,38 +188,119 @@ document.getElementById('tryAgain').addEventListener('click', function() {
     resetScanner();
 });
 
-function startCamera() {
-    const preview = document.getElementById('cameraPreview');
-    
-    html5QrCode = new Html5Qrcode("cameraPreview");
-    
-    const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-        if (decodedText) {
-            stopCamera();
-            processQrCode(decodedText);
+// Get camera devices
+async function getCameras() {
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        
+        if (videoDevices.length === 0) {
+            showError('No camera found on this device');
+            return [];
         }
-    };
-    
-    const config = { 
-        fps: 10, 
-        qrbox: { width: 250, height: 250 } 
-    };
-    
-    html5QrCode.start(
-        { facingMode: "environment" },
-        config,
-        qrCodeSuccessCallback,
-        (errorMessage) => {
-            console.log(`QR Code no longer in front of camera: ${errorMessage}`);
+        
+        return videoDevices;
+    } catch (error) {
+        console.error('Error getting cameras:', error);
+        showError('Cannot access camera. Check permissions.');
+        return [];
+    }
+}
+
+// Start Camera with better error handling
+async function startCamera() {
+    try {
+        const preview = document.getElementById('cameraPreview');
+        
+        // Clear previous content
+        preview.innerHTML = '';
+        
+        html5QrCode = new Html5Qrcode("cameraPreview");
+        
+        // Get available cameras
+        const cameras = await getCameras();
+        
+        let cameraId = null;
+        if (cameras.length > 0) {
+            // Try to find back camera first
+            const backCamera = cameras.find(cam => 
+                cam.label.toLowerCase().includes('back') || 
+                cam.label.toLowerCase().includes('rear')
+            );
+            cameraId = backCamera ? backCamera.deviceId : cameras[0].deviceId;
+            selectedCameraId = cameraId;
         }
-    ).then(() => {
+        
+        const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+            if (decodedText) {
+                stopCamera();
+                processQrCode(decodedText);
+            }
+        };
+        
+        const config = { 
+            fps: 10, 
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.333333,
+            videoConstraints: {
+                deviceId: cameraId ? { exact: cameraId } : undefined,
+                facingMode: { exact: "environment" }
+            }
+        };
+        
+        // Try with specific device ID first
+        if (cameraId) {
+            try {
+                await html5QrCode.start(
+                    { deviceId: { exact: cameraId } },
+                    config,
+                    qrCodeSuccessCallback,
+                    (errorMessage) => {
+                        // Expected error when no QR code detected
+                        console.log(`Scanning: ${errorMessage}`);
+                    }
+                );
+                cameraActive = true;
+                document.getElementById('startCamera').disabled = true;
+                document.getElementById('stopCamera').disabled = false;
+                return;
+            } catch (deviceError) {
+                console.log('Specific camera failed, trying default...');
+            }
+        }
+        
+        // Fallback to default facing mode
+        await html5QrCode.start(
+            { facingMode: "environment" },
+            config,
+            qrCodeSuccessCallback,
+            (errorMessage) => {
+                console.log(`Scanning: ${errorMessage}`);
+            }
+        );
+        
         cameraActive = true;
         document.getElementById('startCamera').disabled = true;
         document.getElementById('stopCamera').disabled = false;
-    }).catch((err) => {
-        console.error(`Unable to start camera: ${err}`);
-        showError('Could not access camera. Please check permissions.');
-    });
+        
+    } catch (error) {
+        console.error(`Unable to start camera: ${error}`);
+        let errorMsg = 'Could not access camera. ';
+        
+        if (error.name === 'NotAllowedError') {
+            errorMsg += 'Camera permission denied. Please allow camera access in browser settings.';
+        } else if (error.name === 'NotFoundError') {
+            errorMsg += 'No camera found on this device.';
+        } else if (error.name === 'NotSupportedError') {
+            errorMsg += 'Camera not supported. Try manual input instead.';
+        } else {
+            errorMsg += `Error: ${error.message}`;
+        }
+        
+        showError(errorMsg);
+        // Highlight manual input section
+        document.getElementById('manualReturnSection').classList.add('manual-return-section');
+    }
 }
 
 function stopCamera() {
@@ -217,6 +314,48 @@ function stopCamera() {
             console.error(`Unable to stop camera: ${err}`);
         });
     }
+}
+
+// Manual Return Functionality
+function manualReturn() {
+    const passNumber = document.getElementById('manualPassNumber').value.trim().toUpperCase();
+    
+    if (!passNumber) {
+        showError('Please enter a gate pass number');
+        return;
+    }
+    
+    if (!passNumber.startsWith('GP')) {
+        showError('Invalid gate pass number format. Should start with GP (e.g., GP20241229123000)');
+        return;
+    }
+    
+    showLoading();
+    
+    fetch('/security/manual_return', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ pass_number: passNumber })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        
+        if (data.success) {
+            showSuccess(data);
+            loadTodayReturns();
+            document.getElementById('manualPassNumber').value = '';
+        } else {
+            showError(data.message);
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        showError('Network error. Please try again.');
+        console.error('Error:', error);
+    });
 }
 
 function processQrCode(qrData) {
@@ -260,21 +399,34 @@ function hideLoading() {
 
 function showSuccess(data) {
     const successDetails = document.getElementById('successDetails');
-    successDetails.innerHTML = `
-        <div class="text-start">
-            <p><strong>Pass Number:</strong> ${data.gate_pass.pass_number}</p>
-            <p><strong>Material:</strong> ${data.gate_pass.material_description}</p>
-            <p><strong>Department:</strong> ${data.gate_pass.department}</p>
-            <p><strong>Return Time:</strong> ${data.gate_pass.return_time}</p>
-            <p class="text-success"><strong>Status:</strong> ✅ Material Returned Successfully</p>
-        </div>
-    `;
+    
+    let successHtml = '';
+    if (data.gate_pass) {
+        successHtml = `
+            <div class="text-start">
+                <p><strong>Pass Number:</strong> ${data.gate_pass.pass_number}</p>
+                <p><strong>Material:</strong> ${data.gate_pass.material_description}</p>
+                <p><strong>Department:</strong> ${data.gate_pass.department}</p>
+                <p><strong>Return Time:</strong> ${data.gate_pass.return_time || new Date().toLocaleTimeString()}</p>
+                <p class="text-success"><strong>Status:</strong> ✅ Material Returned Successfully</p>
+            </div>
+        `;
+    } else {
+        successHtml = `
+            <div class="text-start">
+                <p><strong>Pass Number:</strong> ${data.message.split('Gate Pass ')[1]?.split(' ')[0] || 'N/A'}</p>
+                <p class="text-success"><strong>Status:</strong> ✅ Material Returned Successfully</p>
+            </div>
+        `;
+    }
+    
+    successDetails.innerHTML = successHtml;
     
     document.getElementById('scanResult').classList.add('d-none');
     document.getElementById('successResult').classList.remove('d-none');
     
     // Clear manual input
-    document.getElementById('manualQrInput').value = '';
+    document.getElementById('manualQrInput')?.value = '';
 }
 
 function showError(message) {
@@ -287,7 +439,11 @@ function resetScanner() {
     document.getElementById('scanResult').classList.remove('d-none');
     document.getElementById('successResult').classList.add('d-none');
     document.getElementById('errorResult').classList.add('d-none');
-    document.getElementById('manualQrInput').value = '';
+    document.getElementById('manualQrInput')?.value = '';
+    document.getElementById('manualPassNumber').value = '';
+    
+    // Remove manual section highlight
+    document.getElementById('manualReturnSection').classList.remove('manual-return-section');
     
     // Restart camera if it was active
     if (cameraActive) {
@@ -301,21 +457,19 @@ function loadTodayReturns() {
     .then(response => response.json())
     .then(data => {
         const container = document.getElementById('todayReturns');
-        if (data.success && data.returns.length > 0) {
+        if (data.success && data.returns && data.returns.length > 0) {
             let html = '';
             data.returns.forEach(item => {
                 html += `
                     <div class="list-group-item">
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <strong>${item.pass_number}</strong>
-                                <br>
+                                <strong class="d-block">${item.pass_number}</strong>
                                 <small class="text-muted">${item.department}</small>
                             </div>
                             <div class="text-end">
                                 <span class="badge bg-success">${item.return_time}</span>
-                                <br>
-                                <small class="text-muted">${item.material}</small>
+                                <div class="small text-muted text-truncate" style="max-width: 150px;">${item.material}</div>
                             </div>
                         </div>
                     </div>
@@ -333,12 +487,26 @@ function loadTodayReturns() {
     })
     .catch(error => {
         console.error('Error loading returns:', error);
+        const container = document.getElementById('todayReturns');
+        container.innerHTML = `
+            <div class="list-group-item text-center py-4">
+                <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                <span class="text-muted">Error loading returns</span>
+            </div>
+        `;
     });
 }
 
 // Load today's returns on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadTodayReturns();
+    
+    // Allow pressing Enter in manual pass number field
+    document.getElementById('manualPassNumber').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            manualReturn();
+        }
+    });
 });
 
 // Clean up camera on page unload

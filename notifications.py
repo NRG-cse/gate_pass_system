@@ -81,26 +81,50 @@ def get_user_notifications(user_id, limit=10):
     
     return notifications
 
-def mark_notification_read(notification_id):
+def mark_notification_read(notification_id, user_id=None):
+    """
+    Mark a notification as read.
+    If user_id is provided, only mark read if notification belongs to that user.
+    """
     conn = get_db_connection()
     if conn is None:
-        return
+        return False
     
     cursor = conn.cursor()
     
     try:
-        cursor.execute('''
-            UPDATE notifications SET is_read = TRUE WHERE id = %s
-        ''', (notification_id,))
+        if user_id:
+            # Only mark read if notification belongs to the user
+            cursor.execute('''
+                UPDATE notifications 
+                SET is_read = TRUE 
+                WHERE id = %s AND user_id = %s
+            ''', (notification_id, user_id))
+        else:
+            # Original behavior (for backward compatibility)
+            cursor.execute('''
+                UPDATE notifications SET is_read = TRUE WHERE id = %s
+            ''', (notification_id,))
         
+        affected_rows = cursor.rowcount
         conn.commit()
+        
+        if affected_rows > 0:
+            print(f"✅ Notification {notification_id} marked as read")
+            return True
+        else:
+            print(f"⚠️ Notification {notification_id} not found or doesn't belong to user")
+            return False
+            
     except Exception as e:
         print(f"Error marking notification read: {e}")
         conn.rollback()
+        return False
     finally:
         cursor.close()
-        conn.close()
-
+        conn.close()    
+        conn.commit()
+        
 def check_overdue_gate_passes():
     """Check for overdue gate passes and send notifications"""
     conn = get_db_connection()
