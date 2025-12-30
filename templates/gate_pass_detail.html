@@ -709,7 +709,7 @@ let currentAction = null;
 let currentRole = null;
 const gatePassId = {{ gate_pass.id }};
 
-// ✅ FIXED: Show Comment Modal
+// ✅ FIXED: Show Comment Modal - INSTANT APPROVAL VERSION
 function showCommentModal(action, role = null) {
     currentAction = action;
     currentRole = role || '{{ session.role }}';
@@ -725,10 +725,12 @@ function showCommentModal(action, role = null) {
         modalTitle.innerHTML = '<i class="fas fa-check me-2"></i>Approve Gate Pass';
         document.getElementById('skipCommentBtn').innerHTML = '<i class="fas fa-forward me-1"></i>Skip & Approve';
         document.getElementById('submitWithCommentBtn').innerHTML = '<i class="fas fa-check me-1"></i>Approve with Comment';
+        document.getElementById('submitWithCommentBtn').className = 'btn btn-success';
     } else {
         modalTitle.innerHTML = '<i class="fas fa-times me-2"></i>Reject Gate Pass';
         document.getElementById('skipCommentBtn').innerHTML = '<i class="fas fa-forward me-1"></i>Skip & Reject';
         document.getElementById('submitWithCommentBtn').innerHTML = '<i class="fas fa-times me-1"></i>Reject with Comment';
+        document.getElementById('submitWithCommentBtn').className = 'btn btn-danger';
     }
     
     // Show modal
@@ -736,61 +738,49 @@ function showCommentModal(action, role = null) {
     if (modalElement) {
         const modal = new bootstrap.Modal(modalElement);
         modal.show();
+        
+        // ✅ INSTANT FIX: Focus on textarea for quick input
+        setTimeout(() => {
+            document.getElementById('approvalComment')?.focus();
+        }, 300);
     }
 }
 
-// ✅ FIXED: Process approval/reject WITHOUT comment (Skip button)
+// ✅ INSTANT FIX: Quick approval without comment (Enter key shortcut)
+function setupQuickApproval() {
+    // Enter key in textarea submits with comment
+    document.getElementById('approvalComment')?.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            processWithComment();
+        }
+    });
+    
+    // ESC key closes modal
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && document.getElementById('commentModal').classList.contains('show')) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('commentModal'));
+            modal?.hide();
+        }
+    });
+}
+
+// ✅ FIXED: Process approval/reject WITHOUT comment (Skip button) - INSTANT VERSION
 function processWithoutComment() {
     if (!currentAction || !gatePassId) {
         showToast('Error: Action or gate pass ID not set!', 'error');
         return;
     }
     
-    // Close modal
+    // Close modal immediately
     const modal = bootstrap.Modal.getInstance(document.getElementById('commentModal'));
     if (modal) modal.hide();
     
-    // Show processing toast
-    showToast(`Processing ${currentAction}...`, 'info');
-    
-    // Disable buttons during processing
-    disableActionButtons(true);
-    
-    // Send request without comment
-    fetch(`/gate_pass/approve_gate_pass_with_comment/${gatePassId}/${currentAction}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            comment: ''
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast(data.message || `${currentAction.charAt(0).toUpperCase() + currentAction.slice(1)}d successfully!`, 'success');
-            
-            // Hide the approve/reject buttons after approval
-            hideActionButtons();
-            
-            // Auto refresh after 1.5 seconds
-            setTimeout(() => {
-                location.reload();
-            }, 1500);
-        } else {
-            showToast(data.message || `Error processing ${currentAction}`, 'error');
-            disableActionButtons(false);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showToast('Error processing request', 'error');
-        disableActionButtons(false);
-    });
+    // Start processing INSTANTLY
+    startInstantProcessing(currentAction, '', false);
 }
 
-// ✅ FIXED: Process approval/reject WITH comment
+// ✅ FIXED: Process approval/reject WITH comment - INSTANT VERSION
 function processWithComment() {
     if (!currentAction || !gatePassId) {
         showToast('Error: Action or gate pass ID not set!', 'error');
@@ -799,18 +789,24 @@ function processWithComment() {
     
     const comment = document.getElementById('approvalComment')?.value.trim() || '';
     
-    // Close modal
+    // Close modal immediately
     const modal = bootstrap.Modal.getInstance(document.getElementById('commentModal'));
     if (modal) modal.hide();
     
-    // Show processing toast
-    showToast(`Processing ${currentAction} with comment...`, 'info');
+    // Start processing INSTANTLY
+    startInstantProcessing(currentAction, comment, true);
+}
+
+// ✅ NEW: Instant Processing Function
+function startInstantProcessing(action, comment = '', hasComment = false) {
+    // Show instant processing notification
+    showInstantProcessingNotification(action);
     
-    // Disable buttons during processing
+    // Disable buttons immediately
     disableActionButtons(true);
     
-    // Send request with comment
-    fetch(`/gate_pass/approve_gate_pass_with_comment/${gatePassId}/${currentAction}`, {
+    // Send request immediately
+    fetch(`/gate_pass/approve_gate_pass_with_comment/${gatePassId}/${action}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -822,29 +818,65 @@ function processWithComment() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            let successMsg = data.message;
-            if (comment && data.has_comment) {
-                successMsg += ' (Comment added)';
-            }
-            showToast(successMsg, 'success');
+            // Show success message instantly
+            showInstantSuccessMessage(action, hasComment);
             
-            // Hide the approve/reject buttons after approval
+            // Hide action buttons
             hideActionButtons();
             
-            // Auto refresh after 1.5 seconds
+            // Instant refresh after 1 second
             setTimeout(() => {
                 location.reload();
-            }, 1500);
+            }, 1000);
         } else {
-            showToast(data.message || `Error processing ${currentAction}`, 'error');
+            showToast(data.message || `Error processing ${action}`, 'error');
             disableActionButtons(false);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showToast('Error processing request', 'error');
+        showToast('Network error. Please try again.', 'error');
         disableActionButtons(false);
     });
+}
+
+// ✅ NEW: Show instant processing notification
+function showInstantProcessingNotification(action) {
+    const toast = document.getElementById('liveToast');
+    const toastMessage = document.getElementById('toastMessage');
+    
+    const actionText = action === 'approve' ? 'Approving' : 'Rejecting';
+    toastMessage.innerHTML = `
+        <div class="d-flex align-items-center">
+            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+            <span>${actionText} gate pass instantly...</span>
+        </div>
+    `;
+    
+    toast.classList.remove('bg-danger');
+    toast.classList.add('bg-info');
+    
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+}
+
+// ✅ NEW: Show instant success message
+function showInstantSuccessMessage(action, hasComment = false) {
+    const toast = document.getElementById('liveToast');
+    const toastMessage = document.getElementById('toastMessage');
+    
+    const actionText = action === 'approve' ? 'approved' : 'rejected';
+    let message = `✅ Gate Pass ${actionText} instantly!`;
+    if (hasComment) {
+        message += ' (Comment added)';
+    }
+    
+    toastMessage.textContent = message;
+    toast.classList.remove('bg-info');
+    toast.classList.add('bg-success');
+    
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
 }
 
 // ✅ FIXED: Hide action buttons after approval/reject
@@ -889,43 +921,38 @@ function disableActionButtons(disable = true) {
     }
 }
 
-// ✅ FIXED: Initialize event listeners when DOM is loaded
+// ✅ FIXED: Initialize event listeners when DOM is loaded - INSTANT VERSION
 document.addEventListener('DOMContentLoaded', function() {
-    // Setup skip button (without comment)
+    setupQuickApproval();
+    
+    // Skip button (without comment)
     const skipBtn = document.getElementById('skipCommentBtn');
     if (skipBtn) {
-        // Remove any existing event listeners
-        skipBtn.replaceWith(skipBtn.cloneNode(true));
-        
-        // Get fresh reference
-        const freshSkipBtn = document.getElementById('skipCommentBtn');
-        
-        freshSkipBtn.addEventListener('click', function() {
+        skipBtn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             processWithoutComment();
-        });
+            return false;
+        };
     }
     
-    // Setup submit with comment button
+    // Submit with comment button
     const submitBtn = document.getElementById('submitWithCommentBtn');
     if (submitBtn) {
-        // Remove any existing event listeners
-        submitBtn.replaceWith(submitBtn.cloneNode(true));
-        
-        // Get fresh reference
-        const freshSubmitBtn = document.getElementById('submitWithCommentBtn');
-        
-        freshSubmitBtn.addEventListener('click', function() {
+        submitBtn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             processWithComment();
-        });
+            return false;
+        };
     }
     
-    // Setup cancel button
+    // Cancel button
     const cancelBtn = document.querySelector('#commentModal .btn-secondary');
     if (cancelBtn) {
-        cancelBtn.addEventListener('click', function() {
-            // Re-enable buttons if cancelled
+        cancelBtn.onclick = function() {
             disableActionButtons(false);
-        });
+        };
     }
 });
 
@@ -1371,6 +1398,64 @@ body {
 .comment-box {
     border-left: 3px solid #6f42c1;
     background: #f8f9fa !important;
+}
+
+/* ✅ INSTANT APPROVAL STYLES */
+#commentModal .modal-content {
+    animation: modalSlideIn 0.2s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#commentModal textarea {
+    transition: all 0.2s;
+}
+
+#commentModal textarea:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.btn-instantly {
+    transition: all 0.2s !important;
+}
+
+.btn-instantly:hover {
+    transform: scale(1.02);
+}
+
+.btn-instantly:active {
+    transform: scale(0.98);
+}
+
+/* Quick action animations */
+@keyframes quickApprove {
+    0% { background-color: #198754; }
+    50% { background-color: #25b374; }
+    100% { background-color: #198754; }
+}
+
+@keyframes quickReject {
+    0% { background-color: #dc3545; }
+    50% { background-color: #e4606d; }
+    100% { background-color: #dc3545; }
+}
+
+.quick-approving {
+    animation: quickApprove 0.5s ease infinite;
+}
+
+.quick-rejecting {
+    animation: quickReject 0.5s ease infinite;
 }
 
 /* ========== PRINT SPECIFIC STYLES ========== */

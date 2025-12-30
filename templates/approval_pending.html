@@ -675,6 +675,64 @@
     box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
 
+/* ✅ INSTANT APPROVAL STYLES */
+#commentModal .modal-content {
+    animation: modalSlideIn 0.2s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#commentModal textarea {
+    transition: all 0.2s;
+}
+
+#commentModal textarea:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.btn-instantly {
+    transition: all 0.2s !important;
+}
+
+.btn-instantly:hover {
+    transform: scale(1.02);
+}
+
+.btn-instantly:active {
+    transform: scale(0.98);
+}
+
+/* Quick action animations */
+@keyframes quickApprove {
+    0% { background-color: #198754; }
+    50% { background-color: #25b374; }
+    100% { background-color: #198754; }
+}
+
+@keyframes quickReject {
+    0% { background-color: #dc3545; }
+    50% { background-color: #e4606d; }
+    100% { background-color: #dc3545; }
+}
+
+.quick-approving {
+    animation: quickApprove 0.5s ease infinite;
+}
+
+.quick-rejecting {
+    animation: quickReject 0.5s ease infinite;
+}
+
 @media (max-width: 768px) {
     .stat-card .stat-icon-container {
         width: 50px;
@@ -705,6 +763,307 @@ let currentApprovalContext = {
     action: null,
     role: null
 };
+
+// ✅ INSTANT FIX: Department Head Approval with Comment Modal
+function approveGatePassWithModal(passId, action) {
+    currentApprovalContext = {
+        passId: passId,
+        action: action,
+        role: 'department_head'
+    };
+    
+    // Clear previous comment
+    if (document.getElementById('approvalComment')) {
+        document.getElementById('approvalComment').value = '';
+    }
+    
+    // ✅ INSTANT: Show comment modal
+    const modalElement = document.getElementById('commentModal');
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        
+        // Focus on textarea for quick input
+        setTimeout(() => {
+            document.getElementById('approvalComment')?.focus();
+        }, 300);
+    }
+}
+
+// ✅ INSTANT FIX: Store Manager Approval with Comment Modal
+function storeApproveGatePassWithModal(passId, action) {
+    currentApprovalContext = {
+        passId: passId,
+        action: action,
+        role: 'store_manager'
+    };
+    
+    // Clear previous comment
+    if (document.getElementById('approvalComment')) {
+        document.getElementById('approvalComment').value = '';
+    }
+    
+    // ✅ INSTANT: Show comment modal
+    const modalElement = document.getElementById('commentModal');
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        
+        // Focus on textarea for quick input
+        setTimeout(() => {
+            document.getElementById('approvalComment')?.focus();
+        }, 300);
+    }
+}
+
+// ✅ INSTANT FIX: New function for approval with comment - FAST VERSION
+function processApprovalWithComment(passId, action, role, comment) {
+    const button = document.querySelector(`button[onclick*="${passId}"]`);
+    const gatepassRow = document.getElementById(`gatepass-${passId}`);
+    
+    // Close modal immediately
+    const modal = bootstrap.Modal.getInstance(document.getElementById('commentModal'));
+    if (modal) modal.hide();
+    
+    // Show instant processing notification
+    showInstantProcessingNotification(passId, action);
+    
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        
+        // Show loading state on the row
+        if (gatepassRow) {
+            gatepassRow.style.opacity = '0.7';
+        }
+    }
+    
+    // Determine the correct endpoint based on role
+    let endpoint = '';
+    
+    if (role === 'department_head') {
+        endpoint = `/gate_pass/approve_gate_pass_with_comment/${passId}/${action}`;
+    } else if (role === 'store_manager') {
+        endpoint = `/gate_pass/approve_gate_pass_with_comment/${passId}/${action}`;
+    }
+    
+    // Send request INSTANTLY
+    fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            comment: comment
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showInstantSuccessNotification(passId, action, comment);
+            
+            // Remove row with animation instantly
+            if (gatepassRow) {
+                gatepassRow.style.transition = 'all 0.3s ease';
+                gatepassRow.style.transform = 'translateX(100%)';
+                gatepassRow.style.opacity = '0';
+                
+                setTimeout(() => {
+                    gatepassRow.remove();
+                    updateStatsCount();
+                    
+                    // Auto refresh the page
+                    setTimeout(() => {
+                        location.reload();
+                    }, 800);
+                }, 300);
+            } else {
+                // If row not found, just refresh page
+                setTimeout(() => {
+                    location.reload();
+                }, 800);
+            }
+        } else {
+            showToast(data.message || 'Error processing approval', 'error');
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = originalText;
+            }
+            if (gatepassRow) {
+                gatepassRow.style.opacity = '1';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Network error. Please try again.', 'error');
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+        if (gatepassRow) {
+            gatepassRow.style.opacity = '1';
+        }
+    });
+}
+
+// ✅ INSTANT FIX: Process approval without comment - FAST VERSION
+function processApprovalWithoutComment(passId, action, role) {
+    const button = document.querySelector(`button[onclick*="${passId}"]`);
+    const gatepassRow = document.getElementById(`gatepass-${passId}`);
+    
+    // Close modal immediately
+    const modal = bootstrap.Modal.getInstance(document.getElementById('commentModal'));
+    if (modal) modal.hide();
+    
+    // Show instant processing notification
+    showInstantProcessingNotification(passId, action);
+    
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        
+        // Show loading state on the row
+        if (gatepassRow) {
+            gatepassRow.style.opacity = '0.7';
+        }
+    }
+    
+    // Determine the correct endpoint based on role
+    let endpoint = '';
+    let method = 'GET';
+    
+    if (role === 'department_head') {
+        endpoint = `/gate_pass/approve_gate_pass/${passId}/${action}`;
+        method = 'GET';
+    } else if (role === 'store_manager') {
+        endpoint = `/gate_pass/store/approve_gate_pass/${passId}/${action}`;
+        method = 'POST';
+    }
+    
+    // Send request INSTANTLY without comment
+    fetch(endpoint, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showInstantSuccessNotification(passId, action);
+            
+            // Remove row with animation instantly
+            if (gatepassRow) {
+                gatepassRow.style.transition = 'all 0.3s ease';
+                gatepassRow.style.transform = 'translateX(100%)';
+                gatepassRow.style.opacity = '0';
+                
+                setTimeout(() => {
+                    gatepassRow.remove();
+                    updateStatsCount();
+                    
+                    // Auto refresh the page
+                    setTimeout(() => {
+                        location.reload();
+                    }, 800);
+                }, 300);
+            } else {
+                // If row not found, just refresh page
+                setTimeout(() => {
+                    location.reload();
+                }, 800);
+            }
+        } else {
+            showToast(data.message || 'Error processing approval', 'error');
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = originalText;
+            }
+            if (gatepassRow) {
+                gatepassRow.style.opacity = '1';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Network error. Please try again.', 'error');
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+        if (gatepassRow) {
+            gatepassRow.style.opacity = '1';
+        }
+    });
+}
+
+// ✅ NEW: Show instant processing notification
+function showInstantProcessingNotification(passId, action) {
+    const actionText = action === 'approve' ? 'Approving' : 'Rejecting';
+    showToast(`${actionText} Gate Pass...`, 'info');
+}
+
+// ✅ NEW: Show instant success notification
+function showInstantSuccessNotification(passId, action, hasComment = false) {
+    const actionText = action === 'approve' ? 'approved' : 'rejected';
+    let message = `✅ Gate Pass ${actionText} instantly!`;
+    if (hasComment) {
+        message += ' (Comment added)';
+    }
+    showToast(message, 'success');
+}
+
+// ✅ INSTANT FIX: Setup comment modal confirm - FAST VERSION
+function setupCommentModalConfirm() {
+    const confirmBtn = document.getElementById('confirmApprovalWithComment');
+    const skipBtn = document.getElementById('skipCommentBtn');
+    
+    if (confirmBtn) {
+        confirmBtn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const comment = document.getElementById('approvalComment')?.value.trim() || '';
+            const { passId, action, role } = currentApprovalContext;
+            
+            if (!passId || !action || !role) {
+                showToast('Error: Approval context not set!', 'error');
+                return false;
+            }
+            
+            // Process approval WITH comment instantly
+            processApprovalWithComment(passId, action, role, comment);
+            return false;
+        };
+    }
+    
+    if (skipBtn) {
+        skipBtn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const { passId, action, role } = currentApprovalContext;
+            
+            if (!passId || !action || !role) {
+                showToast('Error: Approval context not set!', 'error');
+                return false;
+            }
+            
+            // Process approval WITHOUT comment instantly
+            processApprovalWithoutComment(passId, action, role);
+            return false;
+        };
+    }
+    
+    // Add keyboard shortcuts
+    document.getElementById('approvalComment')?.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            document.getElementById('confirmApprovalWithComment')?.click();
+        }
+    });
+}
 
 // Handle user approval
 function approveUser(userId, action) {
@@ -744,289 +1103,6 @@ function approveUser(userId, action) {
             button.disabled = false;
             button.innerHTML = originalText;
         });
-}
-
-// ✅ FIXED: Department Head Approval with Comment Modal
-function approveGatePassWithModal(passId, action) {
-    currentApprovalContext = {
-        passId: passId,
-        action: action,
-        role: 'department_head'
-    };
-    
-    // Clear previous comment
-    if (document.getElementById('approvalComment')) {
-        document.getElementById('approvalComment').value = '';
-    }
-    
-    // ✅ FIXED: Show comment modal
-    const modalElement = document.getElementById('commentModal');
-    if (modalElement) {
-        const modal = new bootstrap.Modal(modalElement);
-        modal.show();
-    } else {
-        // Fallback if modal not found
-        processApprovalWithoutComment(passId, action, 'department_head');
-    }
-}
-
-// ✅ FIXED: Store Manager Approval with Comment Modal
-function storeApproveGatePassWithModal(passId, action) {
-    currentApprovalContext = {
-        passId: passId,
-        action: action,
-        role: 'store_manager'
-    };
-    
-    // Clear previous comment
-    if (document.getElementById('approvalComment')) {
-        document.getElementById('approvalComment').value = '';
-    }
-    
-    // ✅ FIXED: Show comment modal
-    const modalElement = document.getElementById('commentModal');
-    if (modalElement) {
-        const modal = new bootstrap.Modal(modalElement);
-        modal.show();
-    } else {
-        // Fallback if modal not found
-        processApprovalWithoutComment(passId, action, 'store_manager');
-    }
-}
-
-// ✅ FIXED: Confirm approval with comment - NEW IMPROVED VERSION
-function setupCommentModalConfirm() {
-    const confirmBtn = document.getElementById('confirmApprovalWithComment');
-    const skipBtn = document.getElementById('skipCommentBtn');
-    
-    if (confirmBtn) {
-        // Remove any existing event listeners
-        const newConfirmBtn = confirmBtn.cloneNode(true);
-        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-        
-        // Add fresh event listener
-        document.getElementById('confirmApprovalWithComment').addEventListener('click', function() {
-            const comment = document.getElementById('approvalComment')?.value.trim() || '';
-            const { passId, action, role } = currentApprovalContext;
-            
-            if (!passId || !action || !role) {
-                showToast('Error: Approval context not set!', 'error');
-                return;
-            }
-            
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('commentModal'));
-            if (modal) modal.hide();
-            
-            // Process approval WITH comment
-            processApprovalWithComment(passId, action, role, comment);
-        });
-    }
-    
-    if (skipBtn) {
-        // Remove any existing event listeners
-        const newSkipBtn = skipBtn.cloneNode(true);
-        skipBtn.parentNode.replaceChild(newSkipBtn, skipBtn);
-        
-        // Add fresh event listener
-        document.getElementById('skipCommentBtn').addEventListener('click', function() {
-            const { passId, action, role } = currentApprovalContext;
-            
-            if (!passId || !action || !role) {
-                showToast('Error: Approval context not set!', 'error');
-                return;
-            }
-            
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('commentModal'));
-            if (modal) modal.hide();
-            
-            // Process approval WITHOUT comment
-            processApprovalWithoutComment(passId, action, role);
-        });
-    }
-}
-
-// ✅ FIXED: New function for approval with comment
-function processApprovalWithComment(passId, action, role, comment) {
-    const button = document.querySelector(`button[onclick*="${passId}"]`);
-    const gatepassRow = document.getElementById(`gatepass-${passId}`);
-    
-    if (button) {
-        const originalText = button.innerHTML;
-        button.disabled = true;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-        
-        // Show loading state on the row
-        if (gatepassRow) {
-            gatepassRow.style.opacity = '0.7';
-        }
-    }
-    
-    // Determine the correct endpoint based on role
-    let endpoint = '';
-    
-    if (role === 'department_head') {
-        endpoint = `/gate_pass/approve_gate_pass_with_comment/${passId}/${action}`;
-    } else if (role === 'store_manager') {
-        endpoint = `/gate_pass/approve_gate_pass_with_comment/${passId}/${action}`;
-    }
-    
-    // Send request
-    fetch(endpoint, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            comment: comment
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast(data.message || 'Approval processed successfully!', 'success');
-            
-            // Remove row with animation
-            if (gatepassRow) {
-                gatepassRow.style.transition = 'all 0.3s ease';
-                gatepassRow.style.transform = 'translateX(100%)';
-                gatepassRow.style.opacity = '0';
-                
-                setTimeout(() => {
-                    gatepassRow.remove();
-                    updateStatsCount();
-                    
-                    // Check if table is empty
-                    const tableBody = document.querySelector('.card:nth-child(2) tbody');
-                    if (tableBody && tableBody.children.length === 0) {
-                        showEmptyState('gatepasses');
-                    }
-                    
-                    // Auto refresh the page
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1000);
-                }, 300);
-            } else {
-                // If row not found, just refresh page
-                setTimeout(() => {
-                    location.reload();
-                }, 1000);
-            }
-        } else {
-            showToast(data.message || 'Error processing approval', 'error');
-            if (button) {
-                button.disabled = false;
-                button.innerHTML = originalText;
-            }
-            if (gatepassRow) {
-                gatepassRow.style.opacity = '1';
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showToast('Network error. Please try again.', 'error');
-        if (button) {
-            button.disabled = false;
-            button.innerHTML = originalText;
-        }
-        if (gatepassRow) {
-            gatepassRow.style.opacity = '1';
-        }
-    });
-}
-
-// ✅ FIXED: Process approval without comment
-function processApprovalWithoutComment(passId, action, role) {
-    const button = document.querySelector(`button[onclick*="${passId}"]`);
-    const gatepassRow = document.getElementById(`gatepass-${passId}`);
-    
-    if (button) {
-        const originalText = button.innerHTML;
-        button.disabled = true;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-        
-        // Show loading state on the row
-        if (gatepassRow) {
-            gatepassRow.style.opacity = '0.7';
-        }
-    }
-    
-    // Determine the correct endpoint based on role
-    let endpoint = '';
-    let method = 'GET';
-    
-    if (role === 'department_head') {
-        endpoint = `/gate_pass/approve_gate_pass/${passId}/${action}`;
-        method = 'GET';
-    } else if (role === 'store_manager') {
-        endpoint = `/gate_pass/store/approve_gate_pass/${passId}/${action}`;
-        method = 'POST';
-    }
-    
-    // Send request without comment
-    fetch(endpoint, {
-        method: method,
-        headers: {
-            'Content-Type': 'application/json',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast(data.message || 'Approval processed successfully!', 'success');
-            
-            // Remove row with animation
-            if (gatepassRow) {
-                gatepassRow.style.transition = 'all 0.3s ease';
-                gatepassRow.style.transform = 'translateX(100%)';
-                gatepassRow.style.opacity = '0';
-                
-                setTimeout(() => {
-                    gatepassRow.remove();
-                    updateStatsCount();
-                    
-                    // Check if table is empty
-                    const tableBody = document.querySelector('.card:nth-child(2) tbody');
-                    if (tableBody && tableBody.children.length === 0) {
-                        showEmptyState('gatepasses');
-                    }
-                    
-                    // Auto refresh the page
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1000);
-                }, 300);
-            } else {
-                // If row not found, just refresh page
-                setTimeout(() => {
-                    location.reload();
-                }, 1000);
-            }
-        } else {
-            showToast(data.message || 'Error processing approval', 'error');
-            if (button) {
-                button.disabled = false;
-                button.innerHTML = originalText;
-            }
-            if (gatepassRow) {
-                gatepassRow.style.opacity = '1';
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showToast('Network error. Please try again.', 'error');
-        if (button) {
-            button.disabled = false;
-            button.innerHTML = originalText;
-        }
-        if (gatepassRow) {
-            gatepassRow.style.opacity = '1';
-        }
-    });
 }
 
 // Department Head: Inquiry
@@ -1195,10 +1271,19 @@ function showEmptyState(type) {
     }
 }
 
-// Add animation to table rows
+// ✅ FIXED: Initialize with keyboard shortcuts
 document.addEventListener('DOMContentLoaded', function() {
     setupCommentModalConfirm();
     
+    // ESC key to close modal
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && document.getElementById('commentModal').classList.contains('show')) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('commentModal'));
+            modal?.hide();
+        }
+    });
+    
+    // Add animation to table rows
     const rows = document.querySelectorAll('.user-row, .gatepass-row');
     rows.forEach((row, index) => {
         row.style.opacity = '0';
