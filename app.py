@@ -1,5 +1,5 @@
-# app.py - COMPLETE VERSION WITH OVERDUE RETURNS + SECURITY APPROVAL + MANUAL RETURN + RETURNS LIST
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+# app.py - COMPLETE VERSION WITH ALL FEATURES
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_from_directory
 from models import get_db_connection, init_db, dict_fetchall, dict_fetchone
 from notifications import start_notification_scheduler, start_overdue_alarm_scheduler, create_notification
 from auth import auth_bp
@@ -7,10 +7,10 @@ from gate_pass import gate_pass_bp
 from admin import admin_bp
 import MySQLdb
 from datetime import datetime
-from flask import send_from_directory
 import os
 import json
-from functools import wraps  # এই লাইন যোগ করুন
+from functools import wraps
+import traceback
 
 app = Flask(__name__)
 app.secret_key = 'gate-pass-system-secret-key-2024'
@@ -830,26 +830,18 @@ def security_approve_gate_pass(gate_pass_id, action):
         cursor.close()
         conn.close()
 
-# ✅ ADDED: Security QR Scan and Return Marking
+# ✅ FIXED COMPLETELY: Security QR Scan and Return Marking - CORRECTED VERSION
 @app.route('/security/scan_qr', methods=['POST'])
 @role_required('security')
 def security_scan_qr():
-    """Security scans QR code to mark material as returned"""
+    """Security scans QR code to mark material as returned - COMPLETELY FIXED VERSION"""
     data = request.get_json()
     qr_data = data.get('qr_data')
     
     if not qr_data:
         return jsonify({'success': False, 'message': 'No QR data provided!'})
     
-    # Verify QR code
-    from qr_utils import verify_qr_code
-    is_valid, result = verify_qr_code(qr_data)
-    
-    if not is_valid:
-        return jsonify({'success': False, 'message': result})
-    
-    gate_pass_id = result['gate_pass_id']
-    pass_number = result['pass_number']
+    print(f"🔍 QR Scan Received: {qr_data}")
     
     conn = get_db_connection()
     if conn is None:
@@ -858,53 +850,90 @@ def security_scan_qr():
     cursor = conn.cursor()
     
     try:
-        # Get gate pass details
+        # Parse QR data - FIXED: Handle different QR formats
+        pass_number = None
+        
+        if 'GATEPASS:' in qr_data:
+            # Format: GATEPASS:GP20251230104452:22:20251230104452:906235...
+            parts = qr_data.split(':')
+            if len(parts) >= 2:
+                pass_number = parts[1]  # GP20251230104452
+        elif ':' in qr_data:
+            # Format: GP20251230104452:RETURN or similar
+            pass_number = qr_data.split(':')[0]
+        else:
+            pass_number = qr_data.strip().upper()
+        
+        # Clean pass number
+        if pass_number:
+            pass_number = pass_number.strip().upper()
+        
+        print(f"🔍 Looking for Gate Pass: {pass_number}")
+        
+        if not pass_number:
+            return jsonify({'success': False, 'message': 'Could not extract gate pass number from QR!'})
+        
+        # Get gate pass details - FIXED: Correct parameter binding
         cursor.execute('''
             SELECT gp.*, u.name as creator_name, u.id as creator_id, 
                    u.department_id as creator_dept_id, d.name as department_name,
-                   dh.id as dept_head_id, dh.name as dept_head_name
+                   dh.id as dept_head_id, dh.name as dept_head_name,
+                   sm.id as store_manager_id, sm.name as store_manager_name
             FROM gate_passes gp 
             JOIN users u ON gp.created_by = u.id 
             JOIN departments d ON u.department_id = d.id
             LEFT JOIN users dh ON d.id = dh.department_id AND dh.role = 'department_head' AND dh.status = 'approved'
-            WHERE gp.id = %s AND gp.material_type = 'returnable'
-        ''', (gate_pass_id,))
+            LEFT JOIN users sm ON (
+                (sm.username LIKE %s AND gp.store_location = 'store_1') OR
+                (sm.username LIKE %s AND gp.store_location = 'store_2')
+            ) AND sm.role = 'store_manager' AND sm.status = 'approved'
+            WHERE gp.pass_number = %s AND gp.material_type = 'returnable'
+        ''', ('%store1%', '%store2%', pass_number))
         
         gate_pass = dict_fetchone(cursor)
         
         if not gate_pass:
+            print(f"❌ Gate pass not found: {pass_number}")
             return jsonify({'success': False, 'message': 'Gate pass not found or not returnable!'})
+        
+        print(f"✅ Gate pass found: {pass_number}")
         
         # Check if already returned
         if gate_pass['actual_return_date']:
             return jsonify({'success': False, 'message': 'Material already returned!'})
         
+        # Check if gate pass is approved
+        if gate_pass['status'] != 'approved' and gate_pass['status'] != 'gone_from_gate':
+            return jsonify({'success': False, 'message': f'Gate pass is {gate_pass["status"]}, cannot return!'})
+        
         # Update as returned
         cursor.execute('''
             UPDATE gate_passes 
-            SET actual_return_date = %s, status = 'returned',
-                security_approval_date = %s
+            SET actual_return_date = %s, 
+                status = 'returned',
+                security_approval_date = %s,
+                returned_by_security = %s
             WHERE id = %s
-        ''', (datetime.now(), datetime.now(), gate_pass_id))
+        ''', (datetime.now(), datetime.now(), session['name'], gate_pass['id']))
         
         # Create security log
         cursor.execute('''
             INSERT INTO security_logs (gate_pass_id, user_id, alert_type, details)
             VALUES (%s, %s, 'material_returned', %s)
-        ''', (gate_pass_id, session['user_id'], 
-              f'Material returned via QR scan. Scanned by: {session["name"]}'))
+        ''', (gate_pass['id'], session['user_id'], 
+              f'Material returned via QR scan. Scanned by: {session["name"]}, Gate Pass: {pass_number}'))
         
         conn.commit()
         
-        # Send notifications to all parties
+        # ✅ FIXED: Send notifications to ALL parties
         notifications_sent = []
         
         # 1. Notify Creator
         create_notification(
             gate_pass['creator_id'],
-            f"✅ Your material with Gate Pass {pass_number} has been returned and verified by Security.",
+            f"✅ আপনার Gate Pass {pass_number} এর মালামাল রিটার্ন হয়েছে। Security: {session['name']}",
             'status',
-            gate_pass_id
+            gate_pass['id']
         )
         notifications_sent.append('Creator')
         
@@ -912,72 +941,68 @@ def security_scan_qr():
         if gate_pass['dept_head_id']:
             create_notification(
                 gate_pass['dept_head_id'],
-                f"📦 Material from your department (Gate Pass {pass_number}) has been returned.",
+                f"📦 আপনার ডিপার্টমেন্টের Gate Pass {pass_number} এর মালামাল রিটার্ন হয়েছে",
                 'status',
-                gate_pass_id
+                gate_pass['id']
             )
             notifications_sent.append('Department Head')
         
-        # 3. Notify all Super Admins
-        cursor.execute('SELECT id FROM users WHERE role = "system_admin" AND status = "approved"')
+        # 3. Notify Store Manager (if store was involved)
+        if gate_pass['store_manager_id']:
+            create_notification(
+                gate_pass['store_manager_id'],
+                f"📦 Gate Pass {pass_number} এর মালামাল রিটার্ন হয়েছে",
+                'status',
+                gate_pass['id']
+            )
+            notifications_sent.append('Store Manager')
+        
+        # 4. Notify ALL System Admins
+        cursor.execute('SELECT id, name FROM users WHERE role = "system_admin" AND status = "approved"')
         admins = dict_fetchall(cursor)
         for admin in admins:
             create_notification(
                 admin['id'],
-                f"🔄 Material Return: Gate Pass {pass_number} from {gate_pass['department_name']} has been returned.",
+                f"🔄 Material Return: Gate Pass {pass_number} ({gate_pass['department_name']}) returned by {session['name']}",
                 'status',
-                gate_pass_id
+                gate_pass['id']
             )
-        notifications_sent.append('Super Admin')
-        
-        # 4. Notify Store Manager (if store was involved)
-        if gate_pass['store_location']:
-            cursor.execute('''
-                SELECT u.id FROM users u 
-                WHERE u.role = 'store_manager' AND u.status = 'approved'
-                LIMIT 1
-            ''')
-            store_manager = cursor.fetchone()
-            if store_manager:
-                create_notification(
-                    store_manager[0],
-                    f"📦 Material with Gate Pass {pass_number} has been returned.",
-                    'status',
-                    gate_pass_id
-                )
-                notifications_sent.append('Store Manager')
-        
-        cursor.close()
-        conn.close()
+        notifications_sent.append(f'{len(admins)} System Admins')
         
         return jsonify({
             'success': True,
-            'message': f'✅ Material marked as returned! Notifications sent to: {", ".join(notifications_sent)}',
+            'message': f'✅ মালামাল সফলভাবে রিটার্ন করা হয়েছে!',
             'gate_pass': {
                 'pass_number': pass_number,
                 'material_description': gate_pass['material_description'],
                 'department': gate_pass['department_name'],
-                'return_time': datetime.now().strftime('%Y-%m-d %H:%M:%S')
+                'return_time': datetime.now().strftime('%H:%M:%S'),
+                'notifications_sent': notifications_sent
             }
         })
         
     except Exception as e:
         conn.rollback()
+        print(f"❌ QR Scan Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error processing return: {str(e)}'})
     finally:
         cursor.close()
         conn.close()
 
-# ✅ ADDED: Manual Return for Security
+# ✅ SIMPLIFIED VERSION: Manual Return for Security - SIMPLIFIED
 @app.route('/security/manual_return', methods=['POST'])
 @role_required('security')
 def manual_return_gate_pass():
-    """Manual gate pass return without QR scanning"""
+    """Manual gate pass return without QR scanning - SIMPLIFIED VERSION"""
     data = request.get_json()
     pass_number = data.get('pass_number', '').strip().upper()
     
     if not pass_number:
         return jsonify({'success': False, 'message': 'Please enter gate pass number!'})
+    
+    print(f"🔍 Manual Return Request: {pass_number}")
     
     conn = get_db_connection()
     if conn is None:
@@ -986,34 +1011,68 @@ def manual_return_gate_pass():
     cursor = conn.cursor()
     
     try:
-        # Get gate pass details
+        # SIMPLIFIED QUERY: Get gate pass details without complex joins
         cursor.execute('''  
             SELECT gp.*, u.name as creator_name, u.id as creator_id, 
-                   d.name as department_name, u.department_id,
-                   dh.id as dept_head_id, dh.name as dept_head_name
+                   d.name as department_name, u.department_id
             FROM gate_passes gp 
             JOIN users u ON gp.created_by = u.id 
             JOIN departments d ON u.department_id = d.id
-            LEFT JOIN users dh ON d.id = dh.department_id AND dh.role = 'department_head' AND dh.status = 'approved'
             WHERE gp.pass_number = %s AND gp.material_type = 'returnable'
         ''', (pass_number,))
         
         gate_pass = dict_fetchone(cursor)
         
         if not gate_pass:
+            print(f"❌ Gate pass not found: {pass_number}")
             return jsonify({'success': False, 'message': 'Gate pass not found or not returnable!'})
+        
+        print(f"✅ Gate pass found: {pass_number}, ID: {gate_pass['id']}")
         
         # Check if already returned
         if gate_pass['actual_return_date']:
             return jsonify({'success': False, 'message': 'Material already returned!'})
         
+        # Check if gate pass is approved
+        if gate_pass['status'] != 'approved' and gate_pass['status'] != 'gone_from_gate':
+            return jsonify({'success': False, 'message': f'Gate pass is {gate_pass["status"]}, cannot return!'})
+        
+        # Get department head
+        dept_head_id = None
+        cursor.execute('''
+            SELECT id, name FROM users 
+            WHERE department_id = %s 
+            AND role = 'department_head' 
+            AND status = 'approved'
+            LIMIT 1
+        ''', (gate_pass['department_id'],))
+        dept_head = dict_fetchone(cursor)
+        
+        # Get store manager if store location exists
+        store_manager_id = None
+        if gate_pass['store_location']:
+            store_loc = 'store1' if gate_pass['store_location'] == 'store_1' else 'store2'
+            cursor.execute('''
+                SELECT id, name FROM users 
+                WHERE role = 'store_manager' 
+                AND username LIKE %s
+                AND status = 'approved'
+                LIMIT 1
+            ''', (f'%{store_loc}%',))
+            store_manager = dict_fetchone(cursor)
+            if store_manager:
+                store_manager_id = store_manager['id']
+                store_manager_name = store_manager['name']
+        
         # Update as returned
         cursor.execute('''
             UPDATE gate_passes 
-            SET actual_return_date = %s, status = 'returned',
-                security_approval_date = %s
+            SET actual_return_date = %s, 
+                status = 'returned',
+                security_approval_date = %s,
+                returned_by_security = %s
             WHERE id = %s
-        ''', (datetime.now(), datetime.now(), gate_pass['id']))
+        ''', (datetime.now(), datetime.now(), session['name'], gate_pass['id']))
         
         # Create security log
         cursor.execute('''
@@ -1024,51 +1083,70 @@ def manual_return_gate_pass():
         
         conn.commit()
         
-        # Send notifications to all parties
+        # ✅ Send notifications
+        notifications_sent = []
+        
         # 1. Notify Creator
         create_notification(
             gate_pass['creator_id'],
-            f"✅ Your material with Gate Pass {pass_number} has been manually returned by Security.",
+            f"✅ আপনার Gate Pass {pass_number} এর মালামাল ম্যানুয়ালি রিটার্ন হয়েছে। Security: {session['name']}",
             'status',
             gate_pass['id']
         )
+        notifications_sent.append('Creator')
         
         # 2. Notify Department Head (if exists)
-        if gate_pass['dept_head_id']:
+        if dept_head:
             create_notification(
-                gate_pass['dept_head_id'],
-                f"📦 Material from your department (Gate Pass {pass_number}) has been manually returned.",
+                dept_head['id'],
+                f"📦 আপনার ডিপার্টমেন্টের Gate Pass {pass_number} এর মালামাল ম্যানুয়ালি রিটার্ন হয়েছে",
                 'status',
                 gate_pass['id']
             )
+            notifications_sent.append('Department Head')
         
-        # 3. Notify all Super Admins
-        cursor.execute('SELECT id FROM users WHERE role = "system_admin" AND status = "approved"')
+        # 3. Notify Store Manager (if store was involved)
+        if store_manager_id:
+            create_notification(
+                store_manager_id,
+                f"📦 Gate Pass {pass_number} এর মালামাল ম্যানুয়ালি রিটার্ন হয়েছে",
+                'status',
+                gate_pass['id']
+            )
+            notifications_sent.append('Store Manager')
+        
+        # 4. Notify ALL System Admins
+        cursor.execute('SELECT id, name FROM users WHERE role = "system_admin" AND status = "approved"')
         admins = dict_fetchall(cursor)
         for admin in admins:
             create_notification(
                 admin['id'],
-                f"🔄 Manual Return: Gate Pass {pass_number} from {gate_pass['department_name']} has been returned.",
+                f"🔄 Manual Return: Gate Pass {pass_number} ({gate_pass['department_name']}) returned manually by {session['name']}",
                 'status',
                 gate_pass['id']
             )
+        notifications_sent.append(f'{len(admins)} System Admins')
         
         cursor.close()
         conn.close()
         
         return jsonify({
             'success': True,
-            'message': f'✅ Gate Pass {pass_number} marked as returned!',
+            'message': f'✅ Gate Pass {pass_number} সফলভাবে রিটার্ন করা হয়েছে!',
             'gate_pass': {
                 'pass_number': pass_number,
                 'material_description': gate_pass['material_description'],
                 'department': gate_pass['department_name'],
-                'return_time': datetime.now().strftime('%H:%M')
+                'return_time': datetime.now().strftime('%H:%M:%S'),
+                'notifications_sent': notifications_sent
             }
         })
         
     except Exception as e:
         conn.rollback()
+        print(f"❌ Manual Return Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error processing return: {str(e)}'})
     finally:
         cursor.close()
@@ -1343,15 +1421,15 @@ def overdue_returns():
                          stats=stats,
                          now=datetime.now())
 
-# ✅ ADDED: Returns List Page
+# ✅ FIXED: Returns List Page - UPDATED VERSION
 @app.route('/returns_list_page')
 @login_required
 def returns_list_page():
-    """View all returned gate passes"""
+    """View all returned gate passes - FIXED VERSION"""
     conn = get_db_connection()
     if conn is None:
         flash('Database connection failed!', 'error')
-        return render_template('returns_list.html', departments=[])
+        return render_template('returns_list.html', departments=[], now=datetime.now())
     
     cursor = conn.cursor()
     
@@ -1375,7 +1453,8 @@ def returns_list_page():
         cursor.close()
         conn.close()
     
-    return render_template('returns_list.html', departments=departments)
+    # ✅ FIXED: Add 'now' variable to template
+    return render_template('returns_list.html', departments=departments, now=datetime.now())
 
 # ✅ ADDED: API for Returns List
 @app.route('/api/returns_list')
@@ -1829,10 +1908,11 @@ def mark_force_returned(gate_pass_id):
         cursor.close()
         conn.close()
 
+# ✅ FIXED: Check Notifications - UPDATED VERSION
 @app.route('/check_notifications')
 @login_required
 def check_notifications():
-    """Enhanced notification check with better error handling"""
+    """Enhanced notification check with better error handling - FIXED VERSION"""
     conn = get_db_connection()
     if conn is None:
         # Fallback to simple response
@@ -1845,25 +1925,26 @@ def check_notifications():
     cursor = conn.cursor()
     
     try:
-        # Get unread count
-        cursor.execute('''
+        # Get unread count - FIXED QUERY
+        cursor.execute(''' 
             SELECT COUNT(*) as unread_count 
             FROM notifications 
             WHERE user_id = %s AND is_read = FALSE
         ''', (session['user_id'],))
         
         unread_result = cursor.fetchone()
-        unread_count = unread_result['unread_count'] if unread_result else 0
+        # ✅ FIXED: Properly extract count from tuple
+        unread_count = unread_result[0] if unread_result else 0
         
         # Get total notifications (optional - for additional info)
-        cursor.execute('''
+        cursor.execute(''' 
             SELECT COUNT(*) as total_count 
             FROM notifications 
             WHERE user_id = %s
         ''', (session['user_id'],))
         
         total_result = cursor.fetchone()
-        total_count = total_result['total_count'] if total_result else 0
+        total_count = total_result[0] if total_result else 0
         
         # Get recent notifications for preview (optional)
         cursor.execute('''
@@ -1875,15 +1956,24 @@ def check_notifications():
         ''', (session['user_id'],))
         
         recent_notifications = []
+        # ✅ FIXED: Use proper dictionary fetch
         columns = [col[0] for col in cursor.description]
         for row in cursor.fetchall():
-            recent_notifications.append(dict(zip(columns, row)))
+            notification_dict = {}
+            for i, column in enumerate(columns):
+                notification_dict[column] = row[i]
+            recent_notifications.append(notification_dict)
         
         # Convert datetime to string for JSON serialization
         for notification in recent_notifications:
             if 'created_at' in notification and notification['created_at']:
-                notification['created_at_str'] = notification['created_at'].strftime('%H:%M')
-                notification['created_date'] = notification['created_at'].strftime('%d/%m')
+                if isinstance(notification['created_at'], datetime):
+                    notification['created_at_str'] = notification['created_at'].strftime('%H:%M')
+                    notification['created_date'] = notification['created_at'].strftime('%d/%m')
+                else:
+                    # If it's already a string
+                    notification['created_at_str'] = str(notification['created_at'])[:5]
+                    notification['created_date'] = str(notification['created_at'])[:10]
         
         return jsonify({
             'success': True,
@@ -1897,8 +1987,11 @@ def check_notifications():
         
     except Exception as e:
         print(f"Error checking notifications: {e}")
+        import traceback
+        traceback.print_exc()
         # Fallback to simple response
         return jsonify({
+            'success': False,
             'new_notifications': 0,
             'total': 0,
             'has_notifications': False,

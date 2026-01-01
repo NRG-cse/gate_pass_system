@@ -13,8 +13,13 @@
                     </h5>
                     <div>
                         <button class="btn btn-light btn-sm" onclick="loadReturns()">
-                            <i class="fas fa-sync-alt"></i>
+                            <i class="fas fa-sync-alt"></i> Refresh
                         </button>
+                        {% if session.role == 'security' %}
+                        <a href="/security/scan" class="btn btn-light btn-sm ms-2">
+                            <i class="fas fa-qrcode"></i> Scan QR
+                        </a>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="card-body">
@@ -22,11 +27,13 @@
                     <div class="row mb-4">
                         <div class="col-md-3">
                             <label class="form-label">Date From</label>
-                            <input type="date" id="dateFrom" class="form-control">
+                            <input type="date" id="dateFrom" class="form-control" 
+                                   value="{{ now.strftime('%Y-%m-%d') if now else '' }}">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Date To</label>
-                            <input type="date" id="dateTo" class="form-control">
+                            <input type="date" id="dateTo" class="form-control" 
+                                   value="{{ now.strftime('%Y-%m-%d') if now else '' }}">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Department</label>
@@ -89,7 +96,7 @@
                                     <th>Return Date</th>
                                     <th>Material</th>
                                     <th>Department</th>
-                                    <th>Receiver</th>
+                                    <th>Returned By</th>
                                     <th>Return Type</th>
                                     <th>Actions</th>
                                 </tr>
@@ -134,6 +141,15 @@ let currentPage = 1;
 const itemsPerPage = 10;
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Set default dates
+    const today = new Date().toISOString().split('T')[0];
+    if (!document.getElementById('dateFrom').value) {
+        document.getElementById('dateFrom').value = today;
+    }
+    if (!document.getElementById('dateTo').value) {
+        document.getElementById('dateTo').value = today;
+    }
+    
     loadReturns();
     loadStatistics();
 });
@@ -154,7 +170,7 @@ function loadReturns() {
             populateReturns(data.returns);
             setupPagination(data.total, data.per_page, data.current_page);
         } else {
-            showEmptyState(data.message);
+            showEmptyState(data.message || 'Error loading returns');
         }
     })
     .catch(error => {
@@ -169,10 +185,12 @@ function loadStatistics() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            document.getElementById('totalReturns').textContent = data.statistics.total_returns;
-            document.getElementById('todayReturns').textContent = data.statistics.today_returns;
-            document.getElementById('weekReturns').textContent = data.statistics.week_returns;
-            document.getElementById('monthReturns').textContent = data.statistics.month_returns;
+            document.getElementById('totalReturns').textContent = data.statistics.total_returns || 0;
+            document.getElementById('todayReturns').textContent = data.statistics.today_returns || 0;
+            document.getElementById('weekReturns').textContent = data.statistics.week_returns || 0;
+            document.getElementById('monthReturns').textContent = data.statistics.month_returns || 0;
+        } else {
+            console.error('Error loading statistics:', data.message);
         }
     })
     .catch(error => {
@@ -183,48 +201,49 @@ function loadStatistics() {
 function populateReturns(returns) {
     const tbody = document.getElementById('returnsBody');
     
-    if (returns.length === 0) {
+    if (!returns || returns.length === 0) {
         showEmptyState('No returns found');
         return;
     }
     
     let html = '';
     returns.forEach(item => {
+        const returnType = item.security_approval_date ? 
+            (item.returned_by_security ? 'Manual' : 'QR Scan') : 'Unknown';
+        const returnBadge = returnType === 'QR Scan' ? 
+            '<span class="badge bg-info"><i class="fas fa-qrcode"></i> QR Scan</span>' : 
+            '<span class="badge bg-warning"><i class="fas fa-keyboard"></i> Manual</span>';
+        
         html += `
             <tr>
                 <td>
-                    <strong>${item.pass_number}</strong><br>
-                    <small class="text-muted">Created: ${item.created_date}</small>
+                    <strong>${item.pass_number || 'N/A'}</strong><br>
+                    <small class="text-muted">Created: ${item.created_date || 'N/A'}</small>
                 </td>
                 <td>
-                    <span class="badge bg-success">${item.return_date}</span><br>
-                    <small class="text-muted">${item.return_time}</small>
+                    <span class="badge bg-success">${item.return_date || 'N/A'}</span><br>
+                    <small class="text-muted">${item.return_time || 'N/A'}</small>
                 </td>
                 <td>
                     <div style="max-width: 250px;">
-                        <strong>${item.material_description}</strong><br>
-                        <small class="text-muted">${item.purpose}</small>
+                        <strong>${item.material_description || 'N/A'}</strong><br>
+                        <small class="text-muted">${item.purpose || 'N/A'}</small>
                     </div>
                 </td>
                 <td>
-                    ${item.department_name}<br>
-                    <small class="text-muted">${item.division_name}</small>
+                    ${item.department_name || 'N/A'}<br>
+                    <small class="text-muted">${item.division_name || 'N/A'}</small>
                 </td>
                 <td>
-                    ${item.receiver_name}<br>
-                    <small class="text-muted">${item.receiver_contact || 'N/A'}</small>
+                    ${item.returned_by_security || 'N/A'}<br>
+                    <small class="text-muted">Security</small>
                 </td>
                 <td>
-                    ${item.return_type === 'qr_scan' ? 
-                        '<span class="badge bg-info"><i class="fas fa-qrcode"></i> QR Scan</span>' : 
-                        '<span class="badge bg-warning"><i class="fas fa-keyboard"></i> Manual</span>'}
+                    ${returnBadge}
                 </td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="viewDetails(${item.gate_pass_id})">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <a href="/gate_pass/gate_pass_detail/${item.gate_pass_id}" class="btn btn-sm btn-outline-success">
-                        <i class="fas fa-external-link-alt"></i>
+                    <a href="/gate_pass/gate_pass_detail/${item.id || item.gate_pass_id}" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-eye"></i> View Details
                     </a>
                 </td>
             </tr>
@@ -293,10 +312,6 @@ function setupPagination(totalItems, perPage, currentPage) {
 function changePage(page) {
     currentPage = page;
     loadReturns();
-}
-
-function viewDetails(gatePassId) {
-    window.location.href = `/gate_pass/gate_pass_detail/${gatePassId}`;
 }
 </script>
 {% endblock %}

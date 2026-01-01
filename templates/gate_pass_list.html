@@ -341,23 +341,20 @@
                                         </button>
                                         {% endif %}
                                         
-                                        <!-- Approve/Reject/Inquiry Buttons (only for pending_dept) -->
+                                        <!-- ✅ FIXED: DIRECT Approve/Reject/Inquiry Buttons (only for pending_dept) -->
                                         {% if pass.status == 'pending_dept' %}
-                                        <button onclick="approveGatePassWithModal({{ pass.id }}, 'approve')" 
+                                        <button onclick="directApproveGatePass({{ pass.id }}, 'approve', 'department_head')" 
                                                 class="btn btn-outline-success px-3"
                                                 title="Approve">
                                             <i class="fas fa-check"></i>
                                         </button>
-                                        <button onclick="approveGatePassWithModal({{ pass.id }}, 'reject')" 
+                                        <button onclick="directRejectGatePass({{ pass.id }}, 'reject', 'department_head')" 
                                                 class="btn btn-outline-danger px-3"
                                                 title="Reject">
                                             <i class="fas fa-times"></i>
                                         </button>
-                                        <button type="button" 
+                                        <button onclick="directInquiryGatePass({{ pass.id }})" 
                                                 class="btn btn-outline-info px-3"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#inquiryModal"
-                                                onclick="setInquiryGatePassId({{ pass.id }})"
                                                 title="Mark for Inquiry">
                                             <i class="fas fa-question-circle"></i>
                                         </button>
@@ -367,12 +364,12 @@
                                     <!-- ✅ FIXED: Store Manager Actions -->
                                     {% if session.role == 'store_manager' %}
                                         {% if pass.status == 'pending_store' %}
-                                        <button onclick="storeApproveGatePassWithModal({{ pass.id }}, 'approve')" 
+                                        <button onclick="directApproveGatePass({{ pass.id }}, 'approve', 'store_manager')" 
                                                 class="btn btn-outline-success px-3"
                                                 title="Approve">
                                             <i class="fas fa-check"></i>
                                         </button>
-                                        <button onclick="storeApproveGatePassWithModal({{ pass.id }}, 'reject')" 
+                                        <button onclick="directRejectGatePass({{ pass.id }}, 'reject', 'store_manager')" 
                                                 class="btn btn-outline-danger px-3"
                                                 title="Reject">
                                             <i class="fas fa-times"></i>
@@ -454,6 +451,93 @@
     </div>
 </div>
 
+<!-- ✅ FIXED: DIRECT APPROVE MODAL (SIMPLE) -->
+<div class="modal fade" id="approveModal" tabindex="-1" aria-labelledby="approveModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="approveModalLabel">
+                    <i class="fas fa-check me-2"></i>Approve Gate Pass
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="approveComment" class="form-label">
+                        <i class="fas fa-sticky-note me-1"></i>Comment (Optional)
+                    </label>
+                    <textarea class="form-control" id="approveComment" rows="3" 
+                              placeholder="Add optional comment..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="submitDirectApprove()">
+                    <i class="fas fa-check me-1"></i>Approve
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ✅ FIXED: DIRECT REJECT MODAL (SIMPLE) -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="rejectModalLabel">
+                    <i class="fas fa-times me-2"></i>Reject Gate Pass
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="rejectComment" class="form-label">
+                        <i class="fas fa-sticky-note me-1"></i>Reason (Optional)
+                    </label>
+                    <textarea class="form-control" id="rejectComment" rows="3" 
+                              placeholder="Add optional reason..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="submitDirectReject()">
+                    <i class="fas fa-times me-1"></i>Reject
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ✅ FIXED: DIRECT INQUIRY MODAL (SIMPLE) -->
+<div class="modal fade" id="inquiryModal" tabindex="-1" aria-labelledby="inquiryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="inquiryModalLabel">
+                    <i class="fas fa-question-circle me-2"></i>Mark for Inquiry
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="inquiryComment" class="form-label">
+                        <i class="fas fa-sticky-note me-1"></i>Inquiry Purpose (Required)
+                    </label>
+                    <textarea class="form-control" id="inquiryComment" rows="3" 
+                              placeholder="Explain the purpose of inquiry..." required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitDirectInquiry()">
+                    <i class="fas fa-paper-plane me-1"></i>Submit Inquiry
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Toast Notifications -->
 <div class="toast-container position-fixed top-0 end-0 p-3">
     <div id="successToast" class="toast border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
@@ -477,70 +561,6 @@
         </div>
         <div class="toast-body">
             <div id="errorMessage">An error occurred!</div>
-        </div>
-    </div>
-</div>
-
-<!-- Comment Modal for Approval -->
-<div class="modal fade" id="commentModal" tabindex="-1" aria-labelledby="commentModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="commentModalLabel">
-                    <i class="fas fa-comment me-2"></i>Add Optional Comment
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label for="approvalComment" class="form-label">
-                        <i class="fas fa-sticky-note me-1"></i>Comment (Optional)
-                    </label>
-                    <textarea class="form-control" id="approvalComment" rows="4" 
-                              placeholder="Add any comments or remarks about this approval (will be visible in details page but not in print)..."></textarea>
-                    <div class="form-text">
-                        This comment will be saved with the approval record but <strong>not printed</strong> on the gate pass.
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Skip & Continue</button>
-                <button type="button" class="btn btn-primary" id="confirmApprovalWithComment">
-                    <i class="fas fa-check me-1"></i>Submit with Comment
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Inquiry Modal -->
-<div class="modal fade" id="inquiryModal" tabindex="-1" aria-labelledby="inquiryModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="inquiryModalLabel">
-                    <i class="fas fa-question-circle me-2"></i>Mark for Inquiry
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="inquiryForm">
-                    <input type="hidden" id="inquiryGatePassId">
-                    <div class="mb-3">
-                        <label for="inquiryPurpose" class="form-label">
-                            <i class="fas fa-comment-alt me-1"></i>Purpose of Inquiry
-                        </label>
-                        <textarea class="form-control" id="inquiryPurpose" rows="3" 
-                                  placeholder="Explain why you are marking this for inquiry..." required></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="submitInquiry()">
-                    <i class="fas fa-paper-plane me-1"></i>Submit Inquiry
-                </button>
-            </div>
         </div>
     </div>
 </div>
@@ -656,143 +676,115 @@
 </style>
 
 <script>
-// Global variable to store approval context
-let currentApprovalContext = {
+// ✅ FIXED: GLOBAL VARIABLES FOR DIRECT APPROVAL
+let currentDirectApproval = {
     passId: null,
     action: null,
     role: null
 };
 
-// ✅ NEW: Department Head Approval with Modal
-function approveGatePassWithModal(passId, action) {
-    currentApprovalContext = {
+// ✅ FIXED: DIRECT APPROVE FUNCTION (DEPARTMENT HEAD & STORE MANAGER)
+function directApproveGatePass(passId, action, role) {
+    currentDirectApproval = {
         passId: passId,
         action: action,
+        role: role
+    };
+    
+    // Clear previous comment
+    document.getElementById('approveComment').value = '';
+    
+    // Show simple modal
+    const modal = new bootstrap.Modal(document.getElementById('approveModal'));
+    modal.show();
+}
+
+// ✅ FIXED: DIRECT REJECT FUNCTION (DEPARTMENT HEAD & STORE MANAGER)
+function directRejectGatePass(passId, action, role) {
+    currentDirectApproval = {
+        passId: passId,
+        action: action,
+        role: role
+    };
+    
+    // Clear previous comment
+    document.getElementById('rejectComment').value = '';
+    
+    // Show simple modal
+    const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+    modal.show();
+}
+
+// ✅ FIXED: DIRECT INQUIRY FUNCTION (DEPARTMENT HEAD ONLY)
+function directInquiryGatePass(passId) {
+    currentDirectApproval = {
+        passId: passId,
+        action: 'inquiry',
         role: 'department_head'
     };
     
     // Clear previous comment
-    if (document.getElementById('approvalComment')) {
-        document.getElementById('approvalComment').value = '';
-    }
+    document.getElementById('inquiryComment').value = '';
     
-    // Show comment modal
-    const modalElement = document.getElementById('commentModal');
-    if (modalElement) {
-        const modal = new bootstrap.Modal(modalElement);
-        modal.show();
-    } else {
-        // Fallback if modal not found
-        processApprovalWithoutComment(passId, action, 'department_head');
-    }
+    // Show simple modal
+    const modal = new bootstrap.Modal(document.getElementById('inquiryModal'));
+    modal.show();
 }
 
-// ✅ NEW: Store Manager Approval with Modal
-function storeApproveGatePassWithModal(passId, action) {
-    currentApprovalContext = {
-        passId: passId,
-        action: action,
-        role: 'store_manager'
-    };
+// ✅ FIXED: SUBMIT DIRECT APPROVE (INSTANT)
+function submitDirectApprove() {
+    const { passId, action, role } = currentDirectApproval;
+    const comment = document.getElementById('approveComment')?.value.trim() || '';
     
-    // Clear previous comment
-    if (document.getElementById('approvalComment')) {
-        document.getElementById('approvalComment').value = '';
+    if (!passId || !role) {
+        showToast('Error: Approval data missing!', 'error');
+        return;
     }
     
-    // Show comment modal
-    const modalElement = document.getElementById('commentModal');
-    if (modalElement) {
-        const modal = new bootstrap.Modal(modalElement);
-        modal.show();
-    } else {
-        // Fallback if modal not found
-        processApprovalWithoutComment(passId, action, 'store_manager');
-    }
-}
-
-// ✅ FIXED: Comment Modal for list page
-document.addEventListener('DOMContentLoaded', function() {
-    // Setup comment modal confirm button for list page
-    const listConfirmBtn = document.getElementById('confirmApprovalWithComment');
-    if (listConfirmBtn) {
-        listConfirmBtn.addEventListener('click', function() {
-            const comment = document.getElementById('approvalComment')?.value.trim() || '';
-            const { passId, action, role } = currentApprovalContext;
-            
-            if (!passId || !action || !role) {
-                showToast('Error: Approval context not set!', 'error');
-                return;
-            }
-            
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('commentModal'));
-            if (modal) modal.hide();
-            
-            // Process approval
-            processListApprovalWithComment(passId, action, role, comment);
-        });
-    }
+    // Close modal IMMEDIATELY
+    const modal = bootstrap.Modal.getInstance(document.getElementById('approveModal'));
+    if (modal) modal.hide();
     
-    // Auto-hide toasts after 5 seconds
-    const toasts = document.querySelectorAll('.toast');
-    toasts.forEach(toast => {
-        const bsToast = new bootstrap.Toast(toast, { delay: 5000 });
-    });
-});
-
-// ✅ NEW: Process approval for list page
-function processListApprovalWithComment(passId, action, role, comment) {
+    // Disable button and show loading
     const button = document.querySelector(`button[onclick*="${passId}"]`);
-    const gatepassRow = document.getElementById(`gatepass-${passId}`);
-    
     if (button) {
-        const originalText = button.innerHTML;
         button.disabled = true;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-        
-        // Show loading state on the row
-        if (gatepassRow) {
-            gatepassRow.style.opacity = '0.7';
-        }
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     }
     
-    // Determine the correct endpoint based on role
-    let endpoint = '';
+    // Show immediate feedback
+    showToast('Processing approval...', 'info');
     
-    if (role === 'department_head') {
-        endpoint = `/gate_pass/approve_gate_pass_with_comment/${passId}/${action}`;
-    } else if (role === 'store_manager') {
-        endpoint = `/gate_pass/approve_gate_pass_with_comment/${passId}/${action}`;
-    }
-    
-    // Send request
-    fetch(endpoint, {
+    // Send request IMMEDIATELY
+    fetch(`/gate_pass/approve_gate_pass_with_comment/${passId}/approve`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            comment: comment
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment: comment })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) throw new Error('Network error');
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
-            showToast(data.message || 'Approval processed successfully!', 'success');
+            showToast(`✅ ${data.message}`, 'success');
             
-            // Auto refresh after 1 second
-            setTimeout(() => {
-                location.reload();
-            }, 1000);
+            // Remove row immediately with animation
+            const row = document.getElementById(`gatepass-${passId}`);
+            if (row) {
+                row.style.transition = 'all 0.3s ease';
+                row.style.transform = 'translateX(100%)';
+                row.style.opacity = '0';
+                setTimeout(() => row.remove(), 300);
+            }
+            
+            // Auto-refresh page after 1 second
+            setTimeout(() => location.reload(), 1000);
         } else {
-            showToast(data.message || 'Error processing approval', 'error');
+            showToast(`❌ ${data.message}`, 'error');
             if (button) {
                 button.disabled = false;
-                button.innerHTML = originalText;
-            }
-            if (gatepassRow) {
-                gatepassRow.style.opacity = '1';
+                button.innerHTML = '<i class="fas fa-check"></i>';
             }
         }
     })
@@ -801,66 +793,65 @@ function processListApprovalWithComment(passId, action, role, comment) {
         showToast('Network error. Please try again.', 'error');
         if (button) {
             button.disabled = false;
-            button.innerHTML = originalText;
-        }
-        if (gatepassRow) {
-            gatepassRow.style.opacity = '1';
+            button.innerHTML = '<i class="fas fa-check"></i>';
         }
     });
 }
 
-// Process approval without comment
-function processApprovalWithoutComment(passId, action, role) {
+// ✅ FIXED: SUBMIT DIRECT REJECT (INSTANT)
+function submitDirectReject() {
+    const { passId, action, role } = currentDirectApproval;
+    const comment = document.getElementById('rejectComment')?.value.trim() || '';
+    
+    if (!passId || !role) {
+        showToast('Error: Approval data missing!', 'error');
+        return;
+    }
+    
+    // Close modal IMMEDIATELY
+    const modal = bootstrap.Modal.getInstance(document.getElementById('rejectModal'));
+    if (modal) modal.hide();
+    
+    // Disable button and show loading
     const button = document.querySelector(`button[onclick*="${passId}"]`);
-    const gatepassRow = document.getElementById(`gatepass-${passId}`);
-    
     if (button) {
-        const originalText = button.innerHTML;
         button.disabled = true;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-        
-        // Show loading state on the row
-        if (gatepassRow) {
-            gatepassRow.style.opacity = '0.7';
-        }
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     }
     
-    // Determine the correct endpoint based on role
-    let endpoint = '';
-    let method = 'GET';
+    // Show immediate feedback
+    showToast('Processing rejection...', 'info');
     
-    if (role === 'department_head') {
-        endpoint = `/gate_pass/approve_gate_pass/${passId}/${action}`;
-        method = 'GET';
-    } else if (role === 'store_manager') {
-        endpoint = `/gate_pass/store/approve_gate_pass/${passId}/${action}`;
-        method = 'POST';
-    }
-    
-    // Send request without comment
-    fetch(endpoint, {
-        method: method,
-        headers: {
-            'Content-Type': 'application/json',
-        }
+    // Send request IMMEDIATELY
+    fetch(`/gate_pass/approve_gate_pass_with_comment/${passId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment: comment })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) throw new Error('Network error');
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
-            showToast(data.message || 'Approval processed successfully!', 'success');
+            showToast(`✅ ${data.message}`, 'success');
             
-            // Auto refresh after 1 second
-            setTimeout(() => {
-                location.reload();
-            }, 1000);
+            // Remove row immediately with animation
+            const row = document.getElementById(`gatepass-${passId}`);
+            if (row) {
+                row.style.transition = 'all 0.3s ease';
+                row.style.transform = 'translateX(100%)';
+                row.style.opacity = '0';
+                setTimeout(() => row.remove(), 300);
+            }
+            
+            // Auto-refresh page after 1 second
+            setTimeout(() => location.reload(), 1000);
         } else {
-            showToast(data.message || 'Error processing approval', 'error');
+            showToast(`❌ ${data.message}`, 'error');
             if (button) {
                 button.disabled = false;
-                button.innerHTML = originalText;
-            }
-            if (gatepassRow) {
-                gatepassRow.style.opacity = '1';
+                button.innerHTML = '<i class="fas fa-times"></i>';
             }
         }
     })
@@ -869,92 +860,83 @@ function processApprovalWithoutComment(passId, action, role) {
         showToast('Network error. Please try again.', 'error');
         if (button) {
             button.disabled = false;
-            button.innerHTML = originalText;
-        }
-        if (gatepassRow) {
-            gatepassRow.style.opacity = '1';
+            button.innerHTML = '<i class="fas fa-times"></i>';
         }
     });
 }
 
-// Store Manager: Approve/Reject Gate Pass
-function storeApproveGatePass(passId, action) {
-    const actionText = action === 'approve' ? 'Approve' : 'Reject';
-    const icon = action === 'approve' ? '✅' : '❌';
+// ✅ FIXED: SUBMIT DIRECT INQUIRY (INSTANT)
+function submitDirectInquiry() {
+    const { passId } = currentDirectApproval;
+    const inquiryPurpose = document.getElementById('inquiryComment')?.value.trim() || '';
     
-    if (!confirm(`${icon} ${actionText} this gate pass as Store Manager?`)) return;
-    
-    showLoading('Processing store approval...');
-    
-    fetch(`/gate_pass/store/approve_gate_pass/${passId}/${action}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast(data.message || `Gate pass ${actionText.toLowerCase()}d by store!`, 'success');
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            showToast(data.message || `Error ${actionText.toLowerCase()}ing gate pass`, 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showToast('Error processing request', 'error');
-    });
-}
-
-// Department Head: Inquiry
-let currentInquiryGatePassId = null;
-
-function setInquiryGatePassId(passId) {
-    currentInquiryGatePassId = passId;
-    document.getElementById('inquiryPurpose').value = '';
-}
-
-function submitInquiry() {
-    const inquiryPurpose = document.getElementById('inquiryPurpose').value.trim();
+    if (!passId) {
+        showToast('Error: Gate pass ID missing!', 'error');
+        return;
+    }
     
     if (!inquiryPurpose) {
-        showToast('Please enter inquiry purpose', 'error');
+        showToast('Please enter inquiry purpose!', 'error');
         return;
     }
     
-    if (!currentInquiryGatePassId) {
-        showToast('Gate pass ID not set', 'error');
-        return;
-    }
-    
+    // Close modal IMMEDIATELY
     const modal = bootstrap.Modal.getInstance(document.getElementById('inquiryModal'));
-    modal.hide();
+    if (modal) modal.hide();
     
-    showLoading('Submitting inquiry...');
+    // Disable button and show loading
+    const button = document.querySelector(`button[onclick*="${passId}"]`);
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
     
-    fetch(`/gate_pass/approve_gate_pass/${currentInquiryGatePassId}/inquiry?inquiry_purpose=${encodeURIComponent(inquiryPurpose)}`, {
+    // Show immediate feedback
+    showToast('Processing inquiry...', 'info');
+    
+    // Send request IMMEDIATELY
+    fetch(`/gate_pass/approve_gate_pass/${passId}/inquiry?inquiry_purpose=${encodeURIComponent(inquiryPurpose)}`, {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-        }
+        headers: { 'Content-Type': 'application/json' }
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) throw new Error('Network error');
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
-            showToast(data.message || 'Gate pass marked for inquiry!', 'success');
-            setTimeout(() => location.reload(), 1500);
+            showToast(`✅ ${data.message}`, 'success');
+            
+            // Remove row immediately with animation
+            const row = document.getElementById(`gatepass-${passId}`);
+            if (row) {
+                row.style.transition = 'all 0.3s ease';
+                row.style.transform = 'translateX(100%)';
+                row.style.opacity = '0';
+                setTimeout(() => row.remove(), 300);
+            }
+            
+            // Auto-refresh page after 1 second
+            setTimeout(() => location.reload(), 1000);
         } else {
-            showToast(data.message || 'Error marking for inquiry', 'error');
+            showToast(`❌ ${data.message}`, 'error');
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-question-circle"></i>';
+            }
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showToast('Error processing request', 'error');
+        showToast('Network error. Please try again.', 'error');
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-question-circle"></i>';
+        }
     });
 }
 
-// Department Head: Edit Gate Pass
+// ✅ Department Head: Edit Gate Pass
 function loadGatePassForEdit(passId) {
     fetch(`/gate_pass/get_gate_pass_details/${passId}`)
         .then(response => response.json())
@@ -987,7 +969,7 @@ function submitEditGatePass() {
     formData.append('receiver_name', document.getElementById('editReceiverName').value);
     formData.append('receiver_contact', document.getElementById('editReceiverContact').value);
     
-    showLoading('Updating gate pass...');
+    showToast('Updating gate pass...', 'info');
     
     fetch(`/gate_pass/department/edit_gate_pass/${gatePassId}`, {
         method: 'POST',
@@ -999,7 +981,7 @@ function submitEditGatePass() {
             showToast(data.message || 'Gate pass updated successfully!', 'success');
             const modal = bootstrap.Modal.getInstance(document.getElementById('editGatePassModal'));
             modal.hide();
-            setTimeout(() => location.reload(), 1500);
+            setTimeout(() => location.reload(), 1000);
         } else {
             showToast(data.message || 'Error updating gate pass', 'error');
         }
@@ -1010,23 +992,26 @@ function submitEditGatePass() {
     });
 }
 
-// Department Head: Delete Gate Pass
+// ✅ Department Head: Delete Gate Pass
 function deleteGatePassByDeptHead(passId) {
     if (!confirm('🗑️ Are you sure you want to delete this gate pass?')) return;
     
-    showLoading('Deleting gate pass...');
+    showToast('Deleting gate pass...', 'info');
     
     fetch(`/gate_pass/department/delete_gate_pass/${passId}`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        }
+        headers: { 'Content-Type': 'application/json' }
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
             showToast(data.message || 'Gate pass deleted successfully!', 'success');
-            setTimeout(() => location.reload(), 1500);
+            
+            // Remove row immediately
+            const row = document.getElementById(`gatepass-${passId}`);
+            if (row) row.remove();
+            
+            setTimeout(() => location.reload(), 1000);
         } else {
             showToast(data.message || 'Error deleting gate pass', 'error');
         }
@@ -1037,23 +1022,21 @@ function deleteGatePassByDeptHead(passId) {
     });
 }
 
-// Store Manager: Mark as Dispatched
+// ✅ Store Manager: Mark as Dispatched
 function markDispatched(gatePassId) {
     if (!confirm('🚚 Mark this material as dispatched from store?')) return;
     
-    showLoading('Marking as dispatched...');
+    showToast('Marking as dispatched...', 'info');
     
     fetch(`/gate_pass/store/mark_dispatched/${gatePassId}`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        }
+        headers: { 'Content-Type': 'application/json' }
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
             showToast(data.message || 'Material marked as dispatched!', 'success');
-            setTimeout(() => location.reload(), 1500);
+            setTimeout(() => location.reload(), 1000);
         } else {
             showToast(data.message || 'Error marking as dispatched', 'error');
         }
@@ -1064,53 +1047,21 @@ function markDispatched(gatePassId) {
     });
 }
 
-// Department Head: Approve/Reject Gate Pass (old function for backward compatibility)
-function approveGatePass(passId, action) {
-    const actionText = action === 'approve' ? 'Approve' : 'Reject';
-    const icon = action === 'approve' ? '✅' : '❌';
-    
-    if (!confirm(`${icon} ${actionText} this gate pass?`)) return;
-    
-    showLoading('Processing request...');
-    
-    fetch(`/gate_pass/approve_gate_pass/${passId}/${action}`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast(data.message || 'Gate pass processed successfully!', 'success');
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            showToast(data.message || 'Error processing request', 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showToast('Error processing request', 'error');
-    });
-}
-
-// Security: Mark as Returned
+// ✅ Security: Mark as Returned
 function markReturned(passId) {
     if (!confirm('📦 Mark this returnable material as returned?')) return;
     
-    showLoading('Marking as returned...');
+    showToast('Marking as returned...', 'info');
     
     fetch(`/mark_returned/${passId}`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        }
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
             showToast(data.message || 'Material marked as returned!', 'success');
-            setTimeout(() => location.reload(), 1500);
+            setTimeout(() => location.reload(), 1000);
         } else {
             showToast(data.message || 'Error marking as returned', 'error');
         }
@@ -1121,7 +1072,7 @@ function markReturned(passId) {
     });
 }
 
-// Security: Approve/Reject Gate Pass
+// ✅ Security: Approve/Reject Gate Pass
 function securityApproveGatePass(passId, action) {
     const actionText = action === 'approve' ? 'Approve' : 'Reject';
     const icon = action === 'approve' ? '✅' : '❌';
@@ -1130,35 +1081,53 @@ function securityApproveGatePass(passId, action) {
     
     showToast('Processing security approval...', 'info');
     
+    // Disable button immediately
+    const button = document.querySelector(`button[onclick*="${passId}"]`);
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
+    
     fetch(`/security/approve_gate_pass/${passId}/${action}`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        }
+        headers: { 'Content-Type': 'application/json' }
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
             showToast(data.message || 'Gate pass approved successfully!', 'success');
-            setTimeout(() => location.reload(), 1500);
+            
+            // Remove row immediately
+            const row = document.getElementById(`gatepass-${passId}`);
+            if (row) {
+                row.style.transition = 'all 0.3s ease';
+                row.style.transform = 'translateX(100%)';
+                row.style.opacity = '0';
+                setTimeout(() => row.remove(), 300);
+            }
+            
+            setTimeout(() => location.reload(), 1000);
         } else {
             showToast(data.message || 'Error processing request', 'error');
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = action === 'approve' ? '<i class="fas fa-shield-alt"></i>' : '<i class="fas fa-times"></i>';
+            }
         }
     })
     .catch(error => {
         console.error('Error:', error);
         showToast('Error processing request', 'error');
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = action === 'approve' ? '<i class="fas fa-shield-alt"></i>' : '<i class="fas fa-times"></i>';
+        }
     });
 }
 
 // Refresh table
 function refreshTable() {
     location.reload();
-}
-
-// Show loading indicator
-function showLoading(message) {
-    console.log('Loading:', message);
 }
 
 // Toast notification function
@@ -1177,5 +1146,27 @@ function showToast(message, type = 'success') {
     const bsToast = new bootstrap.Toast(toastElement);
     bsToast.show();
 }
+
+// Clear modals on hide
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-hide toasts after 3 seconds
+    const toasts = document.querySelectorAll('.toast');
+    toasts.forEach(toast => {
+        new bootstrap.Toast(toast, { delay: 3000 });
+    });
+    
+    // Clear modals on hide
+    const modals = ['approveModal', 'rejectModal', 'inquiryModal', 'editGatePassModal'];
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.addEventListener('hidden.bs.modal', function() {
+                // Clear inputs
+                const inputs = this.querySelectorAll('textarea');
+                inputs.forEach(input => input.value = '');
+            });
+        }
+    });
+});
 </script>
 {% endblock %}

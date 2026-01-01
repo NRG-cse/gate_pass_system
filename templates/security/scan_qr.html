@@ -14,52 +14,67 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
+                        <!-- QR Scanner Section -->
                         <div class="col-md-6">
-                            <!-- Camera Scanner Section -->
                             <div class="card mb-4">
                                 <div class="card-header bg-light">
                                     <h6 class="mb-0"><i class="fas fa-camera me-2"></i>QR Code Scanner</h6>
                                 </div>
                                 <div class="card-body text-center">
-                                    <div id="cameraPreview" class="border rounded mb-3" style="height: 300px; background: #f8f9fa;">
-                                        <!-- Camera will be inserted here -->
+                                    <!-- Scanner Container -->
+                                    <div id="qr-reader" style="width: 100%; min-height: 300px;"></div>
+                                    <div id="qr-reader-results" class="mt-2"></div>
+                                    
+                                    <!-- Scanner Controls -->
+                                    <div class="mt-3">
+                                        <button id="startScanner" class="btn btn-primary">
+                                            <i class="fas fa-play me-2"></i>Start Scanner
+                                        </button>
+                                        <button id="stopScanner" class="btn btn-secondary ms-2" disabled>
+                                            <i class="fas fa-stop me-2"></i>Stop Scanner
+                                        </button>
+                                        <button id="switchCamera" class="btn btn-info ms-2">
+                                            <i class="fas fa-sync-alt me-2"></i>Switch Camera
+                                        </button>
                                     </div>
-                                    <button id="startCamera" class="btn btn-primary">
-                                        <i class="fas fa-camera me-2"></i>Start Camera
-                                    </button>
-                                    <button id="stopCamera" class="btn btn-secondary ms-2" disabled>
-                                        <i class="fas fa-stop me-2"></i>Stop Camera
-                                    </button>
                                 </div>
                             </div>
                             
-                            <!-- Manual Gate Pass Return Section -->
-                            <div class="card" id="manualReturnSection">
+                            <!-- Manual Return Section -->
+                            <div class="card">
                                 <div class="card-header bg-warning">
-                                    <h6 class="mb-0"><i class="fas fa-keyboard me-2"></i>Manual Gate Pass Return</h6>
+                                    <h6 class="mb-0"><i class="fas fa-keyboard me-2"></i>Manual Return (Without QR)</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="mb-3">
                                         <label class="form-label">Enter Gate Pass Number:</label>
-                                        <input type="text" id="manualPassNumber" class="form-control" 
-                                               placeholder="Enter gate pass number (e.g., GP20241229123000)">
-                                        <small class="text-muted">Enter gate pass number starting with "GP"</small>
+                                        <div class="input-group">
+                                            <input type="text" id="manualPassNumber" class="form-control" 
+                                                   placeholder="GP20241229123000 or 20241229123000" 
+                                                   maxlength="20">
+                                            <button id="manualReturnBtn" class="btn btn-warning">
+                                                <i class="fas fa-check-circle me-2"></i>Mark Returned
+                                            </button>
+                                        </div>
+                                        <small class="text-muted">Enter full Gate Pass number (GP20241229123000) or just numbers</small>
                                     </div>
-                                    <button id="manualReturnBtn" class="btn btn-warning w-100">
-                                        <i class="fas fa-check-circle me-2"></i>Mark as Returned
-                                    </button>
+                                    
+                                    <!-- Manual Return Result -->
+                                    <div id="manualReturnResult" class="mt-3"></div>
                                 </div>
                             </div>
                         </div>
                         
+                        <!-- Results Section -->
                         <div class="col-md-6">
                             <!-- Scan Results -->
-                            <div class="card">
+                            <div class="card mb-4">
                                 <div class="card-header bg-info text-white">
                                     <h6 class="mb-0">Return Results</h6>
                                 </div>
                                 <div class="card-body">
-                                    <div id="scanResult" class="text-center py-4">
+                                    <!-- Initial State -->
+                                    <div id="initialState" class="text-center py-4">
                                         <div class="empty-state-icon mb-3">
                                             <i class="fas fa-qrcode fa-4x text-muted opacity-25"></i>
                                         </div>
@@ -74,16 +89,23 @@
                                         <div class="spinner-border text-primary" role="status">
                                             <span class="visually-hidden">Loading...</span>
                                         </div>
-                                        <p class="mt-2">Processing...</p>
+                                        <p class="mt-2">Processing Return...</p>
                                     </div>
                                     
                                     <!-- Success Result -->
                                     <div id="successResult" class="d-none">
                                         <div class="alert alert-success">
-                                            <h5><i class="fas fa-check-circle me-2"></i>Material Return Successful!</h5>
-                                            <div id="successDetails" class="mt-3"></div>
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-check-circle fa-2x me-3"></i>
+                                                <div>
+                                                    <h5 class="mb-1">✅ Material Return Successful!</h5>
+                                                    <p class="mb-0" id="successMessage"></p>
+                                                </div>
+                                            </div>
+                                            <hr>
+                                            <div id="successDetails" class="mt-2"></div>
                                         </div>
-                                        <button id="scanAnother" class="btn btn-primary w-100">
+                                        <button id="scanAnother" class="btn btn-primary w-100 mt-2">
                                             <i class="fas fa-redo me-2"></i>Process Another Return
                                         </button>
                                     </div>
@@ -91,10 +113,15 @@
                                     <!-- Error Result -->
                                     <div id="errorResult" class="d-none">
                                         <div class="alert alert-danger">
-                                            <h5><i class="fas fa-exclamation-circle me-2"></i>Return Failed</h5>
-                                            <p id="errorMessage" class="mb-0"></p>
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-exclamation-circle fa-2x me-3"></i>
+                                                <div>
+                                                    <h5 class="mb-1">❌ Return Failed</h5>
+                                                    <p id="errorMessage" class="mb-0"></p>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <button id="tryAgain" class="btn btn-warning w-100">
+                                        <button id="tryAgain" class="btn btn-warning w-100 mt-2">
                                             <i class="fas fa-redo me-2"></i>Try Again
                                         </button>
                                     </div>
@@ -102,7 +129,7 @@
                             </div>
                             
                             <!-- Today's Returns -->
-                            <div class="card mt-4">
+                            <div class="card">
                                 <div class="card-header bg-success text-white">
                                     <h6 class="mb-0"><i class="fas fa-history me-2"></i>Today's Returns</h6>
                                 </div>
@@ -125,208 +152,377 @@
     </div>
 </div>
 
-<!-- Include QR Scanner Library -->
-<script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+<!-- Include HTML5 QR Code Scanner -->
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
 <style>
-#cameraPreview video {
-    width: 100%;
-    height: 300px;
-    object-fit: cover;
+#qr-reader {
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f8f9fa;
+}
+#qr-reader video {
+    width: 100% !important;
     border-radius: 8px;
 }
-.empty-state-icon {
-    opacity: 0.5;
+#qr-reader__dashboard_section {
+    padding: 10px;
+    background: white;
 }
-.list-group-item {
-    border: none;
-    border-bottom: 1px solid rgba(0,0,0,0.1);
+.scanner-active {
+    border-color: #0d6efd !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }
-.manual-return-section {
-    background-color: #fff3cd;
-    border-left: 4px solid #ffc107;
+.camera-status {
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: #f8f9fa;
 }
 </style>
 
 <script>
-let html5QrCode;
-let cameraActive = false;
-let selectedCameraId = null;
+let html5QrCode = null;
+let scannerActive = false;
+let currentCameraId = null;
+let cameras = [];
 
-// Start Camera
-document.getElementById('startCamera').addEventListener('click', function() {
-    startCamera();
-});
+// DOM Elements
+const elements = {
+    startScanner: document.getElementById('startScanner'),
+    stopScanner: document.getElementById('stopScanner'),
+    switchCamera: document.getElementById('switchCamera'),
+    manualReturnBtn: document.getElementById('manualReturnBtn'),
+    manualPassNumber: document.getElementById('manualPassNumber'),
+    scanAnother: document.getElementById('scanAnother'),
+    tryAgain: document.getElementById('tryAgain'),
+    initialState: document.getElementById('initialState'),
+    loadingIndicator: document.getElementById('loadingIndicator'),
+    successResult: document.getElementById('successResult'),
+    errorResult: document.getElementById('errorResult'),
+    successMessage: document.getElementById('successMessage'),
+    successDetails: document.getElementById('successDetails'),
+    errorMessage: document.getElementById('errorMessage'),
+    todayReturns: document.getElementById('todayReturns'),
+    manualReturnResult: document.getElementById('manualReturnResult')
+};
 
-// Stop Camera
-document.getElementById('stopCamera').addEventListener('click', function() {
-    stopCamera();
-});
-
-// Manual Return Button
-document.getElementById('manualReturnBtn').addEventListener('click', function() {
-    manualReturn();
-});
-
-// Manual QR Processing (for QR data input)
-document.getElementById('processManualQr')?.addEventListener('click', function() {
-    const qrData = document.getElementById('manualQrInput')?.value.trim();
-    if (qrData) {
-        processQrCode(qrData);
-    } else {
-        showError('Please enter QR code data');
-    }
-});
-
-// Scan Another
-document.getElementById('scanAnother').addEventListener('click', function() {
-    resetScanner();
-});
-
-// Try Again
-document.getElementById('tryAgain').addEventListener('click', function() {
-    resetScanner();
-});
-
-// Get camera devices
-async function getCameras() {
+// QR Scanner Functionality
+async function setupQRScanner() {
     try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        // Get available cameras
+        cameras = await Html5Qrcode.getCameras();
         
-        if (videoDevices.length === 0) {
-            showError('No camera found on this device');
-            return [];
+        if (cameras && cameras.length > 0) {
+            console.log(`${cameras.length} camera(s) found.`);
+            currentCameraId = cameras[0].id;
+            
+            // Create scanner instance
+            html5QrCode = new Html5Qrcode("qr-reader");
+            
+            // Update camera status
+            updateCameraStatus();
+            
+            // Enable start button
+            elements.startScanner.disabled = false;
+            elements.startScanner.innerHTML = '<i class="fas fa-play me-2"></i>Start Scanner';
+            
+        } else {
+            showError('No camera found. Please connect a camera and refresh the page.');
+            elements.startScanner.disabled = true;
         }
-        
-        return videoDevices;
     } catch (error) {
-        console.error('Error getting cameras:', error);
-        showError('Cannot access camera. Check permissions.');
-        return [];
+        console.error('Camera initialization error:', error);
+        showError(`Camera Error: ${error.message}`);
+        elements.startScanner.disabled = true;
     }
 }
 
-// Start Camera with better error handling
-async function startCamera() {
+// Update camera status display
+function updateCameraStatus() {
+    const qrReader = document.getElementById('qr-reader');
+    if (!qrReader) return;
+    
+    const existingStatus = qrReader.querySelector('.camera-status');
+    if (existingStatus) {
+        existingStatus.remove();
+    }
+    
+    if (scannerActive && currentCameraId) {
+        const camera = cameras.find(cam => cam.id === currentCameraId);
+        const statusDiv = document.createElement('div');
+        statusDiv.className = 'camera-status text-center mt-2';
+        statusDiv.innerHTML = `
+            <span class="badge bg-success"><i class="fas fa-video me-1"></i> ${camera ? camera.label : 'Camera'} Active</span>
+        `;
+        qrReader.appendChild(statusDiv);
+    }
+}
+
+// Start Scanner
+async function startScanner() {
+    if (!html5QrCode || scannerActive) return;
+    
+    const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+        console.log("QR Code Scanned:", decodedText);
+        
+        // Stop scanner
+        html5QrCode.stop().then(() => {
+            scannerActive = false;
+            elements.startScanner.disabled = false;
+            elements.stopScanner.disabled = true;
+            elements.switchCamera.disabled = true;
+            
+            // Remove active styling
+            document.getElementById('qr-reader').classList.remove('scanner-active');
+            updateCameraStatus();
+            
+            // Show loading
+            elements.initialState.classList.add('d-none');
+            elements.loadingIndicator.classList.remove('d-none');
+            
+            // Send QR data to server
+            sendQRData(decodedText);
+        }).catch(err => {
+            console.error("Failed to stop scanner:", err);
+            handleDetectedQR(decodedText);
+        });
+    };
+    
+    const qrCodeErrorCallback = (error) => {
+        // This callback is for scanning errors (like camera not found)
+        console.warn("QR Scan Error:", error);
+    };
+    
+    const config = { 
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.777778,
+        disableFlip: false,
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+    };
+    
     try {
-        const preview = document.getElementById('cameraPreview');
-        
-        // Clear previous content
-        preview.innerHTML = '';
-        
-        html5QrCode = new Html5Qrcode("cameraPreview");
-        
-        // Get available cameras
-        const cameras = await getCameras();
-        
-        let cameraId = null;
-        if (cameras.length > 0) {
-            // Try to find back camera first
-            const backCamera = cameras.find(cam => 
-                cam.label.toLowerCase().includes('back') || 
-                cam.label.toLowerCase().includes('rear')
-            );
-            cameraId = backCamera ? backCamera.deviceId : cameras[0].deviceId;
-            selectedCameraId = cameraId;
-        }
-        
-        const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-            if (decodedText) {
-                stopCamera();
-                processQrCode(decodedText);
-            }
-        };
-        
-        const config = { 
-            fps: 10, 
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.333333,
-            videoConstraints: {
-                deviceId: cameraId ? { exact: cameraId } : undefined,
-                facingMode: { exact: "environment" }
-            }
-        };
-        
-        // Try with specific device ID first
-        if (cameraId) {
-            try {
-                await html5QrCode.start(
-                    { deviceId: { exact: cameraId } },
-                    config,
-                    qrCodeSuccessCallback,
-                    (errorMessage) => {
-                        // Expected error when no QR code detected
-                        console.log(`Scanning: ${errorMessage}`);
-                    }
-                );
-                cameraActive = true;
-                document.getElementById('startCamera').disabled = true;
-                document.getElementById('stopCamera').disabled = false;
-                return;
-            } catch (deviceError) {
-                console.log('Specific camera failed, trying default...');
-            }
-        }
-        
-        // Fallback to default facing mode
         await html5QrCode.start(
-            { facingMode: "environment" },
+            currentCameraId,
             config,
             qrCodeSuccessCallback,
-            (errorMessage) => {
-                console.log(`Scanning: ${errorMessage}`);
-            }
+            qrCodeErrorCallback
         );
         
-        cameraActive = true;
-        document.getElementById('startCamera').disabled = true;
-        document.getElementById('stopCamera').disabled = false;
+        scannerActive = true;
+        elements.startScanner.disabled = true;
+        elements.stopScanner.disabled = false;
+        elements.switchCamera.disabled = false;
+        
+        // Add active styling
+        document.getElementById('qr-reader').classList.add('scanner-active');
+        updateCameraStatus();
+        
+        console.log('Scanner started successfully');
         
     } catch (error) {
-        console.error(`Unable to start camera: ${error}`);
-        let errorMsg = 'Could not access camera. ';
-        
-        if (error.name === 'NotAllowedError') {
-            errorMsg += 'Camera permission denied. Please allow camera access in browser settings.';
-        } else if (error.name === 'NotFoundError') {
-            errorMsg += 'No camera found on this device.';
-        } else if (error.name === 'NotSupportedError') {
-            errorMsg += 'Camera not supported. Try manual input instead.';
-        } else {
-            errorMsg += `Error: ${error.message}`;
+        console.error('Failed to start scanner:', error);
+        showError(`Scanner Error: ${error.message}`);
+        elements.startScanner.disabled = false;
+    }
+}
+
+// Handle detected QR code
+function handleDetectedQR(qrData) {
+    // Stop scanner temporarily
+    if (scannerActive) {
+        stopScanner();
+    }
+    
+    // Show loading
+    showLoading();
+    
+    // Process after a short delay
+    setTimeout(() => {
+        processQRReturn(qrData);
+    }, 500);
+}
+
+// Send QR Data to Server
+function sendQRData(qrData) {
+    console.log("Sending QR data to server:", qrData);
+    
+    fetch('/security/scan_qr', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        },
+        body: JSON.stringify({ qr_data: qrData })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
         }
+        return response.json();
+    })
+    .then(data => {
+        elements.loadingIndicator.classList.add('d-none');
         
-        showError(errorMsg);
-        // Highlight manual input section
-        document.getElementById('manualReturnSection').classList.add('manual-return-section');
+        if (data.success) {
+            // Show success with details
+            let detailsHtml = '';
+            if (data.gate_pass) {
+                detailsHtml = `
+                    <div class="row">
+                        <div class="col-6">
+                            <p class="mb-1"><strong>Pass Number:</strong></p>
+                            <h5>${data.gate_pass.pass_number || 'N/A'}</h5>
+                        </div>
+                        <div class="col-6">
+                            <p class="mb-1"><strong>Return Time:</strong></p>
+                            <h5>${data.gate_pass.return_time || new Date().toLocaleTimeString()}</h5>
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-12">
+                            <p class="mb-1"><strong>Material:</strong></p>
+                            <p>${data.gate_pass.material_description || 'N/A'}</p>
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-12">
+                            <p class="mb-1"><strong>Department:</strong></p>
+                            <p>${data.gate_pass.department || 'N/A'}</p>
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-12">
+                            <p class="mb-0"><strong>Return Method:</strong></p>
+                            <span class="badge bg-info">
+                                <i class="fas fa-qrcode me-1"></i>
+                                QR Scan
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            elements.successMessage.textContent = data.message || 'Material returned successfully';
+            elements.successDetails.innerHTML = detailsHtml;
+            elements.successResult.classList.remove('d-none');
+            
+            // Refresh today's returns
+            loadTodayReturns();
+            
+            // Show success notification
+            showNotification('Material returned successfully!', 'success');
+            
+        } else {
+            showError(data.message || 'Return failed');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        elements.loadingIndicator.classList.add('d-none');
+        showError(`Error processing QR code: ${error.message}`);
+    });
+}
+
+// Process QR Return
+function processQRReturn(qrData) {
+    fetch('/security/scan_qr', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ qr_data: qrData })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        hideLoading();
+        
+        if (data.success) {
+            showSuccess(data, 'qr');
+            loadTodayReturns();
+        } else {
+            showError(data.message || 'Return failed');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        showError(`Network error: ${error.message}`);
+        console.error('API Error:', error);
+    });
+}
+
+// Stop Scanner
+async function stopScanner() {
+    if (html5QrCode && scannerActive) {
+        try {
+            await html5QrCode.stop();
+            scannerActive = false;
+            elements.startScanner.disabled = false;
+            elements.stopScanner.disabled = true;
+            elements.switchCamera.disabled = true;
+            
+            // Remove active styling
+            document.getElementById('qr-reader').classList.remove('scanner-active');
+            updateCameraStatus();
+            
+            console.log('Scanner stopped');
+        } catch (error) {
+            console.error('Failed to stop scanner:', error);
+        }
     }
 }
 
-function stopCamera() {
-    if (html5QrCode && cameraActive) {
-        html5QrCode.stop().then(() => {
-            cameraActive = false;
-            document.getElementById('startCamera').disabled = false;
-            document.getElementById('stopCamera').disabled = true;
-            document.getElementById('cameraPreview').innerHTML = '';
-        }).catch((err) => {
-            console.error(`Unable to stop camera: ${err}`);
-        });
+// Switch Camera
+async function switchCamera() {
+    if (!cameras.length || !scannerActive) return;
+    
+    try {
+        // Stop current scanner
+        await stopScanner();
+        
+        // Switch to next camera
+        const currentIndex = cameras.findIndex(cam => cam.id === currentCameraId);
+        const nextIndex = (currentIndex + 1) % cameras.length;
+        currentCameraId = cameras[nextIndex].id;
+        
+        // Restart with new camera
+        setTimeout(() => startScanner(), 500);
+        
+    } catch (error) {
+        console.error('Failed to switch camera:', error);
     }
 }
 
-// Manual Return Functionality
+// Manual Return
 function manualReturn() {
-    const passNumber = document.getElementById('manualPassNumber').value.trim().toUpperCase();
+    let passNumber = elements.manualPassNumber.value.trim();
     
     if (!passNumber) {
-        showError('Please enter a gate pass number');
+        showError('Please enter gate pass number');
         return;
     }
     
-    if (!passNumber.startsWith('GP')) {
-        showError('Invalid gate pass number format. Should start with GP (e.g., GP20241229123000)');
+    // Format pass number (add GP prefix if missing)
+    if (!passNumber.toUpperCase().startsWith('GP')) {
+        // Check if it's all digits (14 digits)
+        if (/^\d{14}$/.test(passNumber)) {
+            passNumber = 'GP' + passNumber;
+        } else {
+            showError('Invalid gate pass number. Format: GP20241229123000 or 20241229123000');
+            return;
+        }
+    }
+    
+    // Validate format (GP followed by 14 digits)
+    if (!/^GP\d{14}$/.test(passNumber.toUpperCase())) {
+        showError('Invalid gate pass number. Should be GP followed by 14 digits (e.g., GP20241229123000)');
         return;
     }
     
@@ -337,126 +533,128 @@ function manualReturn() {
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ pass_number: passNumber })
+        body: JSON.stringify({ pass_number: passNumber.toUpperCase() })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         hideLoading();
         
         if (data.success) {
-            showSuccess(data);
+            showSuccess(data, 'manual');
             loadTodayReturns();
-            document.getElementById('manualPassNumber').value = '';
         } else {
-            showError(data.message);
+            showError(data.message || 'Return failed');
         }
     })
     .catch(error => {
         hideLoading();
-        showError('Network error. Please try again.');
-        console.error('Error:', error);
+        showError(`Network error: ${error.message}`);
+        console.error('API Error:', error);
     });
 }
 
-function processQrCode(qrData) {
-    showLoading();
-    
-    fetch('/security/scan_qr', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ qr_data: qrData })
-    })
-    .then(response => response.json())
-    .then(data => {
-        hideLoading();
-        
-        if (data.success) {
-            showSuccess(data);
-            loadTodayReturns();
-        } else {
-            showError(data.message);
-        }
-    })
-    .catch(error => {
-        hideLoading();
-        showError('Network error. Please try again.');
-        console.error('Error:', error);
-    });
-}
-
+// UI Helper Functions
 function showLoading() {
-    document.getElementById('scanResult').classList.add('d-none');
-    document.getElementById('loadingIndicator').classList.remove('d-none');
-    document.getElementById('successResult').classList.add('d-none');
-    document.getElementById('errorResult').classList.add('d-none');
+    elements.initialState.classList.add('d-none');
+    elements.loadingIndicator.classList.remove('d-none');
+    elements.successResult.classList.add('d-none');
+    elements.errorResult.classList.add('d-none');
+    elements.manualReturnResult.innerHTML = '';
 }
 
 function hideLoading() {
-    document.getElementById('loadingIndicator').classList.add('d-none');
+    elements.loadingIndicator.classList.add('d-none');
 }
 
-function showSuccess(data) {
-    const successDetails = document.getElementById('successDetails');
+function showSuccess(data, type) {
+    let detailsHtml = '';
     
-    let successHtml = '';
     if (data.gate_pass) {
-        successHtml = `
-            <div class="text-start">
-                <p><strong>Pass Number:</strong> ${data.gate_pass.pass_number}</p>
-                <p><strong>Material:</strong> ${data.gate_pass.material_description}</p>
-                <p><strong>Department:</strong> ${data.gate_pass.department}</p>
-                <p><strong>Return Time:</strong> ${data.gate_pass.return_time || new Date().toLocaleTimeString()}</p>
-                <p class="text-success"><strong>Status:</strong> ✅ Material Returned Successfully</p>
+        detailsHtml = `
+            <div class="row">
+                <div class="col-6">
+                    <p class="mb-1"><strong>Pass Number:</strong></p>
+                    <h5>${data.gate_pass.pass_number || 'N/A'}</h5>
+                </div>
+                <div class="col-6">
+                    <p class="mb-1"><strong>Return Time:</strong></p>
+                    <h5>${data.gate_pass.return_time || new Date().toLocaleTimeString()}</h5>
+                </div>
             </div>
-        `;
-    } else {
-        successHtml = `
-            <div class="text-start">
-                <p><strong>Pass Number:</strong> ${data.message.split('Gate Pass ')[1]?.split(' ')[0] || 'N/A'}</p>
-                <p class="text-success"><strong>Status:</strong> ✅ Material Returned Successfully</p>
+            <div class="row mt-2">
+                <div class="col-12">
+                    <p class="mb-1"><strong>Material:</strong></p>
+                    <p>${data.gate_pass.material_description || 'N/A'}</p>
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-12">
+                    <p class="mb-1"><strong>Department:</strong></p>
+                    <p>${data.gate_pass.department || 'N/A'}</p>
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-12">
+                    <p class="mb-0"><strong>Return Method:</strong></p>
+                    <span class="badge ${type === 'qr' ? 'bg-info' : 'bg-warning'}">
+                        <i class="fas fa-${type === 'qr' ? 'qrcode' : 'keyboard'} me-1"></i>
+                        ${type === 'qr' ? 'QR Scan' : 'Manual Entry'}
+                    </span>
+                </div>
             </div>
         `;
     }
     
-    successDetails.innerHTML = successHtml;
+    elements.successMessage.textContent = data.message || 'Material returned successfully';
+    elements.successDetails.innerHTML = detailsHtml;
     
-    document.getElementById('scanResult').classList.add('d-none');
-    document.getElementById('successResult').classList.remove('d-none');
+    elements.initialState.classList.add('d-none');
+    elements.successResult.classList.remove('d-none');
     
-    // Clear manual input
-    document.getElementById('manualQrInput')?.value = '';
+    // Clear input field
+    elements.manualPassNumber.value = '';
 }
 
 function showError(message) {
-    document.getElementById('errorMessage').textContent = message;
-    document.getElementById('scanResult').classList.add('d-none');
-    document.getElementById('errorResult').classList.remove('d-none');
+    elements.errorMessage.textContent = message;
+    elements.initialState.classList.add('d-none');
+    elements.errorResult.classList.remove('d-none');
+    
+    // Also show in manual return result area
+    elements.manualReturnResult.innerHTML = `
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
 }
 
 function resetScanner() {
-    document.getElementById('scanResult').classList.remove('d-none');
-    document.getElementById('successResult').classList.add('d-none');
-    document.getElementById('errorResult').classList.add('d-none');
-    document.getElementById('manualQrInput')?.value = '';
-    document.getElementById('manualPassNumber').value = '';
+    elements.initialState.classList.remove('d-none');
+    elements.successResult.classList.add('d-none');
+    elements.errorResult.classList.add('d-none');
+    elements.manualReturnResult.innerHTML = '';
     
-    // Remove manual section highlight
-    document.getElementById('manualReturnSection').classList.remove('manual-return-section');
+    // Clear input field
+    elements.manualPassNumber.value = '';
     
-    // Restart camera if it was active
-    if (cameraActive) {
-        stopCamera();
-        setTimeout(startCamera, 500);
+    // Restart scanner if needed
+    if (!scannerActive) {
+        setTimeout(() => startScanner(), 1000);
     }
 }
 
-function loadTodayReturns() {
-    fetch('/security/today_returns')
-    .then(response => response.json())
-    .then(data => {
-        const container = document.getElementById('todayReturns');
+async function loadTodayReturns() {
+    try {
+        const response = await fetch('/security/today_returns');
+        const data = await response.json();
+        
         if (data.success && data.returns && data.returns.length > 0) {
             let html = '';
             data.returns.forEach(item => {
@@ -469,49 +667,104 @@ function loadTodayReturns() {
                             </div>
                             <div class="text-end">
                                 <span class="badge bg-success">${item.return_time}</span>
-                                <div class="small text-muted text-truncate" style="max-width: 150px;">${item.material}</div>
+                                <div class="small text-muted text-truncate" style="max-width: 150px;">
+                                    <i class="fas fa-box me-1"></i>${item.material}
+                                </div>
                             </div>
                         </div>
                     </div>
                 `;
             });
-            container.innerHTML = html;
+            elements.todayReturns.innerHTML = html;
         } else {
-            container.innerHTML = `
+            elements.todayReturns.innerHTML = `
                 <div class="list-group-item text-center py-4">
-                    <i class="fas fa-inbox fa-2x text-muted mb-3"></i>
-                    <p class="text-muted mb-0">No returns today</p>
+                    <i class="fas fa-inbox fa-2x text-muted mb-3 opacity-50"></i>
+                    <p class="text-muted mb-0">No returns today yet</p>
                 </div>
             `;
         }
-    })
-    .catch(error => {
+    } catch (error) {
         console.error('Error loading returns:', error);
-        const container = document.getElementById('todayReturns');
-        container.innerHTML = `
+        elements.todayReturns.innerHTML = `
             <div class="list-group-item text-center py-4">
                 <i class="fas fa-exclamation-triangle text-warning me-2"></i>
                 <span class="text-muted">Error loading returns</span>
             </div>
         `;
-    });
+    }
 }
 
-// Load today's returns on page load
-document.addEventListener('DOMContentLoaded', function() {
-    loadTodayReturns();
+// Notification function
+function showNotification(message, type = 'success') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+    `;
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
     
-    // Allow pressing Enter in manual pass number field
-    document.getElementById('manualPassNumber').addEventListener('keypress', function(e) {
+    // Add to body
+    document.body.appendChild(notification);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+// Initialize Event Listeners
+function initializeEventListeners() {
+    // Scanner Controls
+    elements.startScanner.addEventListener('click', startScanner);
+    elements.stopScanner.addEventListener('click', stopScanner);
+    elements.switchCamera.addEventListener('click', switchCamera);
+    
+    // Manual Return Button
+    elements.manualReturnBtn.addEventListener('click', manualReturn);
+    
+    // Enter key support for manual return
+    elements.manualPassNumber.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             manualReturn();
         }
     });
+    
+    // Result Actions
+    elements.scanAnother.addEventListener('click', resetScanner);
+    elements.tryAgain.addEventListener('click', resetScanner);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('Security QR Scanner Page Loaded');
+    
+    // Initialize scanner
+    await setupQRScanner();
+    
+    // Initialize event listeners
+    initializeEventListeners();
+    
+    // Load today's returns
+    loadTodayReturns();
 });
 
-// Clean up camera on page unload
+// Clean up on page unload
 window.addEventListener('beforeunload', function() {
-    stopCamera();
+    if (scannerActive) {
+        stopScanner();
+    }
 });
 </script>
 {% endblock %}
