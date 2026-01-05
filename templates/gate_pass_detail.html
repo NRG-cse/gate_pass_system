@@ -92,161 +92,191 @@
 
                 <!-- Main Content -->
                 <div class="card-body p-0" style="overflow-y: auto; height: calc(100vh - 130px);">
-                    <!-- Printable Section - Single Page Design -->
+                    <!-- Printable Section - Double Copy Design -->
                     <div class="print-section m-4">
-                        <!-- Company Header with Logo -->
-                        <div class="company-header d-flex align-items-start mb-4 border-bottom pb-3">
-                            <!-- Left: Company Logo -->
-                            <div class="company-logo-section me-4">
-                               <img src="{{ url_for('static', filename='images/company-logo.png') }}" 
-                                            alt="NR Group" style="max-width: 50px; max-height: 50px;">
+                        <!-- First Copy (Receiver Copy) -->
+                        <div class="gate-pass-copy copy-top mb-4">
+                            <!-- Company Header with Logo -->
+                            <div class="company-header d-flex align-items-start mb-3 border-bottom pb-2">
+                                <!-- Left: Company Logo -->
+                                <div class="company-logo-section me-3">
+                                   <img src="{{ url_for('static', filename='images/company-logo.png') }}" 
+                                                alt="NR Group" style="max-width: 40px; max-height: 40px;">
+                                </div>
+                                
+                                <!-- Middle: Company Info -->
+                                <div class="company-info flex-grow-1">
+                                    <h1 class="text-dark fw-bold mb-1" style="font-size: 18pt;">NR GROUP</h1>
+                                    <p class="text-muted mb-1" style="font-size: 8pt;">
+                                        Square Masterbari, Jamirdia, Bhaluka, Mymensingh<br>
+                                        <small>One stop solution for sustainable textile</small>
+                                    </p>
+                                </div>
+                                
+                                <!-- Right: Gate Pass Info -->
+                                <div class="gate-pass-info text-end">
+                                    <h2 class="text-primary fw-bold mb-1" style="font-size: 16pt;">GATE PASS</h2>
+                                    <h3 class="text-dark mb-1" style="font-size: 14pt;">{{ gate_pass.pass_number }}</h3>
+                                    <p class="text-muted mb-0" style="font-size: 8pt;">
+                                        <i class="fas fa-calendar"></i> {{ gate_pass.created_at.strftime('%d %B, %Y %I:%M %p') }}
+                                    </p>
+                                </div>
                             </div>
-                            
-                            <!-- Middle: Company Info -->
-                            <div class="company-info flex-grow-1">
-                                <h1 class="text-dark fw-bold mb-1" style="font-size: 22pt;">NR GROUP</h1>
-                                <p class="text-muted mb-2" style="font-size: 10pt;">
-                                    Square Masterbari, Jamirdia, Bhaluka, Mymensingh<br>
-                                    <small>One stop solution for sustainable textile</small>
-                                </p>
-                            </div>
-                            
-                            <!-- Right: Gate Pass Info -->
-                            <div class="gate-pass-info text-end">
-                                <h2 class="text-primary fw-bold mb-1" style="font-size: 18pt;">GATE PASS</h2>
-                                <h3 class="text-dark mb-2" style="font-size: 16pt;">{{ gate_pass.pass_number }}</h3>
-                                <p class="text-muted mb-0" style="font-size: 9pt;">
-                                    <i class="fas fa-calendar"></i> Created: {{ gate_pass.created_at.strftime('%d %B, %Y %I:%M %p') }}
-                                </p>
-                            </div>
-                        </div>
 
-                        <!-- Main Two Column Layout -->
-                        <div class="row g-2 mb-2">
-                            <!-- Left Column: Details -->
-                            <div class="col-md-8 pe-2">
-                                <!-- Status Badges Row -->
-                                <div class="d-flex flex-wrap gap-1 mb-2">
-                                    <span class="badge bg-primary px-2 py-1" style="font-size: 9pt;">
-                                        <i class="fas fa-building"></i> {{ gate_pass.division_name }}
-                                    </span>
-                                    <span class="badge bg-{{ 'info' if gate_pass.material_type == 'returnable' else 'secondary' }} px-2 py-1" style="font-size: 9pt;">
-                                        <i class="fas fa-box"></i> {{ gate_pass.material_type|upper }}
-                                    </span>
-                                    <span class="badge bg-success px-2 py-1" style="font-size: 9pt;">
-                                        <i class="fas fa-building"></i> {{ gate_pass.department_name }}
-                                    </span>
-                                    {% if gate_pass.material_type == 'returnable' and gate_pass.expected_return_date %}
-                                    <span class="badge bg-warning px-2 py-1" style="font-size: 9pt;">
-                                        <i class="fas fa-clock"></i> Return: {{ gate_pass.expected_return_date.strftime('%d/%m/%Y') }}
-                                    </span>
-                                    {% endif %}
+                            <!-- Copy Label -->
+                            <div class="copy-label mb-2">
+                                <div class="badge bg-warning px-3 py-1" style="font-size: 9pt;">
+                                    <i class="fas fa-copy"></i> RECEIVER COPY
+                                </div>
+                            </div>
+
+                            <!-- Main Content Grid -->
+                            <div class="row g-2">
+                                <!-- Left Column: Details -->
+                                <div class="col-md-8 pe-2">
+                                    <!-- Status Badges -->
+                                    <div class="d-flex flex-wrap gap-1 mb-2">
+                                        <span class="badge bg-primary px-2 py-1" style="font-size: 8pt;">
+                                            <i class="fas fa-building"></i> {{ gate_pass.division_name }}
+                                        </span>
+                                        <span class="badge bg-{{ 'info' if gate_pass.material_type == 'returnable' else 'secondary' }} px-2 py-1" style="font-size: 8pt;">
+                                            <i class="fas fa-box"></i> {{ gate_pass.material_type|upper }}
+                                        </span>
+                                        <span class="badge bg-success px-2 py-1" style="font-size: 8pt;">
+                                            <i class="fas fa-building"></i> {{ gate_pass.department_name }}
+                                        </span>
+                                        {% if gate_pass.material_type == 'returnable' and gate_pass.expected_return_date %}
+                                        <span class="badge bg-warning px-2 py-1" style="font-size: 8pt;">
+                                            <i class="fas fa-clock"></i> Return: {{ gate_pass.expected_return_date.strftime('%d/%m/%Y') }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+
+                                    <!-- Material Information -->
+                                    <div class="card border-0 shadow-sm mb-2">
+                                        <div class="card-header bg-light text-dark py-1 px-2">
+                                            <h6 class="mb-0" style="font-size: 9pt;"><i class="fas fa-box-open"></i> MATERIAL INFORMATION</h6>
+                                        </div>
+                                        <div class="card-body p-2">
+                                            <table class="table table-borderless mb-0" style="font-size: 8pt;">
+                                                <tr>
+                                                    <td class="fw-bold" width="35%" style="padding: 2px;">Description:</td>
+                                                    <td style="padding: 2px; font-size: 7.5pt; line-height: 1.1;">
+                                                        {{ gate_pass.material_description }}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="fw-bold" style="padding: 2px;">Destination:</td>
+                                                    <td style="padding: 2px; font-size: 7.5pt;">{{ gate_pass.destination }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="fw-bold" style="padding: 2px;">Purpose:</td>
+                                                    <td style="padding: 2px; font-size: 7.5pt;">{{ gate_pass.purpose }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="fw-bold" style="padding: 2px;">Send Date:</td>
+                                                    <td style="padding: 2px;" class="fw-bold">{{ gate_pass.send_date.strftime('%d/%m/%Y %I:%M %p') }}</td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- Receiver & Creator Info -->
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <div class="card border-0 shadow-sm h-100">
+                                                <div class="card-header bg-light text-dark py-1 px-2">
+                                                    <h6 class="mb-0" style="font-size: 9pt;"><i class="fas fa-user-check"></i> RECEIVER</h6>
+                                                </div>
+                                                <div class="card-body p-2">
+                                                    <table class="table table-borderless mb-0" style="font-size: 8pt;">
+                                                        <tr>
+                                                            <td class="fw-bold" width="40%" style="padding: 2px;">Name:</td>
+                                                            <td style="padding: 2px;" class="fw-bold">{{ gate_pass.receiver_name }}</td>
+                                                        </tr>
+                                                        {% if gate_pass.receiver_contact %}
+                                                        <tr>
+                                                            <td class="fw-bold" style="padding: 2px;">Contact:</td>
+                                                            <td style="padding: 2px;">{{ gate_pass.receiver_contact }}</td>
+                                                        </tr>
+                                                        {% endif %}
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card border-0 shadow-sm h-100">
+                                                <div class="card-header bg-light text-dark py-1 px-2">
+                                                    <h6 class="mb-0" style="font-size: 9pt;"><i class="fas fa-user-edit"></i> CREATED BY</h6>
+                                                </div>
+                                                <div class="card-body p-2">
+                                                    <table class="table table-borderless mb-0" style="font-size: 8pt;">
+                                                        <tr>
+                                                            <td class="fw-bold" width="40%" style="padding: 2px;">Name:</td>
+                                                            <td style="padding: 2px;">{{ gate_pass.creator_name }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td class="fw-bold" style="padding: 2px;">Designation:</td>
+                                                            <td style="padding: 2px;">{{ gate_pass.creator_designation }}</td>
+                                                        </tr>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <!-- Material Information Card -->
-                                <div class="card border-0 shadow-sm mb-2">
+                                <!-- Right Column: QR Code -->
+                                <div class="col-md-4 ps-2">
+                                    <div class="card border-0 shadow-sm h-100">
+                                        <div class="card-header bg-light text-dark py-1 px-2">
+                                            <h6 class="mb-0" style="font-size: 9pt;"><i class="fas fa-qrcode"></i> QR CODE</h6>
+                                        </div>
+                                        <div class="card-body p-2 text-center">
+                                            <!-- QR Code -->
+                                            <div class="single-qr-container mb-2">
+                                                {% if gate_pass.qr_form_img %}
+                                                    <img src="{{ gate_pass.qr_form_img }}" class="single-qr-image" 
+                                                         alt="Gate Pass QR Code">
+                                                {% else %}
+                                                    <div class="text-danger small">QR Code not generated</div>
+                                                {% endif %}
+                                            </div>
+                                            
+                                            <!-- QR Info -->
+                                            <div class="qr-info mt-2">
+                                                <table class="table table-sm table-borderless mb-0" style="font-size: 7pt;">
+                                                    <tr>
+                                                        <td class="fw-bold text-start">Gate Pass No:</td>
+                                                        <td class="text-start">{{ gate_pass.pass_number }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="fw-bold text-start">Type:</td>
+                                                        <td class="text-start">{{ gate_pass.material_type|title }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="fw-bold text-start">Receiver:</td>
+                                                        <td class="text-start">{{ gate_pass.receiver_name|truncate(15) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="fw-bold text-start">Date:</td>
+                                                        <td class="text-start">{{ gate_pass.send_date.strftime('%d/%m/%Y') }}</td>
+                                                    </tr>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Approval Status -->
+                            <div class="approval-status-section mt-2">
+                                <div class="card border-0 shadow-sm">
                                     <div class="card-header bg-light text-dark py-1 px-2">
-                                        <h6 class="mb-0"><i class="fas fa-box-open"></i> MATERIAL INFORMATION</h6>
+                                        <h6 class="mb-0" style="font-size: 9pt;"><i class="fas fa-clipboard-check"></i> APPROVAL STATUS</h6>
                                     </div>
                                     <div class="card-body p-2">
-                                        <div class="row">
-                                            <div class="col-12">
-                                                <table class="table table-borderless mb-0" style="font-size: 9pt;">
-                                                    <tr>
-                                                        <td class="fw-bold" width="35%" style="padding: 2px;">Description:</td>
-                                                        <td style="padding: 2px; word-break: break-word;">
-                                                            <div class="material-description" style="max-height: 40px; overflow: hidden; text-overflow: ellipsis;">
-                                                                {{ gate_pass.material_description }}
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td class="fw-bold" style="padding: 2px;">Type:</td>
-                                                        <td style="padding: 2px;">
-                                                            <span class="badge bg-{{ 'info' if gate_pass.material_type == 'returnable' else 'secondary' }} py-0">
-                                                                {{ gate_pass.material_type|title }}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td class="fw-bold" style="padding: 2px;">Status:</td>
-                                                        <td style="padding: 2px;">
-                                                            <span class="badge bg-warning py-0">
-                                                                {{ gate_pass.material_status|title }}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td class="fw-bold" style="padding: 2px;">Destination:</td>
-                                                        <td style="padding: 2px;">{{ gate_pass.destination }}</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td class="fw-bold" style="padding: 2px;">Purpose:</td>
-                                                        <td style="padding: 2px;">{{ gate_pass.purpose }}</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td class="fw-bold" style="padding: 2px;">Send Date:</td>
-                                                        <td style="padding: 2px;" class="fw-bold">
-                                                            {{ gate_pass.send_date.strftime('%d %B, %Y %I:%M %p') }}
-                                                        </td>
-                                                    </tr>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Receiver & Creator Info -->
-                                <div class="row g-2">
-                                    <div class="col-md-6">
-                                        <div class="card border-0 shadow-sm h-100">
-                                            <div class="card-header bg-light text-dark py-1 px-2">
-                                                <h6 class="mb-0"><i class="fas fa-user-check"></i> RECEIVER INFORMATION</h6>
-                                            </div>
-                                            <div class="card-body p-2">
-                                                <table class="table table-borderless mb-0" style="font-size: 9pt;">
-                                                    <tr>
-                                                        <td class="fw-bold" width="45%" style="padding: 2px;">Name:</td>
-                                                        <td style="padding: 2px;" class="fw-bold">{{ gate_pass.receiver_name }}</td>
-                                                    </tr>
-                                                    {% if gate_pass.receiver_contact %}
-                                                    <tr>
-                                                        <td class="fw-bold" style="padding: 2px;">Contact:</td>
-                                                        <td style="padding: 2px;">{{ gate_pass.receiver_contact }}</td>
-                                                    </tr>
-                                                    {% endif %}
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="card border-0 shadow-sm h-100">
-                                            <div class="card-header bg-light text-dark py-1 px-2">
-                                                <h6 class="mb-0"><i class="fas fa-user-edit"></i> CREATED BY</h6>
-                                            </div>
-                                            <div class="card-body p-2">
-                                                <table class="table table-borderless mb-0" style="font-size: 9pt;">
-                                                    <tr>
-                                                        <td class="fw-bold" width="45%" style="padding: 2px;">Name:</td>
-                                                        <td style="padding: 2px;">{{ gate_pass.creator_name }}</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td class="fw-bold" style="padding: 2px;">Designation:</td>
-                                                        <td style="padding: 2px;">{{ gate_pass.creator_designation }}</td>
-                                                    </tr>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Approval Status Card -->
-                                <div class="card border-0 shadow-sm mt-2">
-                                    <div class="card-header bg-light text-dark py-1 px-2">
-                                        <h6 class="mb-0"><i class="fas fa-clipboard-check"></i> APPROVAL STATUS</h6>
-                                    </div>
-                                    <div class="card-body p-2">
-                                        <div class="row text-center" style="font-size: 8pt;">
+                                        <div class="row text-center" style="font-size: 7pt;">
                                             <div class="col-4 mb-1">
                                                 <div class="text-muted mb-0">Department</div>
                                                 {% if gate_pass.department_approval == 'approved' %}
@@ -299,8 +329,280 @@
                                                         {% if gate_pass.security_approval_date %}
                                                         <br><small>{{ gate_pass.security_approval_date.strftime('%d/%m %H:%M') }}</small>
                                                         {% endif %}
-                                                        {% if gate_pass.approved_by_security %}
-                                                        <br><small>By: {{ gate_pass.approved_by_security|truncate(15) }}</small>
+                                                    </div>
+                                                {% elif gate_pass.security_approval == 'rejected' %}
+                                                    <div class="status-rejected fw-bold">
+                                                        ✗ Rejected
+                                                    </div>
+                                                {% else %}
+                                                    <div class="status-pending fw-bold">
+                                                        ⏱ Pending
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Footer -->
+                            <div class="footer-section mt-2 pt-2 border-top">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <p class="text-muted mb-0" style="font-size: 7pt;">
+                                            <i class="fas fa-print"></i> Printed: {{ now.strftime('%d %B, %Y %I:%M %p') }}
+                                        </p>
+                                    </div>
+                                    <div class="col-md-4 text-end">
+                                        <p class="text-muted mb-0" style="font-size: 7pt;">
+                                            Document ID: GP-{{ gate_pass.pass_number }}-RCV-{{ now.strftime('%Y%m%d') }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cut Line -->
+                        <div class="cut-line text-center my-3 no-print" style="border-top: 2px dashed #ccc;">
+                            <span class="bg-white px-3" style="position: relative; top: -10px; color: #666; font-size: 10pt;">
+                                <i class="fas fa-scissors"></i> CUT HERE <i class="fas fa-scissors"></i>
+                            </span>
+                        </div>
+
+                        <!-- Second Copy (Security Copy) -->
+                        <div class="gate-pass-copy copy-bottom">
+                            <!-- Company Header with Logo -->
+                            <div class="company-header d-flex align-items-start mb-3 border-bottom pb-2">
+                                <!-- Left: Company Logo -->
+                                <div class="company-logo-section me-3">
+                                   <img src="{{ url_for('static', filename='images/company-logo.png') }}" 
+                                                alt="NR Group" style="max-width: 40px; max-height: 40px;">
+                                </div>
+                                
+                                <!-- Middle: Company Info -->
+                                <div class="company-info flex-grow-1">
+                                    <h1 class="text-dark fw-bold mb-1" style="font-size: 18pt;">NR GROUP</h1>
+                                    <p class="text-muted mb-1" style="font-size: 8pt;">
+                                        Square Masterbari, Jamirdia, Bhaluka, Mymensingh<br>
+                                        <small>One stop solution for sustainable textile</small>
+                                    </p>
+                                </div>
+                                
+                                <!-- Right: Gate Pass Info -->
+                                <div class="gate-pass-info text-end">
+                                    <h2 class="text-primary fw-bold mb-1" style="font-size: 16pt;">GATE PASS</h2>
+                                    <h3 class="text-dark mb-1" style="font-size: 14pt;">{{ gate_pass.pass_number }}</h3>
+                                    <p class="text-muted mb-0" style="font-size: 8pt;">
+                                        <i class="fas fa-calendar"></i> {{ gate_pass.created_at.strftime('%d %B, %Y %I:%M %p') }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Copy Label -->
+                            <div class="copy-label mb-2">
+                                <div class="badge bg-danger px-3 py-1" style="font-size: 9pt;">
+                                    <i class="fas fa-shield-alt"></i> SECURITY COPY
+                                </div>
+                            </div>
+
+                            <!-- Main Content Grid -->
+                            <div class="row g-2">
+                                <!-- Left Column: Details -->
+                                <div class="col-md-8 pe-2">
+                                    <!-- Status Badges -->
+                                    <div class="d-flex flex-wrap gap-1 mb-2">
+                                        <span class="badge bg-primary px-2 py-1" style="font-size: 8pt;">
+                                            <i class="fas fa-building"></i> {{ gate_pass.division_name }}
+                                        </span>
+                                        <span class="badge bg-{{ 'info' if gate_pass.material_type == 'returnable' else 'secondary' }} px-2 py-1" style="font-size: 8pt;">
+                                            <i class="fas fa-box"></i> {{ gate_pass.material_type|upper }}
+                                        </span>
+                                        <span class="badge bg-success px-2 py-1" style="font-size: 8pt;">
+                                            <i class="fas fa-building"></i> {{ gate_pass.department_name }}
+                                        </span>
+                                        {% if gate_pass.material_type == 'returnable' and gate_pass.expected_return_date %}
+                                        <span class="badge bg-warning px-2 py-1" style="font-size: 8pt;">
+                                            <i class="fas fa-clock"></i> Return: {{ gate_pass.expected_return_date.strftime('%d/%m/%Y') }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+
+                                    <!-- Material Information -->
+                                    <div class="card border-0 shadow-sm mb-2">
+                                        <div class="card-header bg-light text-dark py-1 px-2">
+                                            <h6 class="mb-0" style="font-size: 9pt;"><i class="fas fa-box-open"></i> MATERIAL INFORMATION</h6>
+                                        </div>
+                                        <div class="card-body p-2">
+                                            <table class="table table-borderless mb-0" style="font-size: 8pt;">
+                                                <tr>
+                                                    <td class="fw-bold" width="35%" style="padding: 2px;">Description:</td>
+                                                    <td style="padding: 2px; font-size: 7.5pt; line-height: 1.1;">
+                                                        {{ gate_pass.material_description }}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="fw-bold" style="padding: 2px;">Destination:</td>
+                                                    <td style="padding: 2px; font-size: 7.5pt;">{{ gate_pass.destination }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="fw-bold" style="padding: 2px;">Purpose:</td>
+                                                    <td style="padding: 2px; font-size: 7.5pt;">{{ gate_pass.purpose }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="fw-bold" style="padding: 2px;">Send Date:</td>
+                                                    <td style="padding: 2px;" class="fw-bold">{{ gate_pass.send_date.strftime('%d/%m/%Y %I:%M %p') }}</td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- Receiver & Creator Info -->
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <div class="card border-0 shadow-sm h-100">
+                                                <div class="card-header bg-light text-dark py-1 px-2">
+                                                    <h6 class="mb-0" style="font-size: 9pt;"><i class="fas fa-user-check"></i> RECEIVER</h6>
+                                                </div>
+                                                <div class="card-body p-2">
+                                                    <table class="table table-borderless mb-0" style="font-size: 8pt;">
+                                                        <tr>
+                                                            <td class="fw-bold" width="40%" style="padding: 2px;">Name:</td>
+                                                            <td style="padding: 2px;" class="fw-bold">{{ gate_pass.receiver_name }}</td>
+                                                        </tr>
+                                                        {% if gate_pass.receiver_contact %}
+                                                        <tr>
+                                                            <td class="fw-bold" style="padding: 2px;">Contact:</td>
+                                                            <td style="padding: 2px;">{{ gate_pass.receiver_contact }}</td>
+                                                        </tr>
+                                                        {% endif %}
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card border-0 shadow-sm h-100">
+                                                <div class="card-header bg-light text-dark py-1 px-2">
+                                                    <h6 class="mb-0" style="font-size: 9pt;"><i class="fas fa-user-edit"></i> CREATED BY</h6>
+                                                </div>
+                                                <div class="card-body p-2">
+                                                    <table class="table table-borderless mb-0" style="font-size: 8pt;">
+                                                        <tr>
+                                                            <td class="fw-bold" width="40%" style="padding: 2px;">Name:</td>
+                                                            <td style="padding: 2px;">{{ gate_pass.creator_name }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td class="fw-bold" style="padding: 2px;">Designation:</td>
+                                                            <td style="padding: 2px;">{{ gate_pass.creator_designation }}</td>
+                                                        </tr>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Column: QR Code -->
+                                <div class="col-md-4 ps-2">
+                                    <div class="card border-0 shadow-sm h-100">
+                                        <div class="card-header bg-light text-dark py-1 px-2">
+                                            <h6 class="mb-0" style="font-size: 9pt;"><i class="fas fa-qrcode"></i> QR CODE</h6>
+                                        </div>
+                                        <div class="card-body p-2 text-center">
+                                            <!-- QR Code -->
+                                            <div class="single-qr-container mb-2">
+                                                {% if gate_pass.qr_form_img %}
+                                                    <img src="{{ gate_pass.qr_form_img }}" class="single-qr-image" 
+                                                         alt="Gate Pass QR Code">
+                                                {% else %}
+                                                    <div class="text-danger small">QR Code not generated</div>
+                                                {% endif %}
+                                            </div>
+                                            
+                                            <!-- QR Info -->
+                                            <div class="qr-info mt-2">
+                                                <table class="table table-sm table-borderless mb-0" style="font-size: 7pt;">
+                                                    <tr>
+                                                        <td class="fw-bold text-start">Gate Pass No:</td>
+                                                        <td class="text-start">{{ gate_pass.pass_number }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="fw-bold text-start">Type:</td>
+                                                        <td class="text-start">{{ gate_pass.material_type|title }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="fw-bold text-start">Receiver:</td>
+                                                        <td class="text-start">{{ gate_pass.receiver_name|truncate(15) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="fw-bold text-start">Date:</td>
+                                                        <td class="text-start">{{ gate_pass.send_date.strftime('%d/%m/%Y') }}</td>
+                                                    </tr>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Approval Status -->
+                            <div class="approval-status-section mt-2">
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-header bg-light text-dark py-1 px-2">
+                                        <h6 class="mb-0" style="font-size: 9pt;"><i class="fas fa-clipboard-check"></i> APPROVAL STATUS</h6>
+                                    </div>
+                                    <div class="card-body p-2">
+                                        <div class="row text-center" style="font-size: 7pt;">
+                                            <div class="col-4 mb-1">
+                                                <div class="text-muted mb-0">Department</div>
+                                                {% if gate_pass.department_approval == 'approved' %}
+                                                    <div class="status-approved fw-bold">
+                                                        ✓ Approved
+                                                        {% if gate_pass.department_approval_date %}
+                                                        <br><small>{{ gate_pass.department_approval_date.strftime('%d/%m %H:%M') }}</small>
+                                                        {% endif %}
+                                                    </div>
+                                                {% elif gate_pass.department_approval == 'rejected' %}
+                                                    <div class="status-rejected fw-bold">
+                                                        ✗ Rejected
+                                                    </div>
+                                                {% elif gate_pass.department_approval == 'inquiry' %}
+                                                    <div class="status-pending fw-bold">
+                                                        ? Inquiry
+                                                    </div>
+                                                {% else %}
+                                                    <div class="status-pending fw-bold">
+                                                        ⏱ Pending
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            
+                                            <div class="col-4 mb-1">
+                                                <div class="text-muted mb-0">Store</div>
+                                                {% if gate_pass.store_approval == 'approved' %}
+                                                    <div class="status-approved fw-bold">
+                                                        ✓ Approved
+                                                        {% if gate_pass.store_approval_date %}
+                                                        <br><small>{{ gate_pass.store_approval_date.strftime('%d/%m %H:%M') }}</small>
+                                                        {% endif %}
+                                                    </div>
+                                                {% elif gate_pass.store_approval == 'rejected' %}
+                                                    <div class="status-rejected fw-bold">
+                                                        ✗ Rejected
+                                                    </div>
+                                                {% else %}
+                                                    <div class="status-pending fw-bold">
+                                                        ⏱ Pending
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            
+                                            <div class="col-4 mb-1">
+                                                <div class="text-muted mb-0">Security</div>
+                                                {% if gate_pass.security_approval == 'approved' %}
+                                                    <div class="status-approved fw-bold">
+                                                        ✓ Approved
+                                                        {% if gate_pass.security_approval_date %}
+                                                        <br><small>{{ gate_pass.security_approval_date.strftime('%d/%m %H:%M') }}</small>
                                                         {% endif %}
                                                     </div>
                                                 {% elif gate_pass.security_approval == 'rejected' %}
@@ -316,104 +618,38 @@
                                         </div>
                                     </div>
                                 </div>
-
-                                <!-- Material Photos (if any) -->
-                                {% if gate_pass.images_list %}
-                                <div class="card border-0 shadow-sm mt-2">
-                                    <div class="card-header bg-light text-dark py-1 px-2">
-                                        <h6 class="mb-0"><i class="fas fa-camera"></i> MATERIAL PHOTOS ({{ gate_pass.images_list|length }})</h6>
-                                    </div>
-                                    <div class="card-body p-2">
-                                        <div class="photo-grid-compact">
-                                            {% for image_path in gate_pass.images_list %}
-                                            <div class="photo-item-compact">
-                                                <img src="{{ url_for('static', filename=image_path.replace('static/', '')) }}" 
-                                                     alt="Material Photo {{ loop.index }}" class="material-photo-compact">
-                                                <div class="photo-number-compact">Photo {{ loop.index }}</div>
-                                            </div>
-                                            {% endfor %}
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endif %}
                             </div>
 
-                            <!-- Right Column: QR Codes -->
-                            <div class="col-md-4 ps-2">
-                                <div class="card border-0 shadow-sm h-100">
-                                    <div class="card-header bg-light text-dark py-1 px-2">
-                                        <h6 class="mb-0"><i class="fas fa-qrcode"></i> QR CODES FOR VERIFICATION</h6>
+                            <!-- Security Notes (Minimal) -->
+                            <div class="security-notes-section mt-2">
+                                <div class="card border-danger">
+                                    <div class="card-header bg-danger text-white py-1 px-2">
+                                        <h6 class="mb-0" style="font-size: 9pt;"><i class="fas fa-shield-alt"></i> SECURITY CHECKLIST</h6>
                                     </div>
-                                    <div class="card-body p-2 text-center">
-                                        <!-- Single Large QR Code (Combined) -->
-                                        <div class="single-qr-container mb-2">
-                                            {% if gate_pass.qr_form_img %}
-                                                <img src="{{ gate_pass.qr_form_img }}" class="single-qr-image" 
-                                                     alt="Gate Pass QR Code">
-                                            {% else %}
-                                                <div class="text-danger small">QR Code not generated</div>
-                                            {% endif %}
-                                        </div>
-                                        
-                                        <!-- QR Code Details -->
-                                        <div class="qr-details">
-                                            <div class="mb-1">
-                                                <strong class="d-block" style="font-size: 9pt;">GATE PASS QR</strong>
-                                                {% if gate_pass.qr_code_form %}
-                                                <div class="small text-muted mb-1" style="word-break: break-all; font-size: 7pt;">
-                                                    {{ gate_pass.qr_code_form[:40] }}...
-                                                </div>
-                                                {% endif %}
-                                            </div>
-                                            
-                                            <div class="alert alert-danger py-1 px-2 mb-2" style="font-size: 8pt;">
-                                                <i class="fas fa-exclamation-triangle"></i>
-                                                <strong>IMPORTANT:</strong> Keep for return verification
-                                            </div>
-                                            
-                                            <!-- Verification Instructions -->
-                                            <div class="verification-instructions text-start" style="font-size: 8pt;">
-                                                <div class="mb-1"><strong>Instructions:</strong></div>
-                                                <ul class="ps-3 mb-0" style="line-height: 1.2;">
-                                                    <li>Scan QR at security gate</li>
-                                                    <li>Match with sticker on material</li>
-                                                    <li>Required for material return</li>
-                                                    <li>Keep this copy safe</li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Footer Notes -->
-                        <div class="row mt-2 pt-2 border-top">
-                            <div class="col-md-8">
-                                <div class="card border-0">
                                     <div class="card-body p-2">
-                                        <h6 class="fw-bold mb-1" style="font-size: 9pt;"><i class="fas fa-info-circle"></i> IMPORTANT NOTES:</h6>
-                                        <ul class="small mb-0 ps-3" style="font-size: 8pt; line-height: 1.2;">
-                                            <li>This gate pass must accompany the material during transport</li>
-                                            <li>Security will scan QR code at gate entry/exit</li>
-                                            <li>Returnable materials must be returned by expected date</li>
-                                            <li>Keep this copy for return verification records</li>
-                                            <li>Report any discrepancy to security department immediately</li>
+                                        <ul class="small mb-0 ps-3" style="font-size: 7pt; line-height: 1.1;">
+                                            <li>Scan QR code at gate</li>
+                                            <li>Verify receiver</li>
+                                            <li>Check material</li>
+                                            <li>Record time</li>
                                         </ul>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="text-end">
-                                    <p class="text-muted mb-1" style="font-size: 8pt;">
-                                        <i class="fas fa-print"></i> Print Date: {{ now.strftime('%d %B, %Y %I:%M %p') }}
-                                    </p>
-                                    <p class="text-muted small mb-0" style="font-size: 7pt;">
-                                        Document ID: GP-{{ gate_pass.pass_number }}-{{ now.strftime('%Y%m%d') }}
-                                    </p>
-                                    <p class="text-muted small" style="font-size: 7pt;">
-                                        NR Group Gate Pass System v2.0 | Computer Generated Document
-                                    </p>
+
+                            <!-- Footer -->
+                            <div class="footer-section mt-2 pt-2 border-top">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <p class="text-muted mb-0" style="font-size: 7pt;">
+                                            <i class="fas fa-print"></i> Printed: {{ now.strftime('%d %B, %Y %I:%M %p') }}
+                                        </p>
+                                    </div>
+                                    <div class="col-md-4 text-end">
+                                        <p class="text-muted mb-0" style="font-size: 7pt;">
+                                            Document ID: GP-{{ gate_pass.pass_number }}-SEC-{{ now.strftime('%Y%m%d') }}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -421,18 +657,18 @@
                         <!-- Security Signature Section (Only for print) -->
                         <div class="security-signature-section mt-3 pt-2 border-top" style="display: none;">
                             <div class="row">
-                                <div class="col-md-8">
+                                <div class="col-md-6">
                                     <div class="signature-box">
                                         <p class="mb-1" style="font-size: 9pt;"><strong>Receiver Signature & Stamp:</strong></p>
-                                        <div class="signature-line" style="width: 70%; height: 1px; background: #000; margin: 15px 0 5px 0;"></div>
+                                        <div class="signature-line" style="width: 80%; height: 1px; background: #000; margin: 15px 0 5px 0;"></div>
                                         <p class="text-muted mb-0" style="font-size: 8pt;">Name: {{ gate_pass.receiver_name }}</p>
                                         <p class="text-muted mb-0" style="font-size: 8pt;">Date: __________________</p>
                                     </div>
                                 </div>
-                                <div class="col-md-4">
-                                    <div class="signature-box text-end">
+                                <div class="col-md-6">
+                                    <div class="signature-box">
                                         <p class="mb-1" style="font-size: 9pt;"><strong>Security Signature & Seal:</strong></p>
-                                        <div class="signature-line" style="width: 70%; height: 1px; background: #000; margin: 15px 0 5px 0; margin-left: auto;"></div>
+                                        <div class="signature-line" style="width: 80%; height: 1px; background: #000; margin: 15px 0 5px 0;"></div>
                                         <p class="text-muted mb-0" style="font-size: 8pt;">Name: __________________</p>
                                         <p class="text-muted mb-0" style="font-size: 8pt;">Date: {{ now.strftime('%d/%m/%Y') }}</p>
                                     </div>
@@ -450,7 +686,7 @@
                                     <div class="col-md-4">
                                         {% if gate_pass.security_approval == 'approved' or session.role != 'security' %}
                                             <button class="btn btn-primary w-100 py-3 fs-5 print-btn">
-                                                <i class="fas fa-print"></i> PRINT GATE PASS
+                                                <i class="fas fa-print"></i> PRINT GATE PASS (2 COPIES)
                                             </button>
                                         {% else %}
                                             <button class="btn btn-secondary w-100 py-3 fs-5" onclick="showApprovalRequiredAlert()">
@@ -467,7 +703,7 @@
                                     </div>
                                     {% endif %}
                                     
-                                    <!-- ✅ FIXED: Department Head এর জন্য সরাসরি Approve/Reject বাটন -->
+                                    <!-- Department Head এর জন্য সরাসরি Approve/Reject বাটন -->
                                     {% if session.role == 'department_head' and gate_pass.status == 'pending_dept' %}
                                     <div class="col-md-4">
                                         <div class="btn-group w-100" role="group" id="deptHeadButtons">
@@ -482,7 +718,7 @@
                                         </div>
                                     </div>
                                     
-                                    <!-- ✅ FIXED: Store Manager এর জন্য সরাসরি Approve/Reject বাটন -->
+                                    <!-- Store Manager এর জন্য সরাসরি Approve/Reject বাটন -->
                                     {% elif session.role == 'store_manager' and gate_pass.status == 'pending_store' %}
                                     <div class="col-md-4">
                                         <div class="btn-group w-100" role="group" id="storeManagerButtons">
@@ -514,14 +750,13 @@
                                     {% endif %}
                                 </div>
 
-                                <!-- Printing Instructions for Security -->
-                                {% if session.role == 'security' and gate_pass.security_approval == 'approved' %}
+                                <!-- Printing Instructions -->
                                 <div class="alert alert-info mt-3">
                                     <i class="fas fa-info-circle me-2"></i>
-                                    <strong>Printing Instructions:</strong> Please print <strong>2 copies</strong> of this gate pass - 
-                                    one for Security Office records and one for the Receiver.
+                                    <strong>Printing Instructions:</strong> This will print <strong>2 copies</strong> on one page - 
+                                    <strong>Receiver Copy (Top)</strong> and <strong>Security Copy (Bottom)</strong>. 
+                                    Cut along the dotted line after printing.
                                 </div>
-                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -590,7 +825,7 @@
     </div>
 </div>
 
-<!-- ✅ FIXED: SIMPLE Comment Modal -->
+<!-- Comment Modal -->
 <div class="modal fade" id="commentModal" tabindex="-1" aria-labelledby="commentModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -611,7 +846,6 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <!-- ✅ DIRECT BUTTONS - NO SKIP OPTION -->
                 <button type="button" class="btn btn-success" id="directApproveBtn">
                     <i class="fas fa-check me-1"></i>Approve
                 </button>
@@ -623,7 +857,7 @@
     </div>
 </div>
 
-<!-- ✅ FIXED: Reject Modal -->
+<!-- Reject Modal -->
 <div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -734,16 +968,14 @@ var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
     return new bootstrap.Tooltip(tooltipTriggerEl)
 })
 
-// ✅ FIXED: Global variables - SIMPLE AND CLEAN
+// Global variables
 const gatePassId = {{ gate_pass.id }};
 const userRole = "{{ session.role }}";
 
-// ✅ FIXED: Show Comment Modal - ULTRA SIMPLE VERSION
+// Show Comment Modal
 function showCommentModal(action, roleParam = null) {
-    // Set current action
     window.currentAction = action;
     
-    // Clear previous comment
     document.getElementById('approvalComment').value = '';
     document.getElementById('rejectComment').value = '';
     
@@ -757,84 +989,65 @@ function showCommentModal(action, roleParam = null) {
     }
 }
 
-// ✅ FIXED: DIRECT APPROVE (NO COMMENT) - ULTRA FAST
+// DIRECT APPROVE (NO COMMENT)
 function directApproveAction() {
-    // Close modal immediately
     const modal = bootstrap.Modal.getInstance(document.getElementById('commentModal'));
     if (modal) modal.hide();
     
-    // Process approval INSTANTLY
     processInstantAction('approve', '');
 }
 
-// ✅ FIXED: APPROVE WITH COMMENT - ULTRA FAST
+// APPROVE WITH COMMENT
 function approveWithCommentAction() {
     const comment = document.getElementById('approvalComment')?.value.trim() || '';
     
-    // Close modal immediately
     const modal = bootstrap.Modal.getInstance(document.getElementById('commentModal'));
     if (modal) modal.hide();
     
-    // Process approval INSTANTLY
     processInstantAction('approve', comment);
 }
 
-// ✅ FIXED: DIRECT REJECT (NO COMMENT) - ULTRA FAST
+// DIRECT REJECT (NO COMMENT)
 function directRejectAction() {
-    // Close modal immediately
     const modal = bootstrap.Modal.getInstance(document.getElementById('rejectModal'));
     if (modal) modal.hide();
     
-    // Process rejection INSTANTLY
     processInstantAction('reject', '');
 }
 
-// ✅ FIXED: REJECT WITH COMMENT - ULTRA FAST
+// REJECT WITH COMMENT
 function rejectWithCommentAction() {
     const comment = document.getElementById('rejectComment')?.value.trim() || '';
     
-    // Close modal immediately
     const modal = bootstrap.Modal.getInstance(document.getElementById('rejectModal'));
     if (modal) modal.hide();
     
-    // Process rejection INSTANTLY
     processInstantAction('reject', comment);
 }
 
-// ✅ FIXED: INSTANT ACTION PROCESSING - ULTRA FAST
+// INSTANT ACTION PROCESSING
 function processInstantAction(action, comment = '') {
-    // Show immediate feedback
     showInstantProcessing(action);
-    
-    // Disable buttons immediately
     disableActionButtons(true);
     
-    // Determine endpoint based on user role
     let endpoint = '';
     if (userRole === 'department_head' || userRole === 'store_manager') {
         endpoint = `/gate_pass/approve_gate_pass_with_comment/${gatePassId}/${action}`;
     }
     
-    // Send request IMMEDIATELY - NO DELAY
     fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ comment: comment })
     })
     .then(response => {
-        // Immediate response check
         if (!response.ok) throw new Error('Network error');
         return response.json();
     })
     .then(data => {
         if (data.success) {
-            // Show success message instantly
             showInstantSuccess(action, comment.length > 0);
-            
-            // Hide action buttons
             hideActionButtons();
-            
-            // Instant refresh after 0.8 seconds
             setTimeout(() => {
                 location.reload();
             }, 800);
@@ -850,7 +1063,7 @@ function processInstantAction(action, comment = '') {
     });
 }
 
-// ✅ FIXED: Show instant processing notification
+// Show instant processing notification
 function showInstantProcessing(action) {
     const toast = document.getElementById('liveToast');
     const toastMessage = document.getElementById('toastMessage');
@@ -870,7 +1083,7 @@ function showInstantProcessing(action) {
     bsToast.show();
 }
 
-// ✅ FIXED: Show instant success message
+// Show instant success message
 function showInstantSuccess(action, hasComment = false) {
     const toast = document.getElementById('liveToast');
     const toastMessage = document.getElementById('toastMessage');
@@ -889,24 +1102,21 @@ function showInstantSuccess(action, hasComment = false) {
     bsToast.show();
 }
 
-// ✅ FIXED: Hide action buttons after approval/reject
+// Hide action buttons after approval/reject
 function hideActionButtons() {
-    // Hide Department Head buttons
     const deptHeadButtons = document.getElementById('deptHeadButtons');
     if (deptHeadButtons) {
         deptHeadButtons.style.display = 'none';
     }
     
-    // Hide Store Manager buttons
     const storeManagerButtons = document.getElementById('storeManagerButtons');
     if (storeManagerButtons) {
         storeManagerButtons.style.display = 'none';
     }
 }
 
-// ✅ FIXED: Disable/Enable action buttons
+// Disable/Enable action buttons
 function disableActionButtons(disable = true) {
-    // Disable Department Head buttons
     const deptHeadButtons = document.getElementById('deptHeadButtons');
     if (deptHeadButtons) {
         const buttons = deptHeadButtons.querySelectorAll('button');
@@ -915,7 +1125,6 @@ function disableActionButtons(disable = true) {
             if (disable) {
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
             } else {
-                // Restore original text
                 if (btn.innerHTML.includes('APPROVE')) {
                     btn.innerHTML = '<i class="fas fa-check"></i> APPROVE';
                 } else if (btn.innerHTML.includes('REJECT')) {
@@ -925,7 +1134,6 @@ function disableActionButtons(disable = true) {
         });
     }
     
-    // Disable Store Manager buttons
     const storeManagerButtons = document.getElementById('storeManagerButtons');
     if (storeManagerButtons) {
         const buttons = storeManagerButtons.querySelectorAll('button');
@@ -934,7 +1142,6 @@ function disableActionButtons(disable = true) {
             if (disable) {
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
             } else {
-                // Restore original text
                 if (btn.innerHTML.includes('APPROVE')) {
                     btn.innerHTML = '<i class="fas fa-check"></i> APPROVE';
                 } else if (btn.innerHTML.includes('REJECT')) {
@@ -945,15 +1152,14 @@ function disableActionButtons(disable = true) {
     }
 }
 
-// ✅ FIXED: Initialize event listeners - CLEAN AND SIMPLE
+// Initialize event listeners
 document.addEventListener('DOMContentLoaded', function() {
-    // Setup approve modal buttons
+    // Setup modal buttons
     const directApproveBtn = document.getElementById('directApproveBtn');
     const approveWithCommentBtn = document.getElementById('approveWithCommentBtn');
     const directRejectBtn = document.getElementById('directRejectBtn');
     const rejectWithCommentBtn = document.getElementById('rejectWithCommentBtn');
     
-    // Use direct onclick assignment
     if (directApproveBtn) {
         directApproveBtn.onclick = directApproveAction;
     }
@@ -970,7 +1176,7 @@ document.addEventListener('DOMContentLoaded', function() {
         rejectWithCommentBtn.onclick = rejectWithCommentAction;
     }
     
-    // Setup keyboard shortcuts for quick approval
+    // Setup keyboard shortcuts
     const approvalComment = document.getElementById('approvalComment');
     const rejectComment = document.getElementById('rejectComment');
     
@@ -999,7 +1205,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (commentModal) {
         commentModal.addEventListener('hidden.bs.modal', function() {
             document.getElementById('approvalComment').value = '';
-            // Re-enable buttons if modal closed
             disableActionButtons(false);
         });
     }
@@ -1007,13 +1212,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (rejectModal) {
         rejectModal.addEventListener('hidden.bs.modal', function() {
             document.getElementById('rejectComment').value = '';
-            // Re-enable buttons if modal closed
             disableActionButtons(false);
         });
     }
 });
 
-// ✅ Security Approval Function
+// Security Approval Function
 function securityApproveGatePass(passId, action) {
     const actionText = action === 'approve' ? 'Approve' : 'Reject';
     const icon = action === 'approve' ? '✅' : '❌';
@@ -1100,10 +1304,9 @@ function showApprovalRequiredAlert() {
     alert('⚠️ Please approve this gate pass first before printing!');
 }
 
-// Print Functionality - DIRECT PRINT (No modal)
+// Print Functionality
 document.querySelectorAll('.print-btn').forEach(btn => {
     btn.addEventListener('click', function() {
-        // Check if security approval is required
         const isSecurityUser = "{{ session.role }}" === 'security';
         const isSecurityApproved = "{{ gate_pass.security_approval }}" === 'approved';
         
@@ -1112,21 +1315,13 @@ document.querySelectorAll('.print-btn').forEach(btn => {
             return;
         }
         
-        // Show printing notification for security
-        if (isSecurityUser && isSecurityApproved) {
-            if (!confirm('📋 Print Instructions:\n\nPlease print 2 copies:\n1. Security Office Copy (Keep for records)\n2. Receiver Copy (Give to receiver)\n\nClick OK to continue printing...')) {
-                return;
-            }
+        if (confirm('📋 This will print 2 copies on one page:\n\n1. RECEIVER COPY (Top)\n2. SECURITY COPY (Bottom)\n\nCut along the dotted line after printing.\n\nClick OK to continue printing...')) {
+            sendPrintNotification();
+            optimizeForPrint();
+            setTimeout(() => {
+                window.print();
+            }, 500);
         }
-        
-        // Send notification that printing has started
-        sendPrintNotification();
-        
-        // Optimize and print
-        optimizeForPrint();
-        setTimeout(() => {
-            window.print();
-        }, 500);
     });
 });
 
@@ -1145,7 +1340,7 @@ function sendPrintNotification() {
             printed_by: {{ session['user_id'] }},
             printed_by_name: "{{ session['name'] }}",
             printed_by_role: userRole,
-            copies_printed: (userRole === 'security') ? 2 : 1
+            copies_printed: 2
         })
     })
     .then(response => response.json())
@@ -1175,7 +1370,7 @@ function sendPrintCompleteNotification() {
     });
 }
 
-// Optimize for print - NEW COMPACT VERSION
+// Optimize for print - DUAL COPY VERSION
 function optimizeForPrint() {
     // Hide non-print elements
     document.querySelectorAll('.no-print').forEach(el => {
@@ -1185,69 +1380,52 @@ function optimizeForPrint() {
     // Show security signature section for print
     document.querySelector('.security-signature-section').style.display = 'block';
     
-    // Adjust for compact printing
+    // Adjust print section
     const printSection = document.querySelector('.print-section');
-    printSection.style.padding = '10mm';
+    printSection.style.padding = '5mm';
     printSection.style.margin = '0';
     
-    // Adjust font sizes for compactness
+    // Adjust copies for print
+    const gatePassCopies = document.querySelectorAll('.gate-pass-copy');
+    gatePassCopies.forEach(copy => {
+        copy.style.pageBreakInside = 'avoid';
+        copy.style.breakInside = 'avoid';
+        copy.style.marginBottom = '0';
+        copy.style.minHeight = '138mm';
+        copy.style.maxHeight = '138mm';
+    });
+    
+    // Hide cut line during print
+    document.querySelector('.cut-line').style.display = 'none';
+    
+    // Add print-specific class
+    document.body.classList.add('print-mode');
+    
+    // Force QR codes to load for print
+    document.querySelectorAll('.single-qr-image').forEach(img => {
+        if (img.tagName === 'IMG') {
+            img.style.display = 'block';
+            img.style.visibility = 'visible';
+            img.style.opacity = '1';
+            img.style.maxWidth = '70px';
+            img.style.maxHeight = '70px';
+        }
+    });
+    
+    // Adjust font sizes for compact printing
     const elements = printSection.querySelectorAll('*');
     elements.forEach(el => {
         const currentFontSize = window.getComputedStyle(el).fontSize;
         const sizeInPx = parseFloat(currentFontSize);
         
-        if (sizeInPx > 12) {
-            el.style.fontSize = '12px';
-        } else if (sizeInPx > 10) {
-            el.style.fontSize = '10px';
+        if (sizeInPx > 10) {
+            el.style.fontSize = Math.max(sizeInPx * 0.85, 6) + 'px';
         }
     });
-    
-    // Force QR codes and images to load for print
-    document.querySelectorAll('.single-qr-image, .material-photo-compact').forEach(img => {
-        if (img.tagName === 'IMG') {
-            img.style.display = 'block';
-            img.style.visibility = 'visible';
-            img.style.opacity = '1';
-            img.style.maxWidth = '120px';
-            img.style.maxHeight = '120px';
-        }
-    });
-    
-    // Add print-specific class
-    document.body.classList.add('print-mode');
-    
-    // Remove any max-height restrictions
-    printSection.style.maxHeight = 'none';
-    printSection.style.overflow = 'visible';
-    printSection.style.minHeight = '277mm'; // A4 height
-    
-    // Adjust column widths for print
-    const leftCol = printSection.querySelector('.col-md-8');
-    const rightCol = printSection.querySelector('.col-md-4');
-    
-    if (leftCol && rightCol) {
-        leftCol.style.width = '70%';
-        leftCol.className = leftCol.className.replace('col-md-8', '');
-        leftCol.style.paddingRight = '5mm';
-        
-        rightCol.style.width = '30%';
-        rightCol.className = rightCol.className.replace('col-md-4', '');
-        rightCol.style.paddingLeft = '3mm';
-    }
-    
-    // Truncate long descriptions
-    const materialDesc = printSection.querySelector('.material-description');
-    if (materialDesc && materialDesc.textContent.length > 200) {
-        materialDesc.style.maxHeight = '30px';
-        materialDesc.style.overflow = 'hidden';
-        materialDesc.style.textOverflow = 'ellipsis';
-    }
 }
 
 // Restore after print
 window.addEventListener('afterprint', () => {
-    // Send final notification that printing is complete
     sendPrintCompleteNotification();
     
     document.body.classList.remove('print-mode');
@@ -1255,20 +1433,19 @@ window.addEventListener('afterprint', () => {
         el.style.display = '';
     });
     
+    // Show cut line again
+    document.querySelector('.cut-line').style.display = '';
+    
     // Hide security signature section
     document.querySelector('.security-signature-section').style.display = 'none';
     
-    // Restore original column classes
-    const leftCol = document.querySelector('.print-section .col-md-8');
-    const rightCol = document.querySelector('.print-section .col-md-4');
-    
-    if (leftCol && rightCol) {
-        leftCol.style.width = '';
-        leftCol.style.paddingRight = '';
-        
-        rightCol.style.width = '';
-        rightCol.style.paddingLeft = '';
-    }
+    // Restore original styles
+    const gatePassCopies = document.querySelectorAll('.gate-pass-copy');
+    gatePassCopies.forEach(copy => {
+        copy.style.minHeight = '';
+        copy.style.maxHeight = '';
+        copy.style.marginBottom = '';
+    });
 });
 
 // Mobile detection and blocking
@@ -1298,18 +1475,9 @@ body {
 
 /* Company Header */
 .company-header {
-    border-bottom: 2px solid #333;
-    padding-bottom: 15px;
-    margin-bottom: 15px;
-}
-
-.company-logo-section .logo-placeholder {
-    border: 1px solid #ddd;
-    background: #f8f9fa;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    border-bottom: 1px solid #333;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
 }
 
 /* Compact Photo Grid */
@@ -1353,45 +1521,60 @@ body {
 }
 
 .single-qr-image {
-    max-width: 150px;
-    max-height: 150px;
+    max-width: 100px;
+    max-height: 100px;
     display: block;
     border: 1px solid #ddd;
-    padding: 5px;
+    padding: 3px;
     background: white;
+}
+
+/* QR Info Table */
+.qr-info table {
+    width: 100%;
+    margin: 0;
+}
+
+.qr-info td {
+    padding: 1px 0;
+    vertical-align: top;
+}
+
+.qr-info tr:not(:last-child) td {
+    border-bottom: 1px dashed #eee;
 }
 
 /* Status colors */
 .status-approved {
     color: #198754;
-    font-size: 10px;
+    font-size: 8px;
 }
 
 .status-rejected {
     color: #dc3545;
-    font-size: 10px;
+    font-size: 8px;
 }
 
 .status-pending {
     color: #fd7e14;
-    font-size: 10px;
+    font-size: 8px;
 }
 
 /* Compact styles */
 .card {
-    margin-bottom: 6px !important;
+    margin-bottom: 5px !important;
 }
 
 .card-header {
-    padding: 4px 8px !important;
+    padding: 3px 6px !important;
 }
 
 .card-body {
-    padding: 6px !important;
+    padding: 5px !important;
 }
 
 .table-borderless td {
-    padding: 2px 4px !important;
+    padding: 1px 3px !important;
 }
 
 /* Approval History Timeline */
@@ -1457,76 +1640,37 @@ body {
     background: #f8f9fa !important;
 }
 
-/* ✅ ULTRA FAST APPROVAL STYLES */
-#commentModal .modal-content,
-#rejectModal .modal-content {
-    animation: modalSlideIn 0.15s ease;
-}
-
-@keyframes modalSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-#commentModal textarea,
-#rejectModal textarea {
-    transition: all 0.15s;
-}
-
-#commentModal textarea:focus,
-#rejectModal textarea:focus {
-    border-color: #0d6efd;
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-
-#directApproveBtn, #approveWithCommentBtn, #directRejectBtn, #rejectWithCommentBtn {
-    transition: all 0.15s !important;
-}
-
-#directApproveBtn:hover, #approveWithCommentBtn:hover {
-    transform: scale(1.03);
-    background-color: #157347 !important;
-}
-
-#directRejectBtn:hover, #rejectWithCommentBtn:hover {
-    transform: scale(1.03);
-    background-color: #bb2d3b !important;
-}
-
-#directApproveBtn:active, #approveWithCommentBtn:active {
-    transform: scale(0.97);
-}
-
-#directRejectBtn:active, #rejectWithCommentBtn:active {
-    transform: scale(0.97);
-}
-
-/* Instant processing styles */
-.instant-processing {
+/* Cut Line */
+.cut-line {
+    border-top: 2px dashed #ccc;
+    margin: 20px 0;
     position: relative;
-    overflow: hidden;
 }
 
-.instant-processing::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-    animation: loadingShimmer 1s infinite;
+/* Copy labels */
+.copy-label .badge {
+    font-size: 9pt;
+    padding: 3px 10px;
 }
 
-@keyframes loadingShimmer {
-    0% { left: -100%; }
-    100% { left: 100%; }
+/* Gate Pass Copy Styling */
+.gate-pass-copy {
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    padding: 15px;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    min-height: 500px;
+    position: relative;
+}
+
+.copy-top {
+    background: linear-gradient(to bottom, #f8f9fa 0%, #fff 100%);
+}
+
+.copy-bottom {
+    background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
+    margin-top: 30px;
 }
 
 /* ========== PRINT SPECIFIC STYLES ========== */
@@ -1551,94 +1695,130 @@ body {
         width: 100% !important;
         height: auto !important;
         margin: 0 !important;
-        padding: 10mm !important;
+        padding: 0 !important;
         background: white !important;
         box-shadow: none !important;
         border: none !important;
         overflow: visible !important;
-        font-size: 9pt !important;
-        min-height: 277mm !important;
-        max-height: 277mm !important;
+        font-size: 7.5pt !important;
+    }
+    
+    /* Gate Pass Copies */
+    .gate-pass-copy {
+        height: 138mm !important;
+        min-height: 138mm !important;
+        max-height: 138mm !important;
+        padding: 4mm 5mm !important;
+        margin: 0 !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        border: 0.5px solid #ccc !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        overflow: hidden !important;
+        position: relative !important;
+    }
+    
+    .copy-top {
+        border-bottom: 2px dashed #ccc !important;
+    }
+    
+    .copy-bottom {
+        padding-top: 4mm !important;
+        border-top: none !important;
     }
     
     /* Company Header for print */
     .company-header {
-        margin-bottom: 5mm !important;
-        padding-bottom: 3mm !important;
-        border-bottom: 1px solid #000 !important;
+        margin-bottom: 2mm !important;
+        padding-bottom: 1.5mm !important;
+        border-bottom: 0.3px solid #000 !important;
         display: flex !important;
         align-items: flex-start !important;
     }
     
     .company-logo-section {
-        margin-right: 5mm !important;
+        margin-right: 2mm !important;
         flex-shrink: 0 !important;
     }
     
-    .logo-placeholder {
-        width: 25mm !important;
-        height: 25mm !important;
-        padding: 1mm !important;
+    .company-logo-section img {
+        max-width: 30px !important;
+        max-height: 30px !important;
     }
     
     .company-info h1 {
-        font-size: 16pt !important;
-        margin-bottom: 1mm !important;
+        font-size: 12pt !important;
+        margin-bottom: 0.5mm !important;
+        line-height: 1 !important;
     }
     
     .company-info p {
-        font-size: 8pt !important;
+        font-size: 6pt !important;
         margin-bottom: 0 !important;
-        line-height: 1.2 !important;
+        line-height: 1 !important;
     }
     
     .gate-pass-info h2 {
-        font-size: 14pt !important;
-        margin-bottom: 1mm !important;
+        font-size: 10pt !important;
+        margin-bottom: 0.5mm !important;
+        line-height: 1 !important;
     }
     
     .gate-pass-info h3 {
-        font-size: 12pt !important;
-        margin-bottom: 1mm !important;
+        font-size: 9pt !important;
+        margin-bottom: 0.5mm !important;
+        line-height: 1 !important;
     }
     
     .gate-pass-info p {
+        font-size: 5.5pt !important;
+        line-height: 1 !important;
+    }
+    
+    /* Copy Label */
+    .copy-label .badge {
+        padding: 0.5px 3px !important;
         font-size: 7pt !important;
+        margin-bottom: 1.5mm !important;
+        border: 0.3px solid #ccc !important;
     }
     
     /* Main two column layout */
-    .print-section > .row {
+    .gate-pass-copy > .row {
         display: flex !important;
         margin-left: 0 !important;
         margin-right: 0 !important;
+        height: auto !important;
     }
     
     .col-md-8 {
-        width: 70% !important;
-        padding-right: 5mm !important;
-        flex: 0 0 70% !important;
+        width: 68% !important;
+        padding-right: 2mm !important;
+        flex: 0 0 68% !important;
     }
     
     .col-md-4 {
-        width: 30% !important;
-        padding-left: 3mm !important;
-        flex: 0 0 30% !important;
+        width: 32% !important;
+        padding-left: 2mm !important;
+        flex: 0 0 32% !important;
     }
     
     /* Badges for print */
     .badge {
-        padding: 1px 4px !important;
-        font-size: 7pt !important;
-        border: 1px solid #ccc !important;
-        margin: 0 1px 1px 0 !important;
+        padding: 0 2px !important;
+        font-size: 5.5pt !important;
+        border: 0.3px solid #ccc !important;
+        margin: 0 0.5px 0.5px 0 !important;
         display: inline-block !important;
+        line-height: 1.1 !important;
     }
     
     /* Cards for print */
     .card {
         box-shadow: none !important;
-        border: 1px solid #ccc !important;
-        margin-bottom: 3mm !important;
+        border: 0.3px solid #ccc !important;
+        margin-bottom: 1.5mm !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
     }
@@ -1646,113 +1826,119 @@ body {
     .card-header {
         background: #f5f5f5 !important;
         color: #000 !important;
-        padding: 2mm !important;
-        border-bottom: 1px solid #ccc !important;
+        padding: 0.8mm !important;
+        border-bottom: 0.3px solid #ccc !important;
     }
     
     .card-header h6 {
-        font-size: 9pt !important;
+        font-size: 7pt !important;
         margin: 0 !important;
+        line-height: 1 !important;
     }
     
     .card-body {
-        padding: 2mm !important;
+        padding: 0.8mm !important;
     }
     
     /* Tables for print */
     .table-borderless td {
-        padding: 0.5mm 1mm !important;
-        font-size: 8pt !important;
-        line-height: 1.2 !important;
+        padding: 0.2mm 0.3mm !important;
+        font-size: 6.5pt !important;
+        line-height: 1 !important;
+        vertical-align: top !important;
     }
     
-    /* Material description */
-    .material-description {
-        max-height: 25mm !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        line-height: 1.3 !important;
+    /* Material Description */
+    .table-borderless td[style*="font-size: 7.5pt"] {
+        font-size: 6.5pt !important;
+        line-height: 1.1 !important;
     }
     
     /* QR Code for print */
     .single-qr-container {
-        margin-bottom: 3mm !important;
+        margin-bottom: 1.5mm !important;
     }
     
     .single-qr-image {
-        max-width: 40mm !important;
-        max-height: 40mm !important;
+        max-width: 20mm !important;
+        max-height: 20mm !important;
         display: block !important;
         visibility: visible !important;
         opacity: 1 !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
-    }
-    
-    /* QR Code details */
-    .qr-details {
-        font-size: 7pt !important;
-    }
-    
-    .alert {
+        border: 0.3px solid #ccc !important;
         padding: 1mm !important;
-        font-size: 7pt !important;
-        border: 1px solid #ccc !important;
-        margin: 2mm 0 !important;
     }
     
-    /* Photo grid for print */
-    .photo-grid-compact {
-        grid-template-columns: repeat(4, 1fr) !important;
-        gap: 2mm !important;
+    /* QR Info for print */
+    .qr-info table {
+        font-size: 5.5pt !important;
     }
     
-    .photo-item-compact {
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    
-    .photo-item-compact img {
-        height: 15mm !important;
-        object-fit: cover !important;
-    }
-    
-    .photo-number-compact {
-        font-size: 6pt !important;
-        padding: 1mm !important;
+    .qr-info td {
+        padding: 0.3mm 0 !important;
+        line-height: 1 !important;
     }
     
     /* Status boxes */
     .status-approved, .status-rejected, .status-pending {
-        font-size: 7pt !important;
-        line-height: 1.2 !important;
+        font-size: 5.5pt !important;
+        line-height: 1 !important;
+    }
+    
+    /* Security Notes */
+    .security-notes-section .card-body ul {
+        padding-left: 2mm !important;
+        margin-bottom: 0 !important;
+    }
+    
+    .security-notes-section .card-body li {
+        margin-bottom: 0.2mm !important;
+        font-size: 5.5pt !important;
+        line-height: 1 !important;
     }
     
     /* Security Signature Section */
     .security-signature-section {
         display: block !important;
         visibility: visible !important;
-        margin-top: 5mm !important;
-        padding-top: 2mm !important;
-        border-top: 1px solid #000 !important;
+        margin-top: 2mm !important;
+        padding-top: 0.5mm !important;
+        border-top: 0.3px solid #000 !important;
     }
     
     .signature-line {
         width: 70% !important;
-        height: 1px !important;
+        height: 0.3px !important;
         background: #000 !important;
-        margin: 10mm 0 2mm 0 !important;
+        margin: 3mm 0 0.5mm 0 !important;
     }
     
     .signature-box p {
-        font-size: 8pt !important;
-        margin-bottom: 2mm !important;
+        font-size: 6pt !important;
+        margin-bottom: 0.5mm !important;
+        line-height: 1 !important;
+    }
+    
+    /* Footer */
+    .footer-section {
+        margin-top: 1.5mm !important;
+        padding-top: 0.5mm !important;
+        border-top: 0.3px solid #000 !important;
+    }
+    
+    .footer-section p {
+        font-size: 5pt !important;
+        line-height: 1 !important;
+        margin-bottom: 0 !important;
     }
     
     /* Hide buttons and non-print elements */
     .btn, .modal, .toast, .no-print,
     .position-fixed, .floating-buttons,
-    .navbar, .sidebar, header, footer {
+    .navbar, .sidebar, header, footer,
+    .cut-line {
         display: none !important;
         visibility: hidden !important;
         height: 0 !important;
@@ -1765,7 +1951,7 @@ body {
         display: none !important;
     }
     
-    /* Force single page */
+    /* Force proper page setup */
     html, body {
         width: 210mm !important;
         height: 297mm !important;
@@ -1776,7 +1962,7 @@ body {
     
     /* Page margins */
     @page {
-        margin: 10mm;
+        margin: 0;
         size: A4 portrait;
     }
     
@@ -1795,7 +1981,7 @@ body {
     }
     
     /* Ensure all borders are visible */
-    .card, .photo-item-compact, .badge {
+    .card, .badge {
         border-color: #000 !important;
     }
     
@@ -1811,34 +1997,14 @@ body {
         color: #000 !important;
     }
     
-    /* Footer */
-    .border-top {
-        border-top: 1px solid #000 !important;
-        padding-top: 2mm !important;
-        margin-top: 2mm !important;
-    }
-    
-    /* Important notes */
-    ul.small {
-        margin-bottom: 1mm !important;
-        padding-left: 4mm !important;
-    }
-    
-    ul.small li {
-        margin-bottom: 0.5mm !important;
-        font-size: 7pt !important;
-        line-height: 1.2 !important;
-    }
-    
     /* Prevent page breaks inside important elements */
-    .card, .row, .company-header, .qr-section, .security-signature-section {
+    .gate-pass-copy, .row, .company-header, .qr-info, .security-signature-section {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
     }
     
-    /* Ensure everything fits in one page */
-    .print-section {
-        max-height: 277mm !important;
+    /* Ensure copies fit properly */
+    .gate-pass-copy {
         overflow: hidden !important;
     }
 }
@@ -1855,7 +2021,7 @@ body.print-mode .print-section {
 /* Ensure proper printing of QR codes */
 @page {
     size: A4;
-    margin: 10mm;
+    margin: 0;
 }
 
 @media print and (color) {
