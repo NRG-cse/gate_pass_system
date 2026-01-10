@@ -165,13 +165,13 @@
                                     <td class="text-center">
                                         <div class="btn-group" role="group">
                                             <button onclick="approveUser({{ user.id }}, 'approve')" 
-                                                    class="btn btn-success btn-sm rounded-start px-3 action-btn"
+                                                    class="btn btn-success btn-sm rounded-start px-3 action-btn btn-instant"
                                                     title="Approve User"
                                                     data-user="{{ user.id }}">
                                                 <i class="fas fa-check me-1"></i>Approve
                                             </button>
                                             <button onclick="approveUser({{ user.id }}, 'reject')" 
-                                                    class="btn btn-danger btn-sm rounded-end px-3 action-btn"
+                                                    class="btn btn-danger btn-sm rounded-end px-3 action-btn btn-instant"
                                                     title="Reject User"
                                                     data-user="{{ user.id }}">
                                                 <i class="fas fa-times me-1"></i>Reject
@@ -268,15 +268,17 @@
                                             </a>
                                             
                                             {% if session.role == 'department_head' and pass.status == 'pending_dept' %}
-                                            <button onclick="approveGatePassDirect({{ pass.id }}, 'approve')" 
-                                                    class="btn btn-outline-success px-3"
-                                                    title="Approve">
-                                                <i class="fas fa-check"></i>
+                                            <!-- ✅ ULTRA-FAST: INSTANT APPROVE - সাথে সাথে Approve হবে -->
+                                            <button onclick="instantApproveGatePass({{ pass.id }}, 'approve', 'department_head')" 
+                                                    class="btn btn-outline-success px-3 btn-instant"
+                                                    title="Approve Instantly">
+                                                <i class="fas fa-bolt me-1"></i>Approve
                                             </button>
-                                            <button onclick="approveGatePassDirect({{ pass.id }}, 'reject')" 
-                                                    class="btn btn-outline-danger px-3"
-                                                    title="Reject">
-                                                <i class="fas fa-times"></i>
+                                            <!-- ✅ ULTRA-FAST: INSTANT REJECT - সাথে সাথে Reject হবে -->
+                                            <button onclick="instantApproveGatePass({{ pass.id }}, 'reject', 'department_head')" 
+                                                    class="btn btn-outline-danger px-3 btn-instant"
+                                                    title="Reject Instantly">
+                                                <i class="fas fa-bolt me-1"></i>Reject
                                             </button>
                                             <button type="button" 
                                                     class="btn btn-outline-warning px-3"
@@ -288,15 +290,17 @@
                                             </button>
                                             
                                             {% elif session.role == 'store_manager' and pass.status == 'pending_store' %}
-                                            <button onclick="storeApproveGatePassDirect({{ pass.id }}, 'approve')" 
-                                                    class="btn btn-outline-success px-3"
-                                                    title="Approve">
-                                                <i class="fas fa-check"></i>
+                                            <!-- ✅ ULTRA-FAST: STORE MANAGER INSTANT APPROVE - সাথে সাথে Approve হবে -->
+                                            <button onclick="instantApproveGatePass({{ pass.id }}, 'approve', 'store_manager')" 
+                                                    class="btn btn-outline-success px-3 btn-instant"
+                                                    title="Approve Instantly">
+                                                <i class="fas fa-bolt me-1"></i>Approve
                                             </button>
-                                            <button onclick="storeApproveGatePassDirect({{ pass.id }}, 'reject')" 
-                                                    class="btn btn-outline-danger px-3"
-                                                    title="Reject">
-                                                <i class="fas fa-times"></i>
+                                            <!-- ✅ ULTRA-FAST: STORE MANAGER INSTANT REJECT - সাথে সাথে Reject হবে -->
+                                            <button onclick="instantApproveGatePass({{ pass.id }}, 'reject', 'store_manager')" 
+                                                    class="btn btn-outline-danger px-3 btn-instant"
+                                                    title="Reject Instantly">
+                                                <i class="fas fa-bolt me-1"></i>Reject
                                             </button>
                                             {% endif %}
                                         </div>
@@ -417,15 +421,15 @@
                     <div class="row g-3">
                         <div class="col-auto">
                             <span class="badge bg-success-gradient me-2 px-3 py-2">
-                                <i class="fas fa-check me-1"></i>Approve
+                                <i class="fas fa-bolt me-1"></i>Approve Instantly
                             </span>
-                            <small class="text-muted">Approve the request</small>
+                            <small class="text-muted">Approve the request instantly (under 2 seconds)</small>
                         </div>
                         <div class="col-auto">
                             <span class="badge bg-danger-gradient me-2 px-3 py-2">
-                                <i class="fas fa-times me-1"></i>Reject
+                                <i class="fas fa-bolt me-1"></i>Reject Instantly
                             </span>
-                            <small class="text-muted">Reject the request</small>
+                            <small class="text-muted">Reject the request instantly (under 2 seconds)</small>
                         </div>
                         {% if session.role == 'department_head' %}
                         <div class="col-auto">
@@ -449,7 +453,7 @@
 </div>
 
 <!-- Comment Modal for Approve -->
-<div class="modal fade" id="commentModal" tabindex="-1" aria-labelledby="commentModalLabel" aria-hidden="true">
+<div class="modal fade modal-fast" id="commentModal" tabindex="-1" aria-labelledby="commentModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -472,10 +476,10 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancelBtn">Cancel</button>
-                <button type="button" class="btn btn-success" id="directApproveBtn">
-                    <i class="fas fa-check me-1"></i>Approve
+                <button type="button" class="btn btn-success btn-instant" id="directApproveBtn">
+                    <i class="fas fa-bolt me-1"></i>Approve Instantly
                 </button>
-                <button type="button" class="btn btn-primary" id="approveWithCommentBtn">
+                <button type="button" class="btn btn-primary btn-instant" id="approveWithCommentBtn">
                     <i class="fas fa-check-circle me-1"></i>Approve with Comment
                 </button>
             </div>
@@ -484,7 +488,7 @@
 </div>
 
 <!-- Additional Modal for Reject -->
-<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+<div class="modal fade modal-fast" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -504,10 +508,10 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" id="directRejectBtn">
-                    <i class="fas fa-times me-1"></i>Reject
+                <button type="button" class="btn btn-danger btn-instant" id="directRejectBtn">
+                    <i class="fas fa-bolt me-1"></i>Reject Instantly
                 </button>
-                <button type="button" class="btn btn-warning" id="rejectWithCommentBtn">
+                <button type="button" class="btn btn-warning btn-instant" id="rejectWithCommentBtn">
                     <i class="fas fa-times-circle me-1"></i>Reject with Comment
                 </button>
             </div>
@@ -572,6 +576,19 @@
         </div>
         <div class="toast-body">
             <div id="errorMessage">An error occurred!</div>
+        </div>
+    </div>
+    
+    <!-- Info Toast -->
+    <div id="infoToast" class="toast border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-info text-white">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong class="me-auto">Info</strong>
+            <small>Just now</small>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            <div id="infoMessage">Processing...</div>
         </div>
     </div>
 </div>
@@ -710,44 +727,81 @@
     box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
 
-/* ✅ INSTANT APPROVAL STYLES */
-#commentModal .modal-content,
-#rejectModal .modal-content {
-    animation: modalSlideIn 0.2s ease;
+/* ✅ ULTRA-FAST INSTANT APPROVAL STYLES */
+.modal-fast {
+    animation: modalFastAppear 0.15s ease-out;
 }
 
-@keyframes modalSlideIn {
+@keyframes modalFastAppear {
     from {
         opacity: 0;
-        transform: translateY(-20px);
+        transform: scale(0.95) translateY(-10px);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: scale(1) translateY(0);
     }
 }
 
-#commentModal textarea,
-#rejectModal textarea {
-    transition: all 0.2s;
+.btn-instant {
+    transition: all 0.1s ease !important;
+    position: relative;
+    overflow: hidden;
 }
 
-#commentModal textarea:focus,
-#rejectModal textarea:focus {
-    border-color: #0d6efd;
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-
-.btn-instantly {
-    transition: all 0.2s !important;
-}
-
-.btn-instantly:hover {
+.btn-instant:hover {
     transform: scale(1.02);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.15) !important;
 }
 
-.btn-instantly:active {
+.btn-instant:active {
     transform: scale(0.98);
+}
+
+/* Instant approval animation */
+.instant-approving {
+    animation: pulseApprove 0.5s ease infinite;
+}
+
+.instant-rejecting {
+    animation: pulseReject 0.5s ease infinite;
+}
+
+@keyframes pulseApprove {
+    0% { background-color: rgba(25, 135, 84, 0.1); }
+    50% { background-color: rgba(25, 135, 84, 0.2); }
+    100% { background-color: rgba(25, 135, 84, 0.1); }
+}
+
+@keyframes pulseReject {
+    0% { background-color: rgba(220, 53, 69, 0.1); }
+    50% { background-color: rgba(220, 53, 69, 0.2); }
+    100% { background-color: rgba(220, 53, 69, 0.1); }
+}
+
+/* Button loading state */
+.btn-loading {
+    position: relative;
+    color: transparent !important;
+}
+
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin: -8px 0 0 -8px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* Quick action animations */
@@ -795,134 +849,215 @@
 
 {% block scripts %}
 <script>
-// ✅ FIXED: GLOBAL APPROVAL STATE
-let currentApprovalData = {
+// 🔥 GLOBAL VARIABLES FOR INSTANT APPROVAL
+let currentApproval = {
     passId: null,
     action: null,
     role: null
 };
 
-// ✅ FIXED: SIMPLE Department Head Approval - INSTANT
+// ✅ ULTRA-FAST: INSTANT GATE PASS APPROVAL - সাথে সাথে Approve হবে (under 2 seconds)
+function instantApproveGatePass(passId, action, role) {
+    // Show quick confirmation
+    const actionText = action === 'approve' ? 'Approve' : 'Reject';
+    const confirmText = action === 'approve' 
+        ? `✅ Are you sure you want to approve this gate pass?` 
+        : `❌ Are you sure you want to reject this gate pass?`;
+    
+    if (!confirm(confirmText)) {
+        return;
+    }
+    
+    // Get the button element
+    const button = document.querySelector(`button[onclick="instantApproveGatePass(${passId}, '${action}', '${role}')"]`);
+    const originalHTML = button.innerHTML;
+    
+    // Set loading state
+    button.classList.add('btn-loading');
+    button.disabled = true;
+    
+    // Get the row for animation
+    const row = document.getElementById(`gatepass-${passId}`);
+    const rowId = row ? row.id : null;
+    
+    // Immediate visual feedback
+    if (row) {
+        row.style.transition = 'all 0.3s ease';
+        row.style.opacity = '0.7';
+        row.style.background = action === 'approve' 
+            ? 'linear-gradient(90deg, rgba(25,135,84,0.1) 0%, rgba(25,135,84,0.05) 100%)' 
+            : 'linear-gradient(90deg, rgba(220,53,69,0.1) 0%, rgba(220,53,69,0.05) 100%)';
+    }
+    
+    // Show processing toast immediately
+    showToast(`Processing ${actionText.toLowerCase()}...`, 'info');
+    
+    // 🔥 ULTRA-FAST API CALL with 3 second timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    
+    // 🔥 USE ULTRA-FAST INSTANT APPROVAL ENDPOINT
+    fetch('/gate_pass/instant_approve_gate_pass/' + passId + '/' + action, {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ comment: '' }),
+        signal: controller.signal
+    })
+    .then(response => {
+        clearTimeout(timeoutId);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+    })
+    .then(data => {
+        // Remove loading state
+        button.classList.remove('btn-loading');
+        button.disabled = false;
+        button.innerHTML = originalHTML;
+        
+        if (data.success) {
+            // 🔥 INSTANT SUCCESS FEEDBACK
+            showToast(`✅ ${data.message || `${actionText} successful!`}`, 'success');
+            
+            // 🔥 REMOVE ROW WITH SMOOTH ANIMATION
+            if (row) {
+                row.style.transform = 'translateX(-100%)';
+                row.style.opacity = '0';
+                
+                setTimeout(() => {
+                    if (row && document.getElementById(rowId)) {
+                        row.remove();
+                        updateStatsCount();
+                        
+                        // Check if table is empty
+                        const tableBody = document.querySelector('.card:nth-child(2) tbody');
+                        if (tableBody && tableBody.children.length === 0) {
+                            showEmptyState('gatepasses');
+                        }
+                    }
+                }, 300);
+            }
+            
+            // 🔥 QUICK REFRESH
+            setTimeout(() => {
+                if (document.querySelectorAll('.gatepass-row').length === 0) {
+                    location.reload();
+                }
+            }, 1000);
+            
+        } else {
+            showToast(`❌ ${data.message || `${actionText} failed!`}`, 'error');
+            
+            // Reset row style
+            if (row) {
+                row.style.opacity = '1';
+                row.style.background = '';
+                row.style.transform = '';
+            }
+        }
+    })
+    .catch(error => {
+        clearTimeout(timeoutId);
+        console.error('Error:', error);
+        
+        // Remove loading state
+        button.classList.remove('btn-loading');
+        button.disabled = false;
+        button.innerHTML = originalHTML;
+        
+        showToast('Network error. Please try again.', 'error');
+        
+        // Reset row style
+        if (row) {
+            row.style.opacity = '1';
+            row.style.background = '';
+            row.style.transform = '';
+        }
+    });
+}
+
+// 🔥 INSTANT Department Head Approval with Modal
 function approveGatePassDirect(passId, action) {
-    currentApprovalData = { passId, action, role: 'department_head' };
+    currentApproval = { passId, action, role: 'department_head' };
     
     if (action === 'approve') {
-        // Show approve modal immediately
-        const modalElement = document.getElementById('commentModal');
-        const modal = new bootstrap.Modal(modalElement);
+        // Show approve modal INSTANTLY
+        const modal = new bootstrap.Modal(document.getElementById('commentModal'));
         modal.show();
         
-        // Clear previous comment
+        // Clear comment
         document.getElementById('approvalComment').value = '';
-        
-        // Setup event listeners for this specific modal instance
-        setupApproveModalListeners(passId, 'department_head');
     } else {
-        // Show reject modal immediately
-        const modalElement = document.getElementById('rejectModal');
-        const modal = new bootstrap.Modal(modalElement);
+        // Show reject modal INSTANTLY
+        const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
         modal.show();
         
-        // Clear previous comment
+        // Clear comment
         document.getElementById('rejectComment').value = '';
-        
-        // Setup event listeners for this specific modal instance
-        setupRejectModalListeners(passId, 'department_head');
     }
 }
 
-// ✅ FIXED: SIMPLE Store Manager Approval - INSTANT
+// 🔥 INSTANT Store Manager Approval with Modal
 function storeApproveGatePassDirect(passId, action) {
-    currentApprovalData = { passId, action, role: 'store_manager' };
+    currentApproval = { passId, action, role: 'store_manager' };
     
     if (action === 'approve') {
-        // Show approve modal immediately
-        const modalElement = document.getElementById('commentModal');
-        const modal = new bootstrap.Modal(modalElement);
+        // Show approve modal INSTANTLY
+        const modal = new bootstrap.Modal(document.getElementById('commentModal'));
         modal.show();
         
-        // Clear previous comment
+        // Clear comment
         document.getElementById('approvalComment').value = '';
-        
-        // Setup event listeners for this specific modal instance
-        setupApproveModalListeners(passId, 'store_manager');
     } else {
-        // Show reject modal immediately
-        const modalElement = document.getElementById('rejectModal');
-        const modal = new bootstrap.Modal(modalElement);
+        // Show reject modal INSTANTLY
+        const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
         modal.show();
         
-        // Clear previous comment
+        // Clear comment
         document.getElementById('rejectComment').value = '';
-        
-        // Setup event listeners for this specific modal instance
-        setupRejectModalListeners(passId, 'store_manager');
     }
 }
 
-// ✅ FIXED: SETUP APPROVE MODAL LISTENERS
-function setupApproveModalListeners(passId, role) {
-    // Clear previous listeners
-    const clearAndSetupButton = (buttonId, handler) => {
-        const button = document.getElementById(buttonId);
-        if (!button) return;
-        
-        // Clone button to remove all existing event listeners
-        const newButton = button.cloneNode(true);
-        button.parentNode.replaceChild(newButton, button);
-        
-        // Add fresh event listener
-        document.getElementById(buttonId).addEventListener('click', handler);
-    };
-    
-    // Setup direct approve button
-    clearAndSetupButton('directApproveBtn', function() {
-        processInstantApproval(passId, 'approve', role, '');
+// 🔥 SETUP MODAL BUTTONS
+document.addEventListener('DOMContentLoaded', function() {
+    // Approve Modal Buttons
+    document.getElementById('directApproveBtn').addEventListener('click', function() {
+        processInstantApproval(currentApproval.passId, 'approve', currentApproval.role, '');
     });
     
-    // Setup approve with comment button
-    clearAndSetupButton('approveWithCommentBtn', function() {
-        const comment = document.getElementById('approvalComment')?.value.trim() || '';
-        processInstantApproval(passId, 'approve', role, comment);
+    document.getElementById('approveWithCommentBtn').addEventListener('click', function() {
+        const comment = document.getElementById('approvalComment').value.trim();
+        processInstantApproval(currentApproval.passId, 'approve', currentApproval.role, comment);
     });
     
-    // Setup cancel button
-    clearAndSetupButton('cancelBtn', function() {
-        const modal = bootstrap.Modal.getInstance(document.getElementById('commentModal'));
-        if (modal) modal.hide();
+    // Reject Modal Buttons
+    document.getElementById('directRejectBtn').addEventListener('click', function() {
+        processInstantApproval(currentApproval.passId, 'reject', currentApproval.role, '');
     });
-}
+    
+    document.getElementById('rejectWithCommentBtn').addEventListener('click', function() {
+        const comment = document.getElementById('rejectComment').value.trim();
+        processInstantApproval(currentApproval.passId, 'reject', currentApproval.role, comment);
+    });
+    
+    // Cancel Buttons
+    document.querySelectorAll('[data-bs-dismiss="modal"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const modalId = this.closest('.modal').id;
+            if (modalId === 'commentModal') {
+                document.getElementById('approvalComment').value = '';
+            } else if (modalId === 'rejectModal') {
+                document.getElementById('rejectComment').value = '';
+            }
+        });
+    });
+});
 
-// ✅ FIXED: SETUP REJECT MODAL LISTENERS
-function setupRejectModalListeners(passId, role) {
-    // Clear previous listeners
-    const clearAndSetupButton = (buttonId, handler) => {
-        const button = document.getElementById(buttonId);
-        if (!button) return;
-        
-        // Clone button to remove all existing event listeners
-        const newButton = button.cloneNode(true);
-        button.parentNode.replaceChild(newButton, button);
-        
-        // Add fresh event listener
-        document.getElementById(buttonId).addEventListener('click', handler);
-    };
-    
-    // Setup direct reject button
-    clearAndSetupButton('directRejectBtn', function() {
-        processInstantApproval(passId, 'reject', role, '');
-    });
-    
-    // Setup reject with comment button
-    clearAndSetupButton('rejectWithCommentBtn', function() {
-        const comment = document.getElementById('rejectComment')?.value.trim() || '';
-        processInstantApproval(passId, 'reject', role, comment);
-    });
-}
-
-// ✅ FIXED: INSTANT APPROVAL PROCESSING - ULTRA FAST
+// 🔥 ULTRA-FAST APPROVAL PROCESSING for Modal (Under 2 seconds)
 function processInstantApproval(passId, action, role, comment = '') {
-    // Close modal IMMEDIATELY
+    // 🔥 CLOSE MODAL IMMEDIATELY
     if (action === 'approve') {
         const approveModal = bootstrap.Modal.getInstance(document.getElementById('commentModal'));
         if (approveModal) approveModal.hide();
@@ -931,28 +1066,27 @@ function processInstantApproval(passId, action, role, comment = '') {
         if (rejectModal) rejectModal.hide();
     }
     
-    // Show immediate feedback
+    // 🔥 GET ROW FOR ANIMATION
+    const row = document.getElementById(`gatepass-${passId}`);
+    const rowId = row ? row.id : null;
+    
+    // 🔥 IMMEDIATE VISUAL FEEDBACK
     showToast(`Processing ${action}...`, 'info');
     
-    // Get the row element for animation
-    const row = document.getElementById(`gatepass-${passId}`);
     if (row) {
         row.style.transition = 'all 0.3s ease';
-        row.style.opacity = '0.5';
-        row.style.backgroundColor = action === 'approve' ? 'rgba(25, 135, 84, 0.1)' : 'rgba(220, 53, 69, 0.1)';
+        row.style.opacity = '0.6';
+        row.style.background = action === 'approve' ? 
+            'linear-gradient(90deg, rgba(25,135,84,0.1) 0%, rgba(25,135,84,0.05) 100%)' : 
+            'linear-gradient(90deg, rgba(220,53,69,0.1) 0%, rgba(220,53,69,0.05) 100%)';
     }
     
-    // Determine endpoint
-    let endpoint = '';
-    if (role === 'department_head' || role === 'store_manager') {
-        endpoint = `/gate_pass/approve_gate_pass_with_comment/${passId}/${action}`;
-    }
-    
-    // Send request IMMEDIATELY with timeout
+    // 🔥 ULTRA-FAST API CALL with timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
     
-    fetch(endpoint, {
+    // 🔥 USE NEW INSTANT APPROVAL ENDPOINT
+    fetch('/gate_pass/instant_approve_gate_pass/' + passId + '/' + action, {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
@@ -968,35 +1102,40 @@ function processInstantApproval(passId, action, role, comment = '') {
     })
     .then(data => {
         if (data.success) {
-            // Show success immediately
+            // 🔥 INSTANT SUCCESS FEEDBACK
             showToast(`✅ ${data.message}`, 'success');
             
-            // Remove row with animation
+            // 🔥 REMOVE ROW WITH ANIMATION
             if (row) {
                 row.style.transform = 'translateX(-100%)';
                 row.style.opacity = '0';
+                
                 setTimeout(() => {
-                    row.remove();
-                    updateStatsCount();
-                    
-                    // Check if table is empty
-                    const tableBody = document.querySelector('.card:nth-child(2) tbody');
-                    if (tableBody && tableBody.children.length === 0) {
-                        showEmptyState('gatepasses');
+                    if (row && document.getElementById(rowId)) {
+                        row.remove();
+                        updateStatsCount();
+                        
+                        // Check if table is empty
+                        const tableBody = document.querySelector('.card:nth-child(2) tbody');
+                        if (tableBody && tableBody.children.length === 0) {
+                            showEmptyState('gatepasses');
+                        }
                     }
                 }, 300);
             }
             
-            // Auto-refresh page after 1.5 seconds
+            // 🔥 QUICK REFRESH
             setTimeout(() => {
-                location.reload();
-            }, 1500);
+                if (document.querySelectorAll('.gatepass-row').length === 0) {
+                    location.reload();
+                }
+            }, 1000);
+            
         } else {
             showToast(`❌ ${data.message}`, 'error');
-            // Reset row style on error
             if (row) {
                 row.style.opacity = '1';
-                row.style.backgroundColor = '';
+                row.style.background = '';
             }
         }
     })
@@ -1004,55 +1143,63 @@ function processInstantApproval(passId, action, role, comment = '') {
         clearTimeout(timeoutId);
         console.error('Error:', error);
         showToast('Network error. Please try again.', 'error');
-        // Reset row style on error
         if (row) {
             row.style.opacity = '1';
-            row.style.backgroundColor = '';
+            row.style.background = '';
         }
     });
 }
 
-// ✅ Handle user approval
+// 🔥 INSTANT USER APPROVAL
 function approveUser(userId, action) {
-    const actionText = action === 'approve' ? 'Approve' : 'Reject';
-    const icon = action === 'approve' ? '✅' : '❌';
-    
-    if (!confirm(`${icon} Are you sure you want to ${actionText} this user?`)) {
+    if (!confirm(`${action === 'approve' ? '✅' : '❌'} Are you sure you want to ${action} this user?`)) {
         return;
     }
     
     const button = document.querySelector(`button[data-user="${userId}"]`);
     const originalText = button.innerHTML;
     button.disabled = true;
-    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     
-    fetch(`/approve_user/${userId}/${action}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showToast(data.message || `User ${actionText.toLowerCase()}d successfully!`, 'success');
-                // Remove the user row from table
-                const userRow = document.getElementById(`user-${userId}`);
-                if (userRow) {
+    // 🔥 USE FAST USER APPROVAL ENDPOINT
+    fetch('/gate_pass/fast_approve_user/' + userId + '/' + action, {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            
+            // Remove user row instantly
+            const userRow = document.getElementById(`user-${userId}`);
+            if (userRow) {
+                userRow.style.transition = 'all 0.3s ease';
+                userRow.style.transform = 'translateX(-100%)';
+                userRow.style.opacity = '0';
+                
+                setTimeout(() => {
                     userRow.remove();
-                }
-                // Update stats count
-                updateStatsCount();
-            } else {
-                showToast(data.message || `Error ${actionText.toLowerCase()}ing user`, 'error');
-                button.disabled = false;
-                button.innerHTML = originalText;
+                    updateStatsCount();
+                }, 300);
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast('Network error. Please try again.', 'error');
+        } else {
+            showToast(data.message, 'error');
             button.disabled = false;
             button.innerHTML = originalText;
-        });
+        }
+    })
+    .catch(error => {
+        showToast('Network error!', 'error');
+        button.disabled = false;
+        button.innerHTML = originalText;
+    });
 }
 
-// Department Head: Inquiry
+// 🔥 INSTANT INQUIRY
 let currentInquiryGatePassId = null;
 
 function setInquiryGatePassId(passId) {
@@ -1076,20 +1223,23 @@ function submitInquiry() {
     const modal = bootstrap.Modal.getInstance(document.getElementById('inquiryModal'));
     modal.hide();
     
-    showLoading('Submitting inquiry...');
+    showToast('Processing inquiry...', 'info');
     
-    fetch(`/gate_pass/approve_gate_pass/${currentInquiryGatePassId}/inquiry?inquiry_purpose=${encodeURIComponent(inquiryPurpose)}`, {
-        method: 'GET',
-        headers: {
+    // 🔥 USE FAST INQUIRY ENDPOINT
+    fetch('/gate_pass/fast_inquiry/' + currentInquiryGatePassId, {
+        method: 'POST',
+        headers: { 
             'Content-Type': 'application/json',
-        }
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ purpose: inquiryPurpose })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showToast(data.message || 'Gate pass marked for inquiry!', 'success');
+            showToast(data.message, 'success');
             
-            // Remove row with animation
+            // Remove row instantly
             const gatepassRow = document.getElementById(`gatepass-${currentInquiryGatePassId}`);
             if (gatepassRow) {
                 gatepassRow.style.transition = 'all 0.3s ease';
@@ -1099,55 +1249,50 @@ function submitInquiry() {
                 setTimeout(() => {
                     gatepassRow.remove();
                     updateStatsCount();
-                    
-                    // Check if table is empty
-                    const tableBody = document.querySelector('.card:nth-child(2) tbody');
-                    if (tableBody && tableBody.children.length === 0) {
-                        showEmptyState('gatepasses');
-                    }
-                    
-                    // Auto refresh the page
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1000);
                 }, 300);
-            } else {
-                // If row not found, just refresh page
-                setTimeout(() => {
-                    location.reload();
-                }, 1000);
             }
         } else {
-            showToast(data.message || 'Error marking for inquiry', 'error');
+            showToast(data.message, 'error');
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        showToast('Error processing request', 'error');
+        showToast('Network error!', 'error');
     });
 }
 
-// Toast notification function
+// Toast function
 function showToast(message, type = 'success') {
-    let toastElement, toastMessage;
+    const toastId = type === 'error' ? 'errorToast' : (type === 'info' ? 'infoToast' : 'successToast');
+    const toastElement = document.getElementById(toastId);
+    const messageElement = document.getElementById(type === 'error' ? 'errorMessage' : (type === 'info' ? 'infoMessage' : 'toastMessage'));
     
-    if (type === 'error') {
-        toastElement = document.getElementById('errorToast');
-        toastMessage = document.getElementById('errorMessage');
-    } else {
-        toastElement = document.getElementById('successToast');
-        toastMessage = document.getElementById('toastMessage');
-    }
-    
-    if (!toastElement || !toastMessage) {
-        console.error('Toast elements not found');
-        // Fallback alert
-        alert(message);
-        return;
+    if (!toastElement || !messageElement) {
+        // Create missing toast
+        if (type === 'info' && !toastElement) {
+            const toastContainer = document.getElementById('toastContainer');
+            toastContainer.innerHTML += `
+                <div id="infoToast" class="toast border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="toast-header bg-info text-white">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong class="me-auto">Info</strong>
+                        <small>Just now</small>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                    <div class="toast-body">
+                        <div id="infoMessage">${message}</div>
+                    </div>
+                </div>
+            `;
+            toastElement = document.getElementById('infoToast');
+            messageElement = document.getElementById('infoMessage');
+        } else {
+            alert(message);
+            return;
+        }
     }
     
     // Update message and timestamp
-    toastMessage.textContent = message;
+    messageElement.textContent = message;
     const timeElement = toastElement.querySelector('small');
     if (timeElement) {
         const now = new Date();
@@ -1155,52 +1300,36 @@ function showToast(message, type = 'success') {
     }
     
     // Show toast
-    const bsToast = new bootstrap.Toast(toastElement);
+    const bsToast = new bootstrap.Toast(toastElement, { delay: 3000 });
     bsToast.show();
 }
 
-// Update stats count after approval
+// Update stats
 function updateStatsCount() {
-    // Get current counts
     const userRows = document.querySelectorAll('.user-row');
     const gatepassRows = document.querySelectorAll('.gatepass-row');
     
-    // Update pending users count
-    const pendingUsersElement = document.querySelector('.stat-card:nth-child(1) h2');
-    if (pendingUsersElement) {
-        pendingUsersElement.textContent = userRows.length;
-    }
+    // Update counts
+    const counters = [
+        document.querySelector('.stat-card:nth-child(1) h2'),
+        document.querySelector('.stat-card:nth-child(2) h2'),
+        document.querySelector('.stat-card:nth-child(3) h2')
+    ];
     
-    // Update pending gate passes count
-    const pendingPassesElement = document.querySelector('.stat-card:nth-child(2) h2');
-    if (pendingPassesElement) {
-        pendingPassesElement.textContent = gatepassRows.length;
-    }
-    
-    // Update ready to approve count
-    const readyToApproveElement = document.querySelector('.stat-card:nth-child(3) h2');
-    if (readyToApproveElement) {
-        readyToApproveElement.textContent = userRows.length + gatepassRows.length;
-    }
+    if (counters[0]) counters[0].textContent = userRows.length;
+    if (counters[1]) counters[1].textContent = gatepassRows.length;
+    if (counters[2]) counters[2].textContent = userRows.length + gatepassRows.length;
     
     // Update badges
     const userBadge = document.querySelector('.card:nth-child(1) .badge.bg-warning');
-    if (userBadge) {
-        userBadge.textContent = `${userRows.length} pending`;
-    }
-    
     const passBadge = document.querySelector('.card:nth-child(2) .badge.bg-info');
-    if (passBadge) {
-        passBadge.textContent = `${gatepassRows.length} pending`;
-    }
     
-    // If no pending items, show empty state
-    if (userRows.length === 0) {
-        showEmptyState('users');
-    }
-    if (gatepassRows.length === 0) {
-        showEmptyState('gatepasses');
-    }
+    if (userBadge) userBadge.textContent = `${userRows.length} pending`;
+    if (passBadge) passBadge.textContent = `${gatepassRows.length} pending`;
+    
+    // Show empty state
+    if (userRows.length === 0) showEmptyState('users');
+    if (gatepassRows.length === 0) showEmptyState('gatepasses');
 }
 
 function showEmptyState(type) {
@@ -1212,53 +1341,32 @@ function showEmptyState(type) {
                     <i class="fas fa-${type === 'users' ? 'user-check' : 'check-circle'} fa-4x text-success opacity-25"></i>
                 </div>
                 <h5 class="fw-bold text-muted mb-2">No Pending ${type === 'users' ? 'Users' : 'Gate Passes'}</h5>
-                <p class="text-muted mb-0">All ${type === 'users' ? 'user registrations' : 'gate pass requests'} have been processed</p>
+                <p class="text-muted mb-0">All requests have been processed</p>
             </div>
         `;
     }
 }
 
-// ✅ FIXED: Initialize event listeners
+// Initialize animations
 document.addEventListener('DOMContentLoaded', function() {
-    // Clear modals on hide
-    const commentModal = document.getElementById('commentModal');
-    const rejectModal = document.getElementById('rejectModal');
-    
-    if (commentModal) {
-        commentModal.addEventListener('hidden.bs.modal', function() {
-            document.getElementById('approvalComment').value = '';
-        });
-    }
-    
-    if (rejectModal) {
-        rejectModal.addEventListener('hidden.bs.modal', function() {
-            document.getElementById('rejectComment').value = '';
-        });
-    }
-    
-    // Add animation to table rows
+    // Animate rows
     const rows = document.querySelectorAll('.user-row, .gatepass-row');
     rows.forEach((row, index) => {
         row.style.opacity = '0';
-        row.style.transform = 'translateY(20px)';
+        row.style.transform = 'translateY(10px)';
         
         setTimeout(() => {
-            row.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            row.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             row.style.opacity = '1';
             row.style.transform = 'translateY(0)';
-        }, index * 100);
+        }, index * 50);
     });
     
-    // Auto-hide toasts after 5 seconds
+    // Auto-hide toasts after 3 seconds
     const toasts = document.querySelectorAll('.toast');
     toasts.forEach(toast => {
-        const bsToast = new bootstrap.Toast(toast, { delay: 5000 });
+        const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
     });
 });
-
-// Helper function for loading state
-function showLoading(message) {
-    console.log('Loading:', message);
-}
 </script>
 {% endblock %}

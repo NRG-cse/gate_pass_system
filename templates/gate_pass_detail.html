@@ -619,8 +619,8 @@
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- Security Notes (Minimal) -->
+<!-- 
+                            Security Notes (Minimal)
                             <div class="security-notes-section mt-2">
                                 <div class="card border-danger">
                                     <div class="card-header bg-danger text-white py-1 px-2">
@@ -630,12 +630,12 @@
                                         <ul class="small mb-0 ps-3" style="font-size: 7pt; line-height: 1.1;">
                                             <li>Scan QR code at gate</li>
                                             <li>Verify receiver</li>
-                                            <li>Check material</li>
-                                            <li>Record time</li>
+                                            <!-- <li>Check material</li> -->
+                                            <!-- <li>Record time</li>
                                         </ul>
                                     </div>
                                 </div>
-                            </div>
+                            </div> --> -->
 
                             <!-- Footer -->
                             <div class="footer-section mt-2 pt-2 border-top">
@@ -686,7 +686,7 @@
                                     <div class="col-md-4">
                                         {% if gate_pass.security_approval == 'approved' or session.role != 'security' %}
                                             <button class="btn btn-primary w-100 py-3 fs-5 print-btn">
-                                                <i class="fas fa-print"></i> PRINT GATE PASS (2 COPIES)
+                                                <i class="fas fa-print"></i> PRINT GATE PASS
                                             </button>
                                         {% else %}
                                             <button class="btn btn-secondary w-100 py-3 fs-5" onclick="showApprovalRequiredAlert()">
