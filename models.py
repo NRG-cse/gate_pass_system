@@ -41,6 +41,51 @@ def dict_fetchone(cursor):
         return None
     return dict(zip(columns, row))
 
+# ==================== DEPARTMENT VALIDATION FUNCTIONS ====================
+
+def get_user_department_id(user_id):
+    """Get user's department ID"""
+    conn = get_db_connection()
+    if conn is None:
+        return None
+    
+    cursor = conn.cursor()
+    try:
+        cursor.execute('SELECT department_id FROM users WHERE id = %s', (user_id,))
+        result = cursor.fetchone()
+        return result[0] if result else None
+    finally:
+        cursor.close()
+        conn.close()
+
+def can_user_create_for_department(user_id, target_department_id):
+    """Check if user can create gate pass for target department"""
+    user_dept_id = get_user_department_id(user_id)
+    return user_dept_id == target_department_id
+
+def get_user_department_info(user_id):
+    """Get user's department and division info"""
+    conn = get_db_connection()
+    if conn is None:
+        return None
+    
+    cursor = conn.cursor()
+    try:
+        cursor.execute('''
+            SELECT u.department_id, u.division_id, d.name as department_name, 
+                   dv.name as division_name
+            FROM users u
+            JOIN departments d ON u.department_id = d.id
+            JOIN divisions dv ON u.division_id = dv.id
+            WHERE u.id = %s
+        ''', (user_id,))
+        return dict_fetchone(cursor)
+    finally:
+        cursor.close()
+        conn.close()
+
+# ==================== END DEPARTMENT VALIDATION FUNCTIONS ====================
+
 def init_db():
     conn = get_db_connection()
     if conn is None:
@@ -575,6 +620,7 @@ def init_db():
         print("\n" + "="*60)
         print("✅ Database initialized successfully with ALL tables and default users!")
         print("✅ Includes overdue tracking tables: overdue_reminders, force_return_logs")
+        print("✅ Includes department validation functions for secure gate pass creation")
         print("="*60)
         print("\n📋 DEFAULT LOGIN CREDENTIALS:")
         print("   System Admin: sysadmin / admin123")
@@ -592,6 +638,8 @@ def init_db():
         print("   • Force return functionality")
         print("   • Reminder system")
         print("   • Alarm system with sound")
+        print("   • Department restriction for gate pass creation")
+        print("   • Store selection during gate pass creation")
         print("="*60)
         return True
         

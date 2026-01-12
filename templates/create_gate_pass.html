@@ -168,6 +168,23 @@
                                 </div>
                             </div>
                             
+                            <!-- ✅ Store Selection Field যোগ করুন -->
+                            <div class="col-md-6">
+                                <label class="form-label">Select Store *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-store"></i></span>
+                                    <select class="form-select form-control-lg" name="store_location" id="storeSelect" required>
+                                        <option value="">Select Store</option>
+                                        {% for store in stores %}
+                                        <option value="{{ store.id }}">{{ store.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="invalid-feedback">
+                                        Please select store.
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <div class="col-md-6">
                                 <label class="form-label">Send Date *</label>
                                 <div class="input-group">
@@ -177,16 +194,6 @@
                                     <div class="invalid-feedback">
                                         Please select send date.
                                     </div>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <label class="form-label">Vehicle Number</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-car"></i></span>
-                                    <input type="text" class="form-control form-control-lg" 
-                                           name="vehicle_number"
-                                           placeholder="Optional">
                                 </div>
                             </div>
                         </div>
@@ -667,7 +674,8 @@ if (materialType && returnDateField && returnDateInput) {
     });
 }
 
-// Department Filter based on Division
+// ==================== DEPARTMENT FILTERING START ====================
+// Department Filter based on Division - Modified version
 const divisionSelect = document.getElementById('divisionSelect');
 const departmentSelect = document.getElementById('departmentSelect');
 
@@ -689,16 +697,70 @@ if (divisionSelect && departmentSelect) {
                 }
             });
             
-            // Select first available department
-            const availableDepts = Array.from(departments).filter(
-                dept => dept.dataset.division === selectedDivision && dept.value
-            );
-            if (availableDepts.length > 0) {
-                departmentSelect.value = availableDepts[0].value;
+            // Auto-select user's department if available
+            const userDeptId = "{{ user_department_id }}";
+            const userDeptOption = departmentSelect.querySelector(`option[value="${userDeptId}"]`);
+            
+            if (userDeptOption && userDeptOption.dataset.division === selectedDivision) {
+                departmentSelect.value = userDeptId;
+            } else {
+                // Select first available department
+                const availableDepts = Array.from(departments).filter(
+                    dept => dept.dataset.division === selectedDivision && dept.value
+                );
+                if (availableDepts.length > 0) {
+                    departmentSelect.value = availableDepts[0].value;
+                }
             }
         }
+        
+        // Make department select read-only (user can't change)
+        departmentSelect.disabled = true;
+        departmentSelect.title = "You can only create gate passes for your own department";
     });
+    
+    // Trigger change event on page load
+    if (divisionSelect.value) {
+        divisionSelect.dispatchEvent(new Event('change'));
+    }
 }
+
+// Auto-select user's department on page load
+window.addEventListener('load', function() {
+    // Auto-select user's department
+    const userDeptId = "{{ user_department_id }}";
+    const departmentSelect = document.getElementById('departmentSelect');
+    
+    if (departmentSelect && userDeptId) {
+        // Make sure the option exists
+        const optionExists = departmentSelect.querySelector(`option[value="${userDeptId}"]`);
+        if (optionExists) {
+            departmentSelect.value = userDeptId;
+            departmentSelect.disabled = true;
+        }
+    }
+    
+    // Auto-select division based on department
+    const divisionSelect = document.getElementById('divisionSelect');
+    if (divisionSelect && departmentSelect.value) {
+        const selectedOption = departmentSelect.options[departmentSelect.selectedIndex];
+        if (selectedOption && selectedOption.dataset.division) {
+            divisionSelect.value = selectedOption.dataset.division;
+            // Trigger the change event to filter departments
+            divisionSelect.dispatchEvent(new Event('change'));
+        }
+    }
+    
+    // Store selection event listener
+    const storeSelect = document.getElementById('storeSelect');
+    if (storeSelect) {
+        storeSelect.addEventListener('change', function() {
+            const storeName = this.options[this.selectedIndex].text;
+            console.log(`Selected store: ${storeName}`);
+        });
+    }
+});
+// ==================== DEPARTMENT FILTERING END ====================
 
 // Photo Management Variables
 let capturedPhotos = [];
@@ -1074,13 +1136,6 @@ window.addEventListener('load', function() {
     if (returnDateInput) {
         returnDateInput.value = tomorrowISOTime;
         returnDateInput.min = localISOTime;
-    }
-    
-    // Auto-select first division and department if available
-    const divisions = document.querySelectorAll('#divisionSelect option');
-    if (divisions.length > 1) {
-        divisionSelect.value = divisions[1].value;
-        divisionSelect.dispatchEvent(new Event('change'));
     }
     
     // Initialize photo requirements

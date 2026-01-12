@@ -1,6 +1,6 @@
-# gate_pass.py - COMPLETE WITH INSTANT APPROVAL & SECURITY WORKFLOW
+# gate_pass.py - COMPLETE WITH INSTANT APPROVAL & SECURITY WORKFLOW WITH DEPARTMENT RESTRICTION
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
-from models import get_db_connection, dict_fetchall, dict_fetchone
+from models import get_db_connection, dict_fetchall, dict_fetchone, get_user_department_id
 from qr_utils import generate_qr_code, generate_gate_pass_qr_data
 from notifications import create_notification
 import MySQLdb
@@ -389,9 +389,9 @@ def fast_approve_user(user_id, action):
 
 @gate_pass_bp.route('/create_gate_pass', methods=['GET', 'POST'])
 def create_gate_pass():
-    """Create new gate pass - ULTRA FAST VERSION"""
+    """Create new gate pass - WITH DEPARTMENT RESTRICTION"""
     print(f"\n{'='*90}")
-    print(f"🚀 GATE PASS CREATION STARTED - FAST MODE")
+    print(f"🚀 GATE PASS CREATION STARTED - WITH DEPARTMENT RESTRICTION")
     print(f"{'='*90}")
     
     if 'user_id' not in session:
@@ -405,33 +405,107 @@ def create_gate_pass():
         flash(error_msg, 'error')
         return redirect(url_for('dashboard'))
     
+    # Get current user's department
+    current_user_dept_id = get_user_department_id(session['user_id'])
+    
     # Get form data for dropdowns
     conn = get_db_connection()
     if conn is None:
         flash('❌ Database connection failed!', 'error')
-        return render_template('create_gate_pass.html', divisions=[], departments=[])
+        return render_template('create_gate_pass.html', divisions=[], departments=[], stores=[])
     
     cursor = conn.cursor()
     
     try:
-        cursor.execute('SELECT id, name FROM divisions WHERE status = "active" ORDER BY name')
+        # Get user's division and department
+        cursor.execute('SELECT division_id, department_id FROM users WHERE id = %s', (session['user_id'],))
+        user_info = cursor.fetchone()
+        
+        if not user_info:
+            flash('❌ User information not found!', 'error')
+            return redirect(url_for('dashboard'))
+        
+        user_division_id, user_department_id = user_info
+        
+        # Get divisions (only user's division)
+        cursor.execute('SELECT id, name FROM divisions WHERE id = %s AND status = "active"', (user_division_id,))
         divisions = dict_fetchall(cursor)
         
+        # Get departments (only user's department)
         cursor.execute('''
             SELECT d.id, d.name, d.division_id, dv.name as division_name 
             FROM departments d 
             JOIN divisions dv ON d.division_id = dv.id 
-            WHERE d.status = "active" 
-            ORDER BY dv.name, d.name
-        ''')
+            WHERE d.id = %s AND d.status = "active"
+        ''', (user_department_id,))
         departments = dict_fetchall(cursor)
+        
+        # Get stores for selection
+        cursor.execute('''
+            SELECT id, name FROM departments 
+            WHERE name LIKE '%Store%' AND status = 'active' 
+            ORDER BY name
+        ''')
+        stores = dict_fetchall(cursor)
+        
+        print(f"📊 User Department ID: {user_department_id}")
+        print(f"📊 Available Departments: {[dept['id'] for dept in departments]}")
+        print(f"📊 Available Stores: {[store['name'] for store in stores]}")
+        
     except Exception as e:
         print(f"❌ Error fetching data: {e}")
         divisions = []
         departments = []
+        stores = []
     
     if request.method == 'POST':
         print("📤 Processing form submission...")
+        
+        # ✅ নতুন: Department validation check
+        selected_department_id = request.form.get('department_id', '').strip()
+        
+        if not selected_department_id:
+            flash('❌ Please select department!', 'error')
+            return render_template('create_gate_pass.html', 
+                                 divisions=divisions, 
+                                 departments=departments,
+                                 stores=stores)
+        
+        # 🔒 Check if user is trying to create for their own department
+        if int(selected_department_id) != user_department_id:
+            flash('❌ Access Denied! You can only create gate passes for your own department.', 'error')
+            return render_template('create_gate_pass.html', 
+                                 divisions=divisions, 
+                                 departments=departments,
+                                 stores=stores)
+        
+        # ✅ নতুন: Store selection validation
+        selected_store_id = request.form.get('store_location', '').strip()
+        if not selected_store_id:
+            flash('❌ Please select store!', 'error')
+            return render_template('create_gate_pass.html', 
+                                 divisions=divisions, 
+                                 departments=departments,
+                                 stores=stores)
+        
+        # Get store name from ID
+        store_name = ""
+        for store in stores:
+            if str(store['id']) == selected_store_id:
+                store_name = store['name']
+                break
+        
+        # Map store name to store_location format
+        store_location_map = {
+            'Store 1': 'store_1',
+            'Store 2': 'store_2',
+            'store_1': 'store_1',
+            'store_2': 'store_2',
+            'Main Store': 'store_1',
+            'Secondary Store': 'store_2'
+        }
+        
+        store_location = store_location_map.get(store_name, 'store_1')
         
         # SIMPLE VALIDATION - FASTER
         required_fields = [
@@ -447,7 +521,8 @@ def create_gate_pass():
                 flash(f'❌ Please fill {field.replace("_", " ")}', 'error')
                 return render_template('create_gate_pass.html', 
                                      divisions=divisions, 
-                                     departments=departments)
+                                     departments=departments,
+                                     stores=stores)
             form_data[field] = value
         
         # Check photos
@@ -458,7 +533,8 @@ def create_gate_pass():
             flash('❌ Minimum 4 photos required!', 'error')
             return render_template('create_gate_pass.html', 
                                  divisions=divisions, 
-                                 departments=departments)
+                                 departments=departments,
+                                 stores=stores)
         
         try:
             # Generate pass number
@@ -506,14 +582,14 @@ def create_gate_pass():
                 except:
                     return_datetime = datetime.now() + timedelta(days=7)
             
-            # Insert gate pass - SIMPLIFIED
+            # Insert gate pass - SIMPLIFIED WITH STORE LOCATION
             cursor.execute('''
                 INSERT INTO gate_passes (
                     pass_number, created_by, division_id, department_id, 
                     material_description, destination, purpose, material_type, 
                     material_status, expected_return_date, receiver_name, 
-                    receiver_contact, send_date, images, status, urgent
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    receiver_contact, send_date, images, status, urgent, store_location
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ''', (
                 pass_number, session['user_id'], 
                 int(form_data['division_id']), int(form_data['department_id']),
@@ -522,14 +598,14 @@ def create_gate_pass():
                 form_data['material_status'], return_datetime,
                 form_data['receiver_name'], form_data['receiver_contact'],
                 send_datetime, images_json, 'pending_dept',
-                1 if request.form.get('urgent') == 'true' else 0
+                1 if request.form.get('urgent') == 'true' else 0,
+                store_location  # ✅ Store location added
             ))
             
             gate_pass_id = cursor.lastrowid
             
             # Generate QR (optional - can be done async)
             try:
-                from qr_utils import generate_gate_pass_qr_data
                 qr_data_form = generate_gate_pass_qr_data(gate_pass_id, pass_number)
                 qr_data_sticker = generate_gate_pass_qr_data(gate_pass_id, f"{pass_number}_STICKER")
                 
@@ -565,14 +641,33 @@ def create_gate_pass():
                 
                 # Notify creator
                 async_notify(session['user_id'],
-                            f"✅ Gate Pass {pass_number} created successfully!",
+                            f"✅ Gate Pass {pass_number} created successfully! Store: {store_name}",
                             'status',
                             gate_pass_id)
+                
+                # Notify the selected store manager
+                store_manager_username = 'store1' if store_location == 'store_1' else 'store2'
+                cursor.execute('''
+                    SELECT u.id FROM users u 
+                    WHERE u.username = %s 
+                    AND u.role = 'store_manager' 
+                    AND u.status = 'approved'
+                    LIMIT 1
+                ''', (store_manager_username,))
+                
+                store_manager = cursor.fetchone()
+                if store_manager:
+                    async_notify(store_manager[0],
+                                f"🏪 New Gate Pass {pass_number} assigned to your store",
+                                'store_alert',
+                                gate_pass_id)
+                
             except:
                 pass  # Notifications are optional
             
-            flash(f'✅ Gate Pass {pass_number} created successfully!', 'success')
+            flash(f'✅ Gate Pass {pass_number} created successfully! Store: {store_name}', 'success')
             print(f"🎉 Gate Pass {pass_number} created in under 2 seconds!")
+            print(f"🏪 Assigned to store: {store_name} ({store_location})")
             
             cursor.close()
             conn.close()
@@ -591,14 +686,22 @@ def create_gate_pass():
             conn.close()
             return render_template('create_gate_pass.html', 
                                  divisions=divisions, 
-                                 departments=departments)
+                                 departments=departments,
+                                 stores=stores)
     
     # GET request
     cursor.close()
     conn.close()
+    
+    # Auto-select user's department
+    for dept in departments:
+        dept['selected'] = str(dept['id']) == str(user_department_id)
+    
     return render_template('create_gate_pass.html', 
                          divisions=divisions, 
-                         departments=departments)
+                         departments=departments,
+                         stores=stores,
+                         user_department_id=user_department_id)
 
 @gate_pass_bp.route('/gate_pass_list')
 def gate_pass_list():
@@ -616,11 +719,10 @@ def gate_pass_list():
         current_user_department_id = None
         
         # ✅ FIXED: Get current user's department for template
-        if session['role'] == 'department_head':
-            cursor.execute('SELECT department_id FROM users WHERE id = %s', (session['user_id'],))
-            dept_result = cursor.fetchone()
-            if dept_result:
-                current_user_department_id = dept_result[0]
+        cursor.execute('SELECT department_id FROM users WHERE id = %s', (session['user_id'],))
+        user_dept_result = cursor.fetchone()
+        if user_dept_result:
+            current_user_department_id = user_dept_result[0]
         
         # ✅ FIXED: For Store Managers - Show ALL gate passes AND their store requests
         if session['role'] == 'store_manager':
@@ -720,7 +822,7 @@ def gate_pass_list():
                                  gate_passes=gate_passes, 
                                  store_requests=[])
         
-        # ✅ FIXED: For Regular User - Only their own passes
+        # ✅ FIXED: For Regular User - Only their own passes from their department
         else:
             # Regular User এর জন্য Department Approval তথ্য সহ
             cursor.execute('''
@@ -731,8 +833,9 @@ def gate_pass_list():
                 JOIN departments d ON gp.department_id = d.id 
                 JOIN divisions dv ON gp.division_id = dv.id 
                 WHERE gp.created_by = %s 
+                AND gp.department_id = %s  -- ✅ Department restriction
                 ORDER BY gp.created_at DESC
-            ''', (session['user_id'],))
+            ''', (session['user_id'], current_user_department_id))
             gate_passes = dict_fetchall(cursor)
             
             return render_template('gate_pass_list.html', 
@@ -794,7 +897,6 @@ def gate_pass_detail(gate_pass_id):
             gate_pass['images_list'] = []
         
         # Generate QR code images for display
-        from qr_utils import generate_qr_code
         if gate_pass['qr_code_form']:
             gate_pass['qr_form_img'] = generate_qr_code(gate_pass['qr_code_form'])
         if gate_pass['qr_code_sticker']:
@@ -1428,3 +1530,25 @@ def quick_manual_return():
 def approve_user(user_id, action):
     """Legacy user approval route (redirects to fast version)"""
     return fast_approve_user(user_id, action)
+
+# ✅ NEW: Department validation API
+@gate_pass_bp.route('/api/validate_department/<int:department_id>', methods=['GET'])
+def validate_department(department_id):
+    """Validate if user can create gate pass for this department"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Access denied!'})
+    
+    user_dept_id = get_user_department_id(session['user_id'])
+    
+    if user_dept_id == department_id:
+        return jsonify({
+            'success': True,
+            'message': 'You can create gate pass for this department',
+            'allowed': True
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'message': 'You can only create gate passes for your own department',
+            'allowed': False
+        })
